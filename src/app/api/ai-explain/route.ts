@@ -17,19 +17,13 @@ const SYSTEM_PROMPT = [
   "9. No markdown, no code blocks, no extra text — pure JSON array only.",
 ].join("\n");
 
-type OpenAIMessage = { role: "system" | "user"; content: string };
+type Msg = { role: "system" | "user"; content: string };
 
-async function streamOpenAI(
-  endpoint: string,
-  bearerToken: string,
-  model: string,
-  messages: OpenAIMessage[],
-  maxTokens = 700,
-): Promise<ReadableStream> {
-  const res = await fetch(endpoint, {
+async function streamGhModels(token: string, model: string, messages: Msg[]): Promise<ReadableStream> {
+  const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: "Bearer " + bearerToken },
-    body: JSON.stringify({ model, stream: true, messages, max_tokens: maxTokens, temperature: 0.1 }),
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ model, stream: true, messages, max_tokens: 700, temperature: 0.1 }),
   });
   const enc = new TextEncoder();
   return new ReadableStream({
@@ -59,106 +53,23 @@ async function streamOpenAI(
   });
 }
 
-async function streamGemini(apiKey: string, modelId: string, prompt: string): Promise<ReadableStream> {
-  const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/" +
-    modelId +
-    ":streamGenerateContent?alt=sse&key=" +
-    apiKey;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 700, temperature: 0.1 },
-    }),
-  });
-  const enc = new TextEncoder();
-  return new ReadableStream({
-    async start(ctrl) {
-      const reader = res.body?.getReader();
-      if (!reader) { ctrl.close(); return; }
-      const dec = new TextDecoder();
-      let buf = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6)) as {
-                candidates?: { content?: { parts?: { text?: string }[] } }[];
-              };
-              const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) ctrl.enqueue(enc.encode(text));
-            } catch { /* skip */ }
-          }
-        }
-      }
-      ctrl.close();
-    },
-  });
-}
-
 export async function POST(req: NextRequest) {
-  const { prompt, model, key } = (await req.json()) as {
-    prompt: string;
-    model?: string;
-    key?: string;
-  };
+  const { prompt, model } = (await req.json()) as { prompt: string; model?: string };
 
-  // Priority: user key → GitHub Models (server PAT, free) → server Gemini key
-  const userKey = key?.trim() ?? "";
-  const githubToken = process.env.GITHUB_MODELS_TOKEN ?? "";
-  const serverGeminiKey = process.env.GEMINI_API_KEY ?? "";
+  const token = process.env.GITHUB_MODELS_TOKEN ?? "";
   const modelId = model?.trim() || "gpt-4o-mini";
-  const isGemini = modelId.toLowerCase().includes("gemini");
-
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
+  if (!token) {
+    return new Response("Service IA non configuré.", { status: 200 });
+  }
+
   try {
-    // Path 1: user has their own API key
-    if (userKey) {
-      const stream = isGemini
-        ? await streamGemini(userKey, modelId, prompt)
-        : await streamOpenAI(
-            "https://api.openai.com/v1/chat/completions",
-            userKey,
-            modelId,
-            [{ role: "user", content: prompt }],
-          );
-      return new Response(stream, { headers });
-    }
-
-    // Path 2: GitHub Models — free, server-side PAT, strict system prompt
-    if (githubToken) {
-      const ghModel = isGemini ? "gpt-4o-mini" : modelId || "gpt-4o-mini";
-      const stream = await streamOpenAI(
-        "https://models.inference.ai.azure.com/chat/completions",
-        githubToken,
-        ghModel,
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        700,
-      );
-      return new Response(stream, { headers });
-    }
-
-    // Path 3: server Gemini API key
-    if (serverGeminiKey) {
-      const stream = await streamGemini(serverGeminiKey, "gemini-2.0-flash", prompt);
-      return new Response(stream, { headers });
-    }
-
-    return new Response(
-      "Configurez une clé API dans les Paramètres pour activer les explications IA.",
-      { status: 200 },
-    );
+    const stream = await streamGhModels(token, modelId, [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ]);
+    return new Response(stream, { headers });
   } catch (e) {
     return new Response("Erreur IA: " + String(e), { status: 200 });
   }

@@ -1,48 +1,118 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, Key, Brain, Sun, Moon, Globe, ChevronRight, Check, Eye, EyeOff, LogOut, Sparkles } from "lucide-react";
+import { Settings, Brain, Sun, Moon, Check, LogOut, ChevronDown, Loader2 } from "lucide-react";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
-const MODELS = [
-  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", sub: "Rapide · Gratuit", tag: "RECOMMANDÉ" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", sub: "Plus précis", tag: "" },
-  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", sub: "Meilleur · Payant", tag: "" },
-  { id: "gpt-4o-mini", label: "GPT-4o Mini", sub: "OpenAI · Rapide", tag: "" },
-  { id: "gpt-4o", label: "GPT-4o", sub: "OpenAI · Premium", tag: "" },
+interface GhModel {
+  id: string;
+  name: string;
+  description?: string;
+  publisher?: string;
+  model_type?: string;
+  task?: string;
+}
+
+// Curated list of good chat/text models from GitHub Models
+const PREFERRED_ORDER = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o3",
+  "o3-mini",
+  "o4-mini",
+  "Meta-Llama-3.3-70B-Instruct",
+  "Meta-Llama-3.1-405B-Instruct",
+  "Mistral-Large-2",
+  "Phi-4",
+  "Phi-4-mini",
+  "Cohere-Command-R-Plus-08-2024",
 ];
+
+function isTextModel(m: GhModel) {
+  const t = (m.task ?? "").toLowerCase();
+  const ty = (m.model_type ?? "").toLowerCase();
+  // Keep chat/text-gen models, skip embeddings/image/audio/code-only
+  return (
+    t.includes("chat") ||
+    t.includes("text-generation") ||
+    t.includes("text") ||
+    ty.includes("chat") ||
+    (!t && !ty) // unknown type — include and let user decide
+  );
+}
+
+function modelLabel(id: string): string {
+  return id
+    .replace(/-/g, " ")
+    .replace(/(\d+)b/i, "$1B")
+    .replace(/gpt 4o mini/i, "GPT-4o Mini")
+    .replace(/gpt 4o/i, "GPT-4o")
+    .replace(/o3 mini/i, "o3-mini")
+    .replace(/o4 mini/i, "o4-mini");
+}
 
 export default function SettingsPage() {
   const { theme, toggle } = useTheme();
   const { user, profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
-  const [aiKey, setAiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
-  const [saved, setSaved] = useState(false);
-  const [modelOpen, setModelOpen] = useState(false);
 
+  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [models, setModels] = useState<GhModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(true);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Load saved model preference
   useEffect(() => {
-    if (profile?.preferences) {
-      setAiKey(profile.preferences.ai_key ?? "");
-      setSelectedModel(profile.preferences.ai_model ?? "gemini-2.0-flash");
-    } else {
-      // Load from localStorage for non-logged users
-      setAiKey(localStorage.getItem("fmpc-ai-key") ?? "");
-      setSelectedModel(localStorage.getItem("fmpc-ai-model") ?? "gemini-2.0-flash");
-    }
+    const saved =
+      (profile?.preferences as Record<string, string> | undefined)?.ai_model ??
+      localStorage.getItem("fmpc-ai-model") ??
+      "gpt-4o-mini";
+    setSelectedModel(saved);
   }, [profile]);
 
+  // Fetch available models from GitHub Models via our proxy route
+  useEffect(() => {
+    fetch("/api/gh-models")
+      .then((r) => r.json())
+      .then((data: GhModel[]) => {
+        // Filter to text/chat models, sort preferred ones first
+        const chat = data.filter(isTextModel);
+        chat.sort((a, b) => {
+          const ai = PREFERRED_ORDER.indexOf(a.id);
+          const bi = PREFERRED_ORDER.indexOf(b.id);
+          if (ai !== -1 && bi !== -1) return ai - bi;
+          if (ai !== -1) return -1;
+          if (bi !== -1) return 1;
+          return a.id.localeCompare(b.id);
+        });
+        setModels(chat);
+      })
+      .catch(() => {
+        // Fallback static list if the API fails
+        setModels([
+          { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+          { id: "gpt-4o", name: "GPT-4o" },
+          { id: "o3-mini", name: "o3-mini" },
+          { id: "Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B" },
+          { id: "Phi-4", name: "Phi-4" },
+        ] as GhModel[]);
+      })
+      .finally(() => setLoadingModels(false));
+  }, []);
+
   async function save() {
-    localStorage.setItem("fmpc-ai-key", aiKey);
     localStorage.setItem("fmpc-ai-model", selectedModel);
     if (user) {
       await supabase.from("profiles").upsert({
         id: user.id,
-        preferences: { ...profile?.preferences, ai_key: aiKey, ai_model: selectedModel },
+        preferences: {
+          ...(profile?.preferences as Record<string, unknown> | undefined),
+          ai_model: selectedModel,
+        },
       });
       await refreshProfile();
     }
@@ -55,149 +125,207 @@ export default function SettingsPage() {
     router.push("/");
   }
 
-  const currentModel = MODELS.find((m) => m.id === selectedModel) ?? MODELS[0];
+  const current = models.find((m) => m.id === selectedModel) ?? { id: selectedModel, name: modelLabel(selectedModel) };
 
   return (
-    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <div className="max-w-md mx-auto px-4 pt-6 space-y-5 md:max-w-2xl">
+    <div className="min-h-screen pb-24" style={{ background: "var(--bg)" }}>
+      <div className="max-w-lg mx-auto px-4 pt-8 space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
+            Paramètres
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+            Personnalisez votre expérience
+          </p>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-xl font-bold">Paramètres</h1>
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Personnalisez votre expérience</p>
-        </motion.div>
-
-        {/* AI Settings */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="rounded-2xl border overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-            <Brain className="w-4 h-4 text-blue-400" />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Intelligence Artificielle</p>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Clé API + modèle pour les explications</p>
-            </div>
+        {/* ── AI Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border p-4 space-y-4"
+          style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex items-center gap-2">
+            <Brain size={15} style={{ color: "var(--accent)" }} />
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+              Intelligence Artificielle
+            </span>
           </div>
 
-          <div className="p-5 space-y-4">
-            {/* Model selector */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Modèle</label>
-              <button onClick={() => setModelOpen(!modelOpen)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-white/20"
-                style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }}>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{currentModel.label}</span>
-                  {currentModel.tag && (
-                    <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-lg">
-                      {currentModel.tag}
-                    </span>
-                  )}
-                </div>
-                <ChevronRight className={`w-4 h-4 transition-transform ${modelOpen ? "rotate-90" : ""}`}
-                  style={{ color: "var(--text-muted)" }} />
+          {/* Model picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              Modèle
+            </label>
+            <div className="relative">
+              <button
+                onClick={() => setModelOpen((v) => !v)}
+                disabled={loadingModels}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-white/20 disabled:opacity-50"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  borderColor: "rgba(255,255,255,0.08)",
+                  color: "var(--text)",
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  {loadingModels ? (
+                    <Loader2 size={13} className="animate-spin" style={{ color: "var(--text-muted)" }} />
+                  ) : null}
+                  {loadingModels ? "Chargement…" : (current.name || modelLabel(current.id))}
+                </span>
+                <ChevronDown
+                  size={14}
+                  style={{
+                    color: "var(--text-muted)",
+                    transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.15s",
+                  }}
+                />
               </button>
-              {modelOpen && (
-                <div className="rounded-xl border overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-                  {MODELS.map((m) => (
-                    <button key={m.id} onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm border-b last:border-0 transition-all hover:bg-white/[0.04]"
-                      style={{ borderColor: "rgba(255,255,255,0.04)", color: "var(--text)" }}>
-                      <div className="text-left">
-                        <p className="text-sm">{m.label}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{m.sub}</p>
+
+              {modelOpen && models.length > 0 && (
+                <div
+                  className="absolute z-50 mt-1 w-full rounded-xl border overflow-hidden overflow-y-auto"
+                  style={{
+                    background: "var(--surface-elevated, var(--surface))",
+                    borderColor: "rgba(255,255,255,0.1)",
+                    maxHeight: "260px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  {models.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm border-b last:border-0 transition-all hover:bg-white/[0.05] text-left"
+                      style={{ borderColor: "rgba(255,255,255,0.04)", color: "var(--text)" }}
+                    >
+                      <div>
+                        <div className="font-medium">{m.name || modelLabel(m.id)}</div>
+                        {m.publisher && (
+                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                            {m.publisher}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {m.tag && <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">{m.tag}</span>}
-                        {selectedModel === m.id && <Check className="w-3.5 h-3.5 text-blue-400" />}
-                      </div>
+                      {selectedModel === m.id && <Check size={13} style={{ color: "var(--accent)" }} />}
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* API Key */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Clé API (optionnelle)</label>
-              <div className="relative">
-                <input
-                  type={showKey ? "text" : "password"}
-                  value={aiKey}
-                  onChange={(e) => setAiKey(e.target.value)}
-                  placeholder="sk-... ou AIza..."
-                  className="w-full rounded-xl px-3.5 py-2.5 pr-10 text-sm border focus:outline-none transition-colors"
-                  style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }}
-                />
-                <button onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }}>
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                <p className="text-xs text-blue-400/90">Sans clé: modèle par défaut gratuit. Avec clé: votre quota personnel.</p>
-              </div>
-            </div>
-
-            <button onClick={save}
-              className={`w-full py-3 rounded-xl text-sm font-semibold transition-all ${saved ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white text-black hover:bg-zinc-100"}`}>
-              {saved ? "✓ Enregistré" : "Enregistrer"}
-            </button>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Alimenté par{" "}
+              <a
+                href="https://github.com/marketplace/models"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+                style={{ color: "var(--accent)" }}
+              >
+                GitHub Models
+              </a>{" "}
+              — gratuit, aucune clé requise.
+            </p>
           </div>
+
+          {/* Save */}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={save}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: saved ? "rgba(34,197,94,0.15)" : "var(--text)",
+              color: saved ? "rgb(34,197,94)" : "var(--bg)",
+              border: saved ? "1px solid rgba(34,197,94,0.3)" : "none",
+            }}
+          >
+            {saved ? "✓ Enregistré" : "Enregistrer"}
+          </motion.button>
         </motion.div>
 
-        {/* Appearance */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="rounded-2xl border overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-            <Sun className="w-4 h-4 text-amber-400" />
-            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Apparence</p>
+        {/* ── Appearance ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border p-4"
+          style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            {theme === "dark" ? <Moon size={15} style={{ color: "var(--accent)" }} /> : <Sun size={15} style={{ color: "var(--accent)" }} />}
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+              Apparence
+            </span>
           </div>
-          <button onClick={toggle}
-            className="w-full flex items-center justify-between px-5 py-4 transition-all hover:bg-white/[0.04]">
-            <div className="flex items-center gap-3">
-              {theme === "dark" ? <Moon className="w-4 h-4 text-zinc-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
-              <div className="text-left">
-                <p className="text-sm" style={{ color: "var(--text)" }}>{theme === "dark" ? "Mode sombre" : "Mode clair"}</p>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Basculer le thème</p>
-              </div>
-            </div>
-            <div className={`w-10 h-5.5 rounded-full relative transition-all ${theme === "dark" ? "bg-blue-500" : "bg-zinc-300"}`}
-              style={{ width: "42px", height: "24px" }}>
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${theme === "dark" ? "left-5" : "left-0.5"}`} />
+          <button
+            onClick={toggle}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-white/20"
+            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }}
+          >
+            <span>{theme === "dark" ? "Mode sombre" : "Mode clair"}</span>
+            <div
+              className="relative w-10 h-5 rounded-full transition-colors"
+              style={{ background: theme === "dark" ? "var(--accent)" : "rgba(255,255,255,0.15)" }}
+            >
+              <div
+                className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                style={{ transform: theme === "dark" ? "translateX(20px)" : "translateX(2px)" }}
+              />
             </div>
           </button>
         </motion.div>
 
-        {/* Account */}
+        {/* ── Account ── */}
         {user && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="rounded-2xl border overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-            <div className="flex items-center gap-2 px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-              <Settings className="w-4 h-4 text-zinc-400" />
-              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Compte</p>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-2xl border p-4 space-y-3"
+            style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center gap-2">
+              <Settings size={15} style={{ color: "var(--accent)" }} />
+              <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                Compte
+              </span>
             </div>
-            <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-              <p className="text-sm" style={{ color: "var(--text)" }}>{profile?.full_name ?? "Utilisateur"}</p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{user.email}</p>
+            <div className="px-1 space-y-0.5">
+              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                {profile?.full_name ?? "Utilisateur"}
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {user.email}
+              </p>
             </div>
-            <button onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-5 py-4 text-sm text-red-400 hover:bg-red-500/5 transition-all">
-              <LogOut className="w-4 h-4" />
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-red-500/30 hover:bg-red-500/5"
+              style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgb(239,68,68)" }}
+            >
+              <LogOut size={14} />
               Se déconnecter
             </button>
           </motion.div>
         )}
 
         {!user && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <a href="/auth"
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all">
+          <div className="text-center">
+            <a
+              href="/auth"
+              className="text-sm underline underline-offset-2"
+              style={{ color: "var(--accent)" }}
+            >
               Créer un compte gratuit
             </a>
-          </motion.div>
+          </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
