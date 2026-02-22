@@ -8,9 +8,9 @@ import {
 import { Marquee } from "@/components/ui/Marquee";
 import { useCounter } from "@/hooks/useCounter";
 
-const HERO_IMG = "https://drive.google.com/uc?id=152UVX3jDqkWf88JN9G1OhKGBsf-2bK_Z&export=view";
-const STUDY_IMG = "https://drive.google.com/uc?id=1RNvKT0tMRPqPweCMk18sDGT-ncNUn6LG&export=view";
-const ANATOMY_IMG = "https://drive.google.com/uc?id=1zahKrj7hM_I2a_wD39cWrOz8FP9iDmrG&export=view";
+const HERO_IMG = "https://lh3.googleusercontent.com/d/152UVX3jDqkWf88JN9G1OhKGBsf-2bK_Z";
+const STUDY_IMG = "https://lh3.googleusercontent.com/d/1RNvKT0tMRPqPweCMk18sDGT-ncNUn6LG";
+const ANATOMY_IMG = "https://lh3.googleusercontent.com/d/1zahKrj7hM_I2a_wD39cWrOz8FP9iDmrG";
 
 const FEATURES = [
   {
@@ -64,7 +64,7 @@ export default function LandingPage() {
     <main className="pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden px-4 pt-10 pb-6 text-center">
+      <section className="relative overflow-hidden w-full px-4 pt-10 pb-6 text-center">
         {/* Subtle glow — contained, won't cause blank space */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full pointer-events-none"
           style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)" }} />

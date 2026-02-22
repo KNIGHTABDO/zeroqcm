@@ -14,13 +14,13 @@ export function Marquee({ className }: { className?: string }) {
   const items = [...MODULES, ...MODULES];
 
   return (
-    <div className={cn("relative overflow-hidden", className)}
+    <div className={cn("relative overflow-hidden w-full max-w-full", className)}
       style={{
         maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
       }}>
       <div
-        className="flex gap-3 whitespace-nowrap"
+        className="flex gap-3 whitespace-nowrap will-change-transform"
         style={{
           animation: "marquee 28s linear infinite",
           width: "max-content",

@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <Sidebar />
-      <div className="flex-1 lg:ml-60">
+      <div className="flex-1 min-w-0 overflow-x-hidden lg:ml-60">
         {children}
         <BottomNav />
       </div>
