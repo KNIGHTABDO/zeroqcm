@@ -29,10 +29,16 @@ type ParsedAI = OptionExplanation[] | null;
 
 function parseAI(raw: string): ParsedAI {
   try {
-    // Handle potential ```json ``` code block wrapping
-    const cleaned = raw.replace(/^```(?:json)?
-?/i, "").replace(/
-?```$/i, "").trim();
+    // Strip any leading/trailing code fence markers that some models add
+    let cleaned = raw.trim();
+    if (cleaned.startsWith("```")) {
+      const firstNewline = cleaned.indexOf("\n");
+      cleaned = firstNewline !== -1 ? cleaned.slice(firstNewline + 1) : cleaned.slice(3);
+    }
+    if (cleaned.endsWith("```")) {
+      cleaned = cleaned.slice(0, cleaned.lastIndexOf("```"));
+    }
+    cleaned = cleaned.trim();
     const p = JSON.parse(cleaned) as OptionExplanation[];
     if (Array.isArray(p) && p.length > 0 && p[0]?.letter) return p;
   } catch { /* not JSON */ }
