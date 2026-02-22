@@ -1,12 +1,13 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardList, Dumbbell, ArrowLeft, Clock, Search } from "lucide-react";
+import { ClipboardList, Dumbbell, ArrowLeft, Clock, Search, Target } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ActivityCardSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface Activity {
   id: number; nom: string; type_activite: "exam" | "exercise"; total_questions: number; chapitre?: string;
@@ -15,12 +16,14 @@ interface Activity {
 export default function ModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const moduleId = parseInt(id);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [moduleName, setModuleName] = useState("");
   const [filter, setFilter] = useState<"all" | "exam" | "exercise">("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [weakCount, setWeakCount] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -32,6 +35,15 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
       setLoading(false);
     });
   }, [moduleId]);
+
+  // Load weak question count for this module (only if user is logged in)
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/weak-questions?userId=${user.id}&moduleId=${moduleId}`)
+      .then((r) => r.json())
+      .then((d) => setWeakCount(d.count ?? 0))
+      .catch(() => setWeakCount(0));
+  }, [user, moduleId]);
 
   const filtered = activities
     .filter((a) => filter === "all" || a.type_activite === filter)
@@ -50,7 +62,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
         </button>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-xl font-bold">{moduleName || <span className="skeleton inline-block w-40 h-5 rounded-lg" />}</h1>
+          <h1 className="text-xl font-bold">{moduleName}</h1>
           {!loading && (
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               {exams} examens · {exercises} exercices
@@ -58,16 +70,37 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           )}
         </motion.div>
 
+        {/* Révision ciblée CTA */}
+        {user && weakCount !== null && weakCount > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Link href={`/revision/${moduleId}`}>
+              <div className="rounded-2xl border px-5 py-4 flex items-center gap-4 transition-all hover:bg-orange-500/10 cursor-pointer"
+                style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.25)" }}>
+                <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
+                  <Target className="w-5 h-5 text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-orange-400">Révision ciblée</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {weakCount} question{weakCount > 1 ? "s" : ""} ratée{weakCount > 1 ? "s" : ""} 2× ou plus
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-lg flex-shrink-0">
+                  COMMENCER
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+        )}
+
         {/* Search + filters */}
         <div className="space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-            <input
-              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Chercher une activité..."
               className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-sm border focus:outline-none transition-colors"
-              style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
-            />
+              style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
           </div>
           <div className="flex gap-2">
             {(["all", "exam", "exercise"] as const).map((f) => (
@@ -82,9 +115,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} />)}
-          </div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} />)}</div>
         ) : (
           <motion.div initial="hidden" animate="visible"
             variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
