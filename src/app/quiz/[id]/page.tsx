@@ -3,7 +3,7 @@ import { use, useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle, XCircle, ChevronRight, Timer,
-  Trophy, Brain, MessageCircle, Send, User, Check
+  Trophy, Brain, MessageCircle, Send, User, Check, Eye, RefreshCw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,6 @@ type QuizComment = {
   comment_likes?: { user_id: string }[];
 };
 
-
 type Choice = {
   id: string; id_choix: number; contenu: string;
   est_correct: boolean; pourcentage: number; explication: string | null;
@@ -30,7 +29,24 @@ type Question = {
   source_question: string | null; source_type: string;
   correction: string | null; choices: Choice[];
 };
-type Phase = "quiz" | "revealed" | "result";
+// "quiz"      = selecting answers
+// "confirmed" = answer locked in, awaiting "Voir correction"
+// "revealed"  = correction shown
+// "result"    = end screen
+type Phase = "quiz" | "confirmed" | "revealed" | "result";
+
+type OptionExplanation = { letter: string; contenu: string; est_correct: boolean; why: string };
+type ParsedAiExplanation = OptionExplanation[] | null;
+
+function parseExplanation(raw: string): ParsedAiExplanation {
+  // Try to parse structured option-by-option format:
+  // "A) ... ✓/✗ because ..."  or JSON array
+  try {
+    const parsed = JSON.parse(raw) as OptionExplanation[];
+    if (Array.isArray(parsed) && parsed[0]?.letter) return parsed;
+  } catch { /* not JSON */ }
+  return null;
+}
 
 export default function QuizPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -44,10 +60,13 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>("quiz");
+  const [confirmedCount, setConfirmedCount] = useState(0); // how many Qs the user confirmed
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [elapsed, setElapsed] = useState(0);
   const [aiExplanation, setAiExplanation] = useState("");
+  const [parsedExplanation, setParsedExplanation] = useState<ParsedAiExplanation>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [cachedExplanation, setCachedExplanation] = useState<string | null>(null); // from DB
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<QuizComment[]>([]);
   const [commentText, setCommentText] = useState("");
@@ -77,15 +96,47 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     return () => clearInterval(t);
   }, [phase, loading]);
 
-  // AI explanation stream
-  async function getAiExplanation() {
+  // Fetch cached explanation when question changes
+  useEffect(() => {
+    setCachedExplanation(null);
+    setAiExplanation("");
+    setParsedExplanation(null);
     if (!q) return;
+    supabase
+      .from("ai_explanations")
+      .select("explanation")
+      .eq("question_id", q.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.explanation) setCachedExplanation(data.explanation);
+      });
+  }, [q?.id]);
+
+  // AI explanation stream
+  async function getAiExplanation(forceNew = false) {
+    if (!q) return;
+    // Use cache unless forcing new
+    if (!forceNew && cachedExplanation) {
+      setAiExplanation(cachedExplanation);
+      setParsedExplanation(parseExplanation(cachedExplanation));
+      return;
+    }
     setAiLoading(true);
     setAiExplanation("");
+    setParsedExplanation(null);
     const aiKey = localStorage.getItem("fmpc-ai-key") ?? "";
     const aiModel = localStorage.getItem("fmpc-ai-model") ?? "gemini-2.0-flash";
-    const correctChoices = q.choices.filter((c) => c.est_correct).map((c) => c.contenu).join(", ");
-    const prompt = `Question de médecine FMPC S1: "${q.texte}"\nRéponses correctes: ${correctChoices}\nExplique en français de façon claire et concise (max 150 mots) pourquoi ces réponses sont correctes. Commence directement l\'explication, sans répéter la question.`;
+    const optionLines = q.choices.map((c, i) =>
+      `${String.fromCharCode(65 + i)}) ${c.contenu} — ${c.est_correct ? "CORRECTE" : "incorrecte"}`
+    ).join("\n");
+    const prompt = `Tu es un tuteur en médecine FMPC. Pour la question suivante, explique CHAQUE option (A, B, C…) en une phrase courte: pourquoi elle est correcte ou incorrecte. Réponds en JSON strict: [{"letter":"A","contenu":"…","est_correct":true,"why":"…"}, …]
+
+Question: "${q.texte}"
+Options:
+${optionLines}
+
+Règles: JSON uniquement, français, max 25 mots par why, commence par "Car " ou "Parce que ".`;
+    let full = "";
     try {
       const res = await fetch("/api/ai-explain", {
         method: "POST",
@@ -94,23 +145,38 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       });
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
-      if (!reader) return;
+      if (!reader) { setAiLoading(false); return; }
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        setAiExplanation((prev) => prev + decoder.decode(value));
+        full += decoder.decode(value);
+        setAiExplanation(full);
       }
     } catch {
-      setAiExplanation("Erreur de connexion à l\'IA. Vérifiez votre clé dans les paramètres.");
+      full = "Erreur de connexion à l'IA. Vérifiez votre clé dans les paramètres.";
+      setAiExplanation(full);
     }
     setAiLoading(false);
+    // Parse and save to DB
+    if (full && !full.startsWith("Erreur")) {
+      const parsed = parseExplanation(full);
+      if (parsed) setParsedExplanation(parsed);
+      // Save to DB (upsert so next user gets it)
+      supabase.from("ai_explanations").upsert({
+        question_id: q.id,
+        explanation: full,
+        generated_by: user?.id ?? "anonymous",
+        model_used: aiModel,
+      }, { onConflict: "question_id" }).then(() => {
+        setCachedExplanation(full);
+      });
+    }
   }
 
-    async function loadComments() {
+  async function loadComments() {
     if (!q) return;
     const data = await getComments(q.id);
-    // Normalize: PostgREST may return profiles as array or object depending on FK registration
-    const normalized = (data ?? []).map((c: any) => ({
+    const normalized = (data ?? []).map((c: Record<string, unknown>) => ({
       ...c,
       profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
     })) as QuizComment[];
@@ -124,16 +190,23 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     loadComments();
   }
 
+  // CONFIRM: lock answer + score, move to "confirmed" (no correction yet)
   function confirm() {
     if (!q || selected.size === 0) return;
     const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
-    const isCorrect = selected.size === correctIds.size && [...selected].every((id) => correctIds.has(id));
+    const isCorrect = selected.size === correctIds.size && [...selected].every((cid) => correctIds.has(cid));
     setScore((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
-    setPhase("revealed");
+    setConfirmedCount((c) => c + 1);
+    setPhase("confirmed");
     if (user) submitAnswer({
       userId: user.id, questionId: q.id, activityId,
       selectedChoiceIds: [...selected], isCorrect, timeSpent: elapsed,
     });
+  }
+
+  // REVEAL CORRECTION: show the correct answers + AI explanation
+  function revealCorrection() {
+    setPhase("revealed");
     getAiExplanation();
   }
 
@@ -143,6 +216,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setSelected(new Set());
     setPhase("quiz");
     setAiExplanation("");
+    setParsedExplanation(null);
     setCommentsOpen(false);
   }
 
@@ -160,7 +234,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       }
       if ((e.key === "Enter" || e.key === " ") && selected.size > 0) confirm();
     }
+    if (phase === "confirmed" && (e.key === "c" || e.key === "C")) revealCorrection();
+    if (phase === "confirmed" && (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ")) next();
     if (phase === "revealed" && (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ")) next();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selected, q]);
 
   useEffect(() => {
@@ -173,17 +250,12 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }
-
   function handleTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    // Only trigger if swipe is more horizontal than vertical
     if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 50) {
-      if (dx < 0 && phase === "revealed") next();  // swipe left → next
-      if (dx > 0 && phase === "quiz" && current > 0) {
-        // swipe right on quiz → no-op (don't go back accidentally)
-      }
+      if (dx < 0 && (phase === "confirmed" || phase === "revealed")) next();
     }
     touchStartX.current = null;
     touchStartY.current = null;
@@ -191,10 +263,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
-  const progress = ((current + (phase !== "quiz" ? 1 : 0)) / Math.max(1, questions.length)) * 100;
+  // Progress = confirmed questions (not revealed)
+  const progress = (confirmedCount / Math.max(1, questions.length)) * 100;
   const pct = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
 
-  // ── Loading ──────────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
       <div className="space-y-3 text-center">
@@ -204,7 +276,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     </div>
   );
 
-  // ── Result screen ─────────────────────────────────────────────────────
   if (phase === "result") {
     const color = pct >= 70 ? "emerald" : pct >= 50 ? "amber" : "red";
     return (
@@ -227,7 +298,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setElapsed(0); setAiExplanation(""); }}
+              onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setConfirmedCount(0); setElapsed(0); setAiExplanation(""); }}
               className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-white/[0.04]"
               style={{ borderColor: "var(--border)", color: "var(--text)" }}>
               Recommencer
@@ -244,7 +315,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   if (!q) return null;
 
-  // ── Quiz / Revealed ───────────────────────────────────────────────────
+  const showReveal = phase === "revealed";
+  const showConfirmed = phase === "confirmed";
+
   return (
     <div
       className="min-h-screen flex flex-col select-none"
@@ -261,7 +334,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         </button>
 
         <div className="flex items-center gap-3">
-          {/* Score badge */}
           {score.total > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
@@ -297,7 +369,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             />
           </div>
           <span className="text-xs flex-shrink-0 tabular-nums" style={{ color: "var(--text-muted)" }}>
-            {current + 1}/{questions.length}
+            {confirmedCount}/{questions.length}
           </span>
         </div>
       </div>
@@ -336,13 +408,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     />
                   </div>
                 )}
-                {phase === "quiz" && (
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                    {q.choices.filter((c) => c.est_correct).length > 1
-                      ? `Sélectionnez les ${q.choices.filter((c) => c.est_correct).length} réponses correctes`
-                      : "Sélectionnez la réponse correcte"}
-                  </p>
-                )}
+                {/* No hint about how many correct answers — student figures it out */}
               </div>
 
               {/* Choices */}
@@ -350,23 +416,32 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                 {q.choices.map((choice, idx) => {
                   const isSel = selected.has(choice.id);
                   const correct = choice.est_correct;
-                  const reveal = phase === "revealed";
 
-                  const borderColor = reveal && correct
+                  // Only show green/red when correction is revealed
+                  const borderColor = showReveal && correct
                     ? "rgba(16,185,129,0.35)"
-                    : reveal && isSel && !correct
+                    : showReveal && isSel && !correct
                     ? "rgba(239,68,68,0.35)"
-                    : !reveal && isSel
+                    : (showConfirmed || showReveal) && isSel
+                    ? "rgba(255,255,255,0.18)"
+                    : !showReveal && !showConfirmed && isSel
                     ? "rgba(255,255,255,0.25)"
                     : "rgba(255,255,255,0.06)";
 
-                  const bg = reveal && correct
+                  const bg = showReveal && correct
                     ? "rgba(16,185,129,0.07)"
-                    : reveal && isSel && !correct
+                    : showReveal && isSel && !correct
                     ? "rgba(239,68,68,0.07)"
-                    : !reveal && isSel
+                    : (showConfirmed || showReveal) && isSel
+                    ? "rgba(255,255,255,0.05)"
+                    : !showReveal && !showConfirmed && isSel
                     ? "rgba(255,255,255,0.07)"
                     : "rgba(255,255,255,0.02)";
+
+                  // Find the per-option AI explanation
+                  const optionWhy = parsedExplanation?.find(
+                    (o) => o.letter === String.fromCharCode(65 + idx)
+                  )?.why;
 
                   return (
                     <motion.button
@@ -376,7 +451,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                         n.has(choice.id) ? n.delete(choice.id) : n.add(choice.id);
                         return n;
                       })}
-                      disabled={phase === "revealed"}
+                      disabled={phase !== "quiz"}
                       whileTap={{ scale: phase === "quiz" ? 0.99 : 1 }}
                       className="w-full text-left rounded-xl px-4 py-3 border transition-all"
                       style={{ background: bg, borderColor }}
@@ -385,30 +460,39 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                         <span
                           className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all"
                           style={{
-                            background: reveal && correct ? "rgba(16,185,129,0.2)"
-                              : reveal && isSel && !correct ? "rgba(239,68,68,0.2)"
+                            background: showReveal && correct ? "rgba(16,185,129,0.2)"
+                              : showReveal && isSel && !correct ? "rgba(239,68,68,0.2)"
                               : isSel ? "white" : "rgba(255,255,255,0.04)",
-                            borderColor: reveal && correct ? "rgba(16,185,129,0.4)"
-                              : reveal && isSel && !correct ? "rgba(239,68,68,0.4)"
+                            borderColor: showReveal && correct ? "rgba(16,185,129,0.4)"
+                              : showReveal && isSel && !correct ? "rgba(239,68,68,0.4)"
                               : "rgba(255,255,255,0.08)",
-                            color: reveal && correct ? "#34d399"
-                              : reveal && isSel && !correct ? "#f87171"
+                            color: showReveal && correct ? "#34d399"
+                              : showReveal && isSel && !correct ? "#f87171"
                               : isSel ? "black" : "var(--text-muted)",
                           }}>
                           {String.fromCharCode(65 + idx)}
                         </span>
                         <div className="flex-1 space-y-1.5 min-w-0">
                           <p className="text-sm leading-relaxed"
-                            style={{ color: reveal && correct ? "#34d399" : reveal && isSel && !correct ? "#f87171" : "var(--text)" }}>
+                            style={{ color: showReveal && correct ? "#34d399" : showReveal && isSel && !correct ? "#f87171" : "var(--text)" }}>
                             {choice.contenu}
                           </p>
-                          {reveal && choice.explication && (
+                          {/* Per-option AI explanation */}
+                          {showReveal && optionWhy && (
+                            <motion.p initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }}
+                              className="text-[11px] leading-relaxed italic"
+                              style={{ color: correct ? "rgba(52,211,153,0.75)" : "rgba(161,161,170,0.7)" }}>
+                              {optionWhy}
+                            </motion.p>
+                          )}
+                          {/* Inline explication from DB if no structured AI yet */}
+                          {showReveal && !optionWhy && choice.explication && (
                             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                               className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                               {choice.explication}
                             </motion.p>
                           )}
-                          {reveal && (
+                          {showReveal && (
                             <div className="flex items-center gap-2">
                               <div className="h-0.5 flex-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                                 <div className="h-full rounded-full transition-all duration-700"
@@ -420,7 +504,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                             </div>
                           )}
                         </div>
-                        {reveal && (
+                        {showReveal && (
                           correct
                             ? <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                             : isSel ? <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" /> : null
@@ -431,36 +515,85 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                 })}
               </div>
 
-              {/* AI Explanation */}
-              {phase === "revealed" && (
+              {/* AI Explanation panel — only after correction revealed */}
+              {showReveal && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border px-5 py-4 space-y-2"
+                  className="rounded-2xl border px-5 py-4 space-y-3"
                   style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                  <div className="flex items-center gap-2">
-                    <Brain className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs font-semibold text-blue-400">Explication IA</span>
-                    {aiLoading && (
-                      <div className="flex gap-1 ml-1">
-                        {[0, 1, 2].map((i) => (
-                          <div key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce"
-                            style={{ animationDelay: `${i * 0.15}s` }} />
-                        ))}
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="text-xs font-semibold text-blue-400">Explication IA</span>
+                      {aiLoading && (
+                        <div className="flex gap-1 ml-1">
+                          {[0, 1, 2].map((i) => (
+                            <div key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce"
+                              style={{ animationDelay: `${i * 0.15}s` }} />
+                          ))}
+                        </div>
+                      )}
+                      {cachedExplanation && !aiLoading && (
+                        <span className="text-[10px] text-zinc-500 bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5">
+                          Sauvegardée
+                        </span>
+                      )}
+                    </div>
+                    {/* Regenerate option — only if cached exists */}
+                    {cachedExplanation && !aiLoading && (
+                      <button
+                        onClick={() => getAiExplanation(true)}
+                        className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
+                        <RefreshCw className="w-3 h-3" /> Régénérer
+                      </button>
                     )}
                   </div>
-                  {aiExplanation ? (
+
+                  {/* Structured per-option display */}
+                  {parsedExplanation && !aiLoading ? (
+                    <div className="space-y-2">
+                      {parsedExplanation.map((opt) => (
+                        <div key={opt.letter}
+                          className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
+                          style={{
+                            background: opt.est_correct
+                              ? "rgba(16,185,129,0.06)"
+                              : "rgba(255,255,255,0.02)",
+                            border: `1px solid ${opt.est_correct ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)"}`,
+                          }}>
+                          <span className="w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{
+                              background: opt.est_correct ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
+                              color: opt.est_correct ? "#34d399" : "var(--text-muted)",
+                            }}>
+                            {opt.letter}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] leading-relaxed"
+                              style={{ color: opt.est_correct ? "#34d399" : "var(--text-secondary)" }}>
+                              {opt.why}
+                            </p>
+                          </div>
+                          {opt.est_correct
+                            ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                            : <XCircle className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0 mt-0.5" />}
+                        </div>
+                      ))}
+                    </div>
+                  ) : aiExplanation ? (
                     <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                       {aiExplanation}
                       {aiLoading && <span className="inline-block w-0.5 h-3 bg-zinc-500 animate-pulse ml-0.5 align-middle" />}
                     </p>
                   ) : !aiLoading ? (
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Configuration IA manquante — ajoutez votre clé dans les Paramètres.</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      Configuration IA manquante — ajoutez votre clé dans les Paramètres.
+                    </p>
                   ) : null}
                 </motion.div>
               )}
 
               {/* Comments */}
-              {phase === "revealed" && (
+              {showReveal && (
                 <button
                   onClick={() => { setCommentsOpen(!commentsOpen); if (!commentsOpen) loadComments(); }}
                   className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border text-sm transition-all hover:bg-white/[0.04]"
@@ -526,7 +659,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           </AnimatePresence>
         </div>
 
-        {/* ── Action button ── */}
+        {/* ── Action buttons ── */}
         <div className="w-full md:max-w-xl lg:max-w-2xl pt-4 space-y-2">
           {phase === "quiz" ? (
             <button
@@ -541,6 +674,21 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               }}>
               Confirmer
             </button>
+          ) : phase === "confirmed" ? (
+            <div className="flex gap-2">
+              <button
+                onClick={revealCorrection}
+                className="flex-1 py-4 rounded-2xl text-sm font-semibold border transition-all hover:bg-white/[0.06] flex items-center justify-center gap-2"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "var(--text)" }}>
+                <Eye className="w-4 h-4" />
+                Voir correction
+              </button>
+              <button onClick={next}
+                className="flex-1 py-4 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 active:bg-zinc-200 transition-all flex items-center justify-center gap-2">
+                {isLast ? "Résultats" : "Suivant"}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
             <button onClick={next}
               className="w-full py-4 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 active:bg-zinc-200 transition-all flex items-center justify-center gap-2">
@@ -549,9 +697,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             </button>
           )}
           <p className="text-center text-[10px] hidden lg:block" style={{ color: "var(--text-muted)" }}>
-            1–5 choisir · Espace confirmer · → suivant
+            1–5 choisir · Espace confirmer · C voir correction · → suivant
           </p>
-          {phase === "revealed" && (
+          {(phase === "confirmed" || phase === "revealed") && (
             <p className="text-center text-[10px] lg:hidden" style={{ color: "var(--text-muted)" }}>
               ← Glisser à gauche pour continuer
             </p>

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRef } from "react";
 import {
   Brain, Zap, BarChart2, MessageCircle, Shield, Sparkles, ArrowRight, Star,
+  BookOpen, TrendingUp, Flame,
 } from "lucide-react";
 import { Marquee } from "@/components/ui/Marquee";
 import { useCounter } from "@/hooks/useCounter";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const HERO_IMG = "/images/hero.jpg";
 const STUDY_IMG = "/images/study.jpg";
@@ -45,6 +47,12 @@ const FEATURES = [
   },
 ];
 
+const SUBJECTS = [
+  "Embryologie","Biologie Cellulaire","Génétique","Histologie","Anatomie",
+  "Biochimie","Physiologie","Microbiologie","Immunologie","Pharmacologie",
+  "Sémiologie","Pathologie","Neurologie","Cardiologie","Radiologie",
+];
+
 function AnimatedCounter({ value, label }: { value: number; label: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
@@ -59,150 +67,169 @@ function AnimatedCounter({ value, label }: { value: number; label: string }) {
   );
 }
 
+// Logged-in personalized hero content
+function LoggedInHero({ name }: { name: string }) {
+  const firstName = name?.split(" ")[0] ?? "Étudiant";
+  const quickLinks = [
+    { href: "/semestres", icon: BookOpen, label: "Reprendre la révision", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+    { href: "/stats", icon: TrendingUp, label: "Mes statistiques", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+    { href: "/revision", icon: Flame, label: "Révision ciblée", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
+  ];
+  return (
+    <div className="flex flex-col items-center text-center space-y-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <h1 className="text-[26px] sm:text-3xl font-extrabold tracking-tight">
+          Bon retour,{" "}
+          <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            {firstName}
+          </span>{" "}👋
+        </h1>
+        <p className="text-sm mt-1.5" style={{ color: "var(--text-secondary)" }}>
+          Prêt à continuer votre révision ?
+        </p>
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+        className="w-full max-w-xs space-y-2">
+        {quickLinks.map(({ href, icon: Icon, label, color, bg }) => (
+          <Link key={href} href={href}>
+            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:bg-white/[0.06] cursor-pointer ${bg}`}>
+              <Icon className={`w-4 h-4 flex-shrink-0 ${color}`} />
+              <span className="text-sm font-medium" style={{ color: "var(--text)" }}>{label}</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-auto" style={{ color: "var(--text-muted)" }} />
+            </div>
+          </Link>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
+  const { user, profile } = useAuth();
+  const isLoggedIn = !!user;
+  const userName = profile?.username ?? user?.email?.split("@")[0] ?? "";
+
   return (
     <main className="pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden w-full px-4 pt-10 pb-6 text-center">
-        {/* Subtle glow — contained, won't cause blank space */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)" }} />
-
-        {/* Badge */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border mb-4"
-            style={{ background: "rgba(59,130,246,0.08)", borderColor: "rgba(59,130,246,0.2)", color: "#60a5fa" }}>
-            <Star className="w-2.5 h-2.5 fill-current" />
-            43 985 questions · 5 facultés
-          </span>
-        </motion.div>
-
-        {/* Hero image — compact, above the fold */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15, duration: 0.5 }}
-          className="relative mx-auto mb-4 w-36 h-36 sm:w-48 sm:h-48"
-        >
-          <div className="absolute inset-0 rounded-full blur-2xl opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.6) 0%, transparent 70%)" }} />
-          <motion.img
-            src={HERO_IMG} alt="FMPC QCM"
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10 w-full h-full object-contain drop-shadow-2xl"
-            style={{ filter: "drop-shadow(0 0 28px rgba(59,130,246,0.45))" }}
+      {/* ── Hero — full background image ── */}
+      <section className="relative overflow-hidden w-full min-h-[420px] sm:min-h-[500px] flex flex-col items-center justify-center px-4 pt-8 pb-8 text-center">
+        {/* Full-bleed background image */}
+        <div className="absolute inset-0 z-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={HERO_IMG}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover object-center"
+            style={{ opacity: 0.18, filter: "saturate(0.7)" }}
           />
-        </motion.div>
+          {/* Dark gradient overlay for text legibility */}
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(to bottom, rgba(9,9,11,0.55) 0%, rgba(9,9,11,0.15) 40%, rgba(9,9,11,0.7) 100%)" }} />
+          {/* Blue glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-64 rounded-full pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)" }} />
+        </div>
 
-        {/* Title */}
-        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
-          className="text-[26px] sm:text-4xl font-extrabold tracking-tight leading-[1.15] mb-3">
-          Révisez smarter.<br />
-          <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            Progressez plus vite.
-          </span>
-        </motion.h1>
+        <div className="relative z-10 w-full max-w-lg mx-auto space-y-5">
+          {/* Badge */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border"
+              style={{ background: "rgba(59,130,246,0.1)", borderColor: "rgba(59,130,246,0.25)", color: "#60a5fa" }}>
+              <Star className="w-2.5 h-2.5 fill-current" />
+              161 688 questions · 4 semestres · 5 facultés
+            </span>
+          </motion.div>
 
-        <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="text-sm max-w-xs mx-auto mb-5 leading-relaxed"
-          style={{ color: "var(--text-secondary)" }}>
-          La plateforme QCM des étudiants en médecine du Maroc — IA, révision ciblée, stats.
-        </motion.p>
+          {/* Conditional hero content */}
+          {isLoggedIn ? (
+            <LoggedInHero name={userName} />
+          ) : (
+            <>
+              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="text-[28px] sm:text-4xl font-extrabold tracking-tight leading-[1.15]">
+                Révisez <span className="text-white">smarter.</span><br />
+                <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  Progressez plus vite.
+                </span>
+              </motion.h1>
 
-        {/* CTA */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
-          className="flex flex-col sm:flex-row gap-2.5 justify-center mb-6">
-          <Link href="/semestres"
-            className="group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm bg-white text-black hover:bg-zinc-100 transition-all">
-            Commencer maintenant
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link href="/auth"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm border transition-all hover:bg-white/[0.06]"
-            style={{ borderColor: "rgba(255,255,255,0.14)", color: "var(--text)" }}>
-            Créer un compte
-          </Link>
-        </motion.div>
+              <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+                className="text-sm max-w-xs mx-auto leading-relaxed"
+                style={{ color: "rgba(255,255,255,0.65)" }}>
+                La plateforme QCM des étudiants en médecine du Maroc — IA, révision ciblée, stats.
+              </motion.p>
 
-        {/* Stats strip */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46 }}
-          className="rounded-2xl border grid grid-cols-3 divide-x px-2 py-4"
-          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}>
-          <AnimatedCounter value={43985} label="Questions" />
-          <AnimatedCounter value={1038} label="Activités" />
-          <AnimatedCounter value={5} label="Facultés" />
-        </motion.div>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
+                className="flex flex-col sm:flex-row gap-2.5 justify-center">
+                <Link href="/semestres"
+                  className="group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm bg-white text-black hover:bg-zinc-100 transition-all">
+                  Commencer maintenant
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link href="/auth"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm border transition-all hover:bg-white/[0.08]"
+                  style={{ borderColor: "rgba(255,255,255,0.2)", color: "white" }}>
+                  Créer un compte
+                </Link>
+              </motion.div>
+            </>
+          )}
+
+          {/* Stats strip */}
+          {!isLoggedIn && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
+              className="rounded-2xl border grid grid-cols-3 divide-x px-2 py-4"
+              style={{ background: "rgba(0,0,0,0.35)", borderColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)" }}>
+              <AnimatedCounter value={161688} label="Questions" />
+              <AnimatedCounter value={6369} label="Activités" />
+              <AnimatedCounter value={5} label="Facultés" />
+            </motion.div>
+          )}
+        </div>
       </section>
 
-      {/* ── Marquee ── */}
-      <section className="py-4 border-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <Marquee />
-      </section>
+      {/* ── Subject ticker ── */}
+      <div className="py-3 border-y overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <Marquee speed={35} className="gap-3">
+          {SUBJECTS.map((s) => (
+            <span key={s} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap"
+              style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", color: "var(--text-muted)" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400/50 inline-block" />
+              {s}
+            </span>
+          ))}
+        </Marquee>
+      </div>
 
       {/* ── Features ── */}
-      <section className="px-4 py-8">
-        <div className="text-center mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold">Tout ce qu&apos;il vous faut</h2>
-          <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>Conçu pour les étudiants marocains en médecine</p>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {FEATURES.map((f, i) => (
-            <motion.div key={f.title}
-              initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }} transition={{ delay: 0.05 * i }}
-              className={`rounded-2xl border p-4 space-y-2 ${f.bg}`}>
-              <f.icon className={`w-4 h-4 ${f.color}`} />
-              <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{f.title}</p>
-              <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.desc}</p>
-            </motion.div>
+      <section className="px-4 py-10 max-w-2xl mx-auto space-y-4">
+        <h2 className="text-lg font-bold text-center mb-6">Tout ce dont vous avez besoin</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {FEATURES.map(({ icon: Icon, title, desc, color, bg }) => (
+            <div key={title}
+              className="rounded-2xl border px-5 py-4 space-y-2 transition-all hover:bg-white/[0.03]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${bg}`}>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{title}</p>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── AI images ── */}
-      <section className="px-4 pb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[
-          { src: STUDY_IMG, label: "Étudiez efficacement", sub: "Interface optimisée mobile & desktop" },
-          { src: ANATOMY_IMG, label: "Anatomie & sciences", sub: "5 facultés · 1 038 activités" },
-        ].map((img, i) => (
-          <motion.div key={i}
-            initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }} transition={{ delay: 0.1 * i }}
-            className="rounded-2xl overflow-hidden border relative group"
-            style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.src} alt={img.label}
-              className="w-full h-40 object-cover group-hover:scale-[1.03] transition-transform duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 p-3">
-              <p className="text-xs font-semibold text-white">{img.label}</p>
-              <p className="text-[10px] text-white/60 mt-0.5">{img.sub}</p>
-            </div>
-          </motion.div>
-        ))}
+      {/* ── Screenshots / study image ── */}
+      <section className="px-4 pb-10 max-w-2xl mx-auto">
+        <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={STUDY_IMG} alt="Révision" className="w-full object-cover max-h-48 sm:max-h-64"
+            style={{ opacity: 0.8 }} />
+        </div>
       </section>
-
-      {/* ── CTA bottom ── */}
-      <section className="border-t pt-8 pb-4 text-center px-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="max-w-sm mx-auto space-y-4">
-          <h2 className="text-xl font-bold">Prêt à commencer ?</h2>
-          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>43 985 questions, accès immédiat, sans vérification e-mail.</p>
-          <div className="flex flex-col gap-2.5">
-            <Link href="/auth"
-              className="px-6 py-3 rounded-xl font-semibold text-sm bg-white text-black hover:bg-zinc-100 transition-all">
-              Créer un compte gratuit
-            </Link>
-            <Link href="/semestres"
-              className="px-6 py-3 rounded-xl font-semibold text-sm border transition-all hover:bg-white/[0.06]"
-              style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)" }}>
-              Explorer sans compte
-            </Link>
-          </div>
-        </motion.div>
-      </section>
-
     </main>
   );
 }

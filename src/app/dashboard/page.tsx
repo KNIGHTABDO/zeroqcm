@@ -1,1 +1,4 @@
-export { default } from "@/app/semestres/[id]/page";
+import { redirect } from "next/navigation";
+export default function DashboardPage() {
+  redirect("/");
+}

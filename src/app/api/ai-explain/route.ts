@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
-  const { prompt, model, key } = await req.json();
+  const { prompt, model, key } = await req.json() as { prompt: string; model?: string; key?: string };
 
   const apiKey = key || process.env.GEMINI_API_KEY || "";
   if (!apiKey) {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 300, temperature: 0.3 },
+            generationConfig: { maxOutputTokens: 600, temperature: 0.2 },
           }),
         }
       );
@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
             for (const line of lines) {
               if (line.startsWith("data: ")) {
                 try {
-                  const data = JSON.parse(line.slice(6));
+                  const data = JSON.parse(line.slice(6)) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
                   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                   if (text) controller.enqueue(encoder.encode(text));
-                } catch {}
+                } catch { /* skip malformed */ }
               }
             }
           }
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         model: modelId,
         stream: true,
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
+        max_tokens: 600,
       }),
     });
 
@@ -85,10 +85,10 @@ export async function POST(req: NextRequest) {
           for (const line of lines) {
             if (line.startsWith("data: ") && line !== "data: [DONE]") {
               try {
-                const d = JSON.parse(line.slice(6));
+                const d = JSON.parse(line.slice(6)) as { choices?: { delta?: { content?: string } }[] };
                 const t = d?.choices?.[0]?.delta?.content;
                 if (t) controller.enqueue(encoder.encode(t));
-              } catch {}
+              } catch { /* skip */ }
             }
           }
         }
