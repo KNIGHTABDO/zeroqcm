@@ -22,6 +22,10 @@ const FEATURES = [
   { icon: Sparkles,       num: "06", title: "Accès immédiat",    desc: "Compte en quelques secondes. Aucune vérification e-mail." },
 ];
 
+// ── Quranic ayah ──────────────────────────────────────────────────────────────
+const AYAH_AR = "وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئًا وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ";
+const AYAH_SRC = "سورة النحل — الآية ٧٨";
+
 const SUBJECTS = [
   "Embryologie","Biologie Cellulaire","Génétique","Histologie","Anatomie",
   "Biochimie","Physiologie","Microbiologie","Immunologie","Pharmacologie",
@@ -29,9 +33,6 @@ const SUBJECTS = [
 ];
 
 // ── Hadith bilingual ──────────────────────────────────────────────────────────
-const HADITH_AR = "اطلبوا العلم من المهد إلى اللحد";
-const HADITH_FR = "« Demandez la science du berceau jusqu'à la tombe. »";
-const HADITH_SRC = "حديث نبوي شريف";
 
 // ── Animated counter ──────────────────────────────────────────────────────────
 function AnimatedCounter({ value, label }: { value: number; label: string }) {
