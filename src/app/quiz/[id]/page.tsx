@@ -116,7 +116,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     const normalized = (data ?? []).map((c: any) => ({
       ...c,
       profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
-    })) as Comment[];
+    })) as QuizComment[];
     setComments(normalized);
   }
 
