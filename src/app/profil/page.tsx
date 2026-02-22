@@ -77,7 +77,16 @@ export default function ProfilPage() {
   useEffect(() => {
     if (!profile) return;
     const fac = profile.faculty ?? "FMPC";
-    const saved = (profile as Record<string, unknown>).semestre_id as string | undefined;
+    // Derive semestre_id from annee_etude (the real saved DB column)
+    const yearToSemId: Record<number, Record<string, string>> = {
+      1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM", FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+      2: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM", FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+      3: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM", FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+      4: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM", FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+      5: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+    };
+    const year = profile.annee_etude ?? 1;
+    const saved = yearToSemId[year]?.[fac] ?? FACULTY_SEMESTERS[fac]?.[0]?.id ?? "s1";
     setName(profile.full_name ?? "");
     setFaculty(fac);
     setSemId(getActiveSemId(fac, saved));
@@ -109,10 +118,20 @@ export default function ProfilPage() {
   async function save() {
     if (!user) return;
     setSaving(true);
-    await supabase.from("profiles").upsert(
-      { id: user.id, full_name: name, faculty, semestre_id: semId },
+    // Map semestre_id back to annee_etude (the real DB column)
+    const semToYear: Record<string, number> = {
+      "s1": 1, "s1_FMPDF": 1, "S1_FMPM": 1, "S1_FMPR": 1, "S1_UM6": 1,
+      "s3": 2, "S3_FMPM": 2, "S3_FMPR": 2, "S3_UM6": 2,
+      "s5": 3, "S5_FMPM": 3, "S5_FMPR": 3, "S5_UM6": 3,
+      "s7": 4, "S7_FMPM": 4, "S7_FMPR": 4, "S7_UM6": 4,
+      "s9": 5, "S9_FMPM": 5, "S9_FMPR": 5, "S9_UM6": 5,
+    };
+    const annee_etude = semToYear[semId] ?? 1;
+    const { error } = await supabase.from("profiles").upsert(
+      { id: user.id, full_name: name, faculty, annee_etude },
       { onConflict: "id" }
     );
+    if (error) console.error("[Profile save] error:", error);
     await refreshProfile();
     setSaving(false);
     setEditing(false);
@@ -140,9 +159,16 @@ export default function ProfilPage() {
   );
 
   const initials   = (profile?.full_name ?? user.email ?? "?")[0].toUpperCase();
-  const savedSemId = (profile as Record<string, unknown>)?.semestre_id as string | undefined;
   const curFac     = profile?.faculty ?? "FMPC";
-  const activeSemId    = getActiveSemId(curFac, savedSemId);
+  const YEAR_SEM: Record<number, Record<string, string>> = {
+    1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM", FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+    2: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM", FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+    3: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM", FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+    4: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM", FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+    5: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+  };
+  const curYear    = profile?.annee_etude ?? 1;
+  const activeSemId    = getActiveSemId(curFac, YEAR_SEM[curYear]?.[curFac]);
   const activeSemLabel = getSemLabel(curFac, activeSemId);
 
   return (
