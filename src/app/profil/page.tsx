@@ -1,44 +1,73 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, LogIn, LogOut, Edit2, CheckCircle, Settings, Brain, Target, BookOpen } from "lucide-react";
+import { User, LogIn, LogOut, Edit2, Target, BookOpen, Brain, Settings } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
-const FACULTIES = ["FMPC","FMPR","FMPM","UM6SS","FMPDF"];
-const FACULTY_SEM: Record<string, string> = {
-  FMPC:"s1",FMPR:"S1_FMPR",FMPM:"S1_FMPM",UM6SS:"S1_UM6",FMPDF:"s1_FMPDF"
+// Map faculty → semestre_id as stored in DB (confirmed from semesters table)
+const FACULTY_SEM_ID: Record<string, string> = {
+  FMPC:  "s1",
+  FMPDF: "s1_FMPDF",
+  FMPM:  "S1_FMPM",
+  FMPR:  "S1_FMPR",
+  UM6SS: "S1_UM6",
+};
+
+const FACULTIES = Object.keys(FACULTY_SEM_ID);
+
+// Semesters available per faculty in the DB.
+// When S2 data is seeded this object will expand automatically (or via a DB fetch).
+// For now only S1 exists for every faculty.
+const FACULTY_SEMESTERS: Record<string, { id: string; label: string }[]> = {
+  FMPC:  [{ id: "s1",       label: "S1 FMPC"  }],
+  FMPDF: [{ id: "s1_FMPDF", label: "S1 FMPDF" }],
+  FMPM:  [{ id: "S1_FMPM",  label: "S1 FMPM"  }],
+  FMPR:  [{ id: "S1_FMPR",  label: "S1 FMPR"  }],
+  UM6SS: [{ id: "S1_UM6",   label: "S1 UM6SS" }],
 };
 
 export default function ProfilPage() {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName]       = useState("");
   const [faculty, setFaculty] = useState("FMPC");
-  const [annee, setAnnee] = useState(1);
-  const [saving, setSaving] = useState(false);
-  const [stats, setStats] = useState({ total: 0, correct: 0, rate: 0, streak: 0 });
+  const [semId, setSemId]     = useState("s1");
+  const [saving, setSaving]   = useState(false);
+  const [stats, setStats]     = useState({ total: 0, correct: 0, rate: 0, streak: 0 });
 
+  // Populate form from profile
   useEffect(() => {
-    if (profile) {
-      setName(profile.full_name ?? "");
-      setFaculty(profile.faculty ?? "FMPC");
-      setAnnee(profile.annee_etude ?? 1);
-    }
+    if (!profile) return;
+    const fac = profile.faculty ?? "FMPC";
+    const savedSem = (profile as Record<string, unknown>).semestre_id as string | undefined;
+    setName(profile.full_name ?? "");
+    setFaculty(fac);
+    // Use saved semestre_id if valid, otherwise default to faculty's first semester
+    const sems = FACULTY_SEMESTERS[fac] ?? [];
+    const match = sems.find(s => s.id === savedSem);
+    setSemId(match ? savedSem! : (sems[0]?.id ?? FACULTY_SEM_ID[fac] ?? "s1"));
   }, [profile]);
+
+  // When faculty changes, reset semId to first available semester for that faculty
+  const handleFacultyChange = (newFac: string) => {
+    setFaculty(newFac);
+    const first = FACULTY_SEMESTERS[newFac]?.[0]?.id ?? FACULTY_SEM_ID[newFac] ?? "s1";
+    setSemId(first);
+  };
 
   useEffect(() => {
     if (!user) return;
     supabase.from("user_answers").select("is_correct, answered_at").eq("user_id", user.id)
       .then(({ data }) => {
         if (!data?.length) return;
-        const total = data.length;
+        const total   = data.length;
         const correct = data.filter(a => a.is_correct).length;
-        const rate = Math.round((correct / total) * 100);
-        const dates = [...new Set(data.map(a => a.answered_at.split("T")[0]))].sort().reverse();
+        const rate    = Math.round((correct / total) * 100);
+        const dates   = [...new Set(data.map(a => a.answered_at.split("T")[0]))].sort().reverse();
         let streak = 0;
         for (let i = 0; i < dates.length; i++) {
           if (dates[i] === new Date(Date.now() - i * 86400000).toISOString().split("T")[0]) streak++;
@@ -51,9 +80,10 @@ export default function ProfilPage() {
   async function save() {
     if (!user) return;
     setSaving(true);
-    await supabase.from("profiles").upsert({
-      id: user.id, full_name: name, faculty, annee_etude: annee,
-    }, { onConflict: "id" });
+    await supabase.from("profiles").upsert(
+      { id: user.id, full_name: name, faculty, semestre_id: semId },
+      { onConflict: "id" }
+    );
     await refreshProfile();
     setSaving(false);
     setEditing(false);
@@ -65,7 +95,7 @@ export default function ProfilPage() {
   }
 
   if (!user) return (
-    <main className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+    <main className="min-h-screen flex items-center justify-center pb-28" style={{ background: "var(--bg)" }}>
       <div className="text-center space-y-4 px-4">
         <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-white/[0.08] flex items-center justify-center mx-auto">
           <User className="w-7 h-7 text-zinc-500" />
@@ -84,6 +114,21 @@ export default function ProfilPage() {
 
   const initials = (profile?.full_name ?? user.email ?? "?")[0].toUpperCase();
 
+  // The active semester link — uses what's saved in profile, defaults to faculty S1
+  const activeSemId = (() => {
+    const fac = profile?.faculty ?? "FMPC";
+    const saved = (profile as Record<string, unknown>)?.semestre_id as string | undefined;
+    const sems = FACULTY_SEMESTERS[fac] ?? [];
+    const match = sems.find(s => s.id === saved);
+    return match ? saved! : (sems[0]?.id ?? FACULTY_SEM_ID[fac] ?? "s1");
+  })();
+
+  const activeSemLabel = (() => {
+    const fac = profile?.faculty ?? "FMPC";
+    const sems = FACULTY_SEMESTERS[fac] ?? [];
+    return sems.find(s => s.id === activeSemId)?.label ?? `S1 ${fac}`;
+  })();
+
   return (
     <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="max-w-md mx-auto px-4 pt-6 space-y-4">
@@ -95,30 +140,42 @@ export default function ProfilPage() {
           <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto">
             <span className="text-2xl font-bold text-blue-400">{initials}</span>
           </div>
+
           {editing ? (
             <div className="space-y-3 text-left">
+              {/* Name */}
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Prénom</label>
                 <input value={name} onChange={e => setName(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40"
                   style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
               </div>
+              {/* Faculty */}
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Faculté</label>
-                <select value={faculty} onChange={e => setFaculty(e.target.value)}
+                <select value={faculty} onChange={e => handleFacultyChange(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40"
                   style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}>
                   {FACULTIES.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
+              {/* Semester — only shows what actually exists in DB */}
               <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Année</label>
-                <select value={annee} onChange={e => setAnnee(Number(e.target.value))}
+                <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>
+                  Semestre
+                  {(FACULTY_SEMESTERS[faculty]?.length ?? 0) <= 1 && (
+                    <span className="ml-1.5 text-[10px] text-amber-400/80">(S2+ bientôt disponible)</span>
+                  )}
+                </label>
+                <select value={semId} onChange={e => setSemId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40"
                   style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}>
-                  {[1,2,3,4,5,6,7].map(y => <option key={y} value={y}>S{y}</option>)}
+                  {(FACULTY_SEMESTERS[faculty] ?? []).map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
                 </select>
               </div>
+              {/* Buttons */}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setEditing(false)}
                   className="flex-1 py-2.5 rounded-xl text-sm border transition-all hover:bg-white/[0.04]"
@@ -140,7 +197,7 @@ export default function ProfilPage() {
                   {profile?.faculty ?? "FMPC"}
                 </span>
                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
-                  S{profile?.annee_etude ?? 1}
+                  {activeSemLabel}
                 </span>
               </div>
               <button onClick={() => setEditing(true)}
@@ -158,8 +215,8 @@ export default function ProfilPage() {
             className="grid grid-cols-3 gap-3">
             {[
               { label: "Répondues", value: stats.total, icon: BookOpen, color: "text-blue-400" },
-              { label: "Réussite", value: `${stats.rate}%`, icon: Target, color: "text-emerald-400" },
-              { label: "Série", value: `${stats.streak}j`, icon: Brain, color: "text-orange-400" },
+              { label: "Réussite",  value: `${stats.rate}%`, icon: Target, color: "text-emerald-400" },
+              { label: "Série",     value: `${stats.streak}j`, icon: Brain, color: "text-orange-400" },
             ].map(s => (
               <div key={s.label} className="rounded-2xl border px-3 py-3 text-center"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
@@ -173,12 +230,16 @@ export default function ProfilPage() {
         {/* Quick links */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="space-y-2">
-          <Link href={`/semestres/${FACULTY_SEM[profile?.faculty ?? "FMPC"] ?? "s1"}`}
+          {/* Mes QCM → correct semester */}
+          <Link href={`/semestres/${activeSemId}`}
             className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all hover:bg-white/[0.04]"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3">
               <BookOpen className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-medium" style={{ color: "var(--text)" }}>Mes QCM</span>
+              <div>
+                <span className="text-sm font-medium block" style={{ color: "var(--text)" }}>Mes QCM</span>
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{activeSemLabel}</span>
+              </div>
             </div>
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>→</span>
           </Link>
