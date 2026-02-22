@@ -49,10 +49,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [aiExplanation, setAiExplanation] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [comments, setComments] = useState<{
-    id: string; content: string; is_anonymous: boolean;
-    created_at: string; profiles: { username: string | null } | null;
-  }[]>([]);
+  const [comments, setComments] = useState<QuizComment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentAnon, setCommentAnon] = useState(false);
 
