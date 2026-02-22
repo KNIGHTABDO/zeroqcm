@@ -1,5 +1,5 @@
 "use client";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import { useRef } from "react";
 import {
@@ -12,31 +12,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 
 const HERO_IMG = "/images/hero.jpg";
 
+// ── Features data ────────────────────────────────────────────────────────────
 const FEATURES = [
-  {
-    icon: Brain, title: "IA intégrée",
-    desc: "Explication streamée par GPT-4 après chaque réponse.",
-  },
-  {
-    icon: Zap, title: "Multi-facultés",
-    desc: "FMPC · FMPR · FMPM · UM6SS · FMPDF — toutes les filières.",
-  },
-  {
-    icon: BarChart2, title: "Statistiques",
-    desc: "Taux de réussite, séries quotidiennes, anneaux de progression.",
-  },
-  {
-    icon: MessageCircle, title: "Commentaires",
-    desc: "Discussions sous chaque question. Apprenez ensemble.",
-  },
-  {
-    icon: Shield, title: "Révision ciblée",
-    desc: "Détecte vos lacunes et vous les resoumet automatiquement.",
-  },
-  {
-    icon: Sparkles, title: "Accès instantané",
-    desc: "Compte en quelques secondes. Aucune vérification e-mail.",
-  },
+  { icon: Brain,          num: "01", title: "IA intégrée",       desc: "Explication streamée par GPT-4 directement après chaque réponse." },
+  { icon: Zap,            num: "02", title: "Multi-facultés",    desc: "FMPC · FMPR · FMPM · UM6SS · FMPDF — toutes les filières en un seul endroit." },
+  { icon: BarChart2,      num: "03", title: "Statistiques",      desc: "Taux de réussite, séries quotidiennes et anneaux de progression animés." },
+  { icon: MessageCircle,  num: "04", title: "Commentaires",      desc: "Discussions par question. Apprenez avec la communauté." },
+  { icon: Shield,         num: "05", title: "Révision ciblée",   desc: "Détecte vos lacunes et vous les resoumet automatiquement." },
+  { icon: Sparkles,       num: "06", title: "Accès immédiat",    desc: "Compte en quelques secondes. Aucune vérification e-mail." },
 ];
 
 const SUBJECTS = [
@@ -45,10 +28,12 @@ const SUBJECTS = [
   "Sémiologie","Pathologie","Neurologie","Cardiologie","Radiologie",
 ];
 
-// Hadith + study quotes (cycling or static — using first as hero quote)
-const HADITH = "« Demandez la science du berceau jusqu'à la tombe. »";
-const HADITH_SOURCE = "— Hadith";
+// ── Hadith bilingual ──────────────────────────────────────────────────────────
+const HADITH_AR = "اطلبوا العلم من المهد إلى اللحد";
+const HADITH_FR = "« Demandez la science du berceau jusqu'à la tombe. »";
+const HADITH_SRC = "حديث نبوي شريف";
 
+// ── Animated counter ──────────────────────────────────────────────────────────
 function AnimatedCounter({ value, label }: { value: number; label: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
@@ -58,48 +43,137 @@ function AnimatedCounter({ value, label }: { value: number; label: string }) {
       <p className="text-2xl font-bold tabular-nums" style={{ color: "var(--text)" }}>
         {count.toLocaleString("fr-FR")}
       </p>
-      <p className="text-[11px] mt-0.5 uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>{label}</p>
+      <p className="text-[10px] mt-1 uppercase tracking-[0.15em]" style={{ color: "var(--text-muted)" }}>{label}</p>
     </div>
   );
 }
 
+// ── Feature card with scroll-reveal ──────────────────────────────────────────
+function FeatureCard({ icon: Icon, num, title, desc, index }: {
+  icon: React.ElementType; num: string; title: string; desc: string; index: number;
+}) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 24 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.55, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative flex flex-col gap-4 px-5 py-6 rounded-2xl cursor-default select-none"
+      style={{
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        backdropFilter: "blur(8px)",
+      }}
+    >
+      {/* number watermark */}
+      <span className="absolute top-4 right-5 text-[11px] font-mono tabular-nums"
+        style={{ color: "rgba(255,255,255,0.12)" }}>
+        {num}
+      </span>
+      {/* icon */}
+      <div className="w-8 h-8 flex items-center justify-center rounded-xl"
+        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <Icon className="w-4 h-4" style={{ color: "rgba(255,255,255,0.6)" }} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold tracking-tight mb-1.5" style={{ color: "var(--text)" }}>{title}</p>
+        <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
+      </div>
+      {/* hover shimmer line */}
+      <div className="absolute bottom-0 left-0 right-0 h-px rounded-b-2xl transition-opacity opacity-0 group-hover:opacity-100"
+        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)" }} />
+    </motion.div>
+  );
+}
+
+// ── Logged-in hero shortcuts ──────────────────────────────────────────────────
 function LoggedInHero({ name }: { name: string }) {
   const firstName = name?.split(" ")[0] ?? "Étudiant";
+
   const quickLinks = [
-    { href: "/semestres", icon: BookOpen, label: "Reprendre la révision" },
-    { href: "/stats", icon: TrendingUp, label: "Mes statistiques" },
-    { href: "/revision", icon: Flame, label: "Révision ciblée" },
+    {
+      href: "/semestres",
+      icon: BookOpen,
+      label: "Reprendre la révision",
+      sublabel: "Continuez là où vous vous êtes arrêté",
+    },
+    {
+      href: "/stats",
+      icon: TrendingUp,
+      label: "Mes statistiques",
+      sublabel: "Taux de réussite · séries · progression",
+    },
+    {
+      href: "/revision",
+      icon: Flame,
+      label: "Révision ciblée",
+      sublabel: "Questions où vous peinez le plus",
+    },
   ];
+
   return (
-    <div className="flex flex-col items-center text-center space-y-5">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+    <div className="flex flex-col items-center text-center w-full max-w-sm mx-auto space-y-7">
+      {/* Greeting */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.5 }}>
+        <p className="text-[11px] uppercase tracking-[0.2em] mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
           Bon retour
         </p>
-        <h1 className="text-[28px] sm:text-3xl font-bold tracking-tight" style={{ color: "var(--text)" }}>
+        <h1 className="text-[30px] sm:text-[36px] font-bold tracking-tight" style={{ color: "var(--text)" }}>
           {firstName}
         </h1>
       </motion.div>
+
+      {/* Quick-link cards — spaced, premium */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-        className="w-full max-w-xs space-y-1.5">
-        {quickLinks.map(({ href, icon: Icon, label }) => (
-          <Link key={href} href={href}>
-            <div className="group flex items-center gap-3 rounded-xl px-4 py-3 transition-all cursor-pointer"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
-              <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-secondary)" }} />
-              <span className="text-sm font-medium" style={{ color: "var(--text)" }}>{label}</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)" }} />
-            </div>
-          </Link>
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
+        className="w-full space-y-3">
+        {quickLinks.map(({ href, icon: Icon, label, sublabel }, i) => (
+          <motion.div
+            key={href}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.25 + i * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+            <Link href={href}>
+              <div
+                className="group flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)";
+                }}
+              >
+                {/* icon container */}
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Icon className="w-4 h-4" style={{ color: "rgba(255,255,255,0.7)" }} />
+                </div>
+                {/* text */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-tight" style={{ color: "var(--text)" }}>{label}</p>
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{sublabel}</p>
+                </div>
+                {/* arrow */}
+                <ArrowRight className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-60 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-200"
+                  style={{ color: "var(--text)" }} />
+              </div>
+            </Link>
+          </motion.div>
         ))}
       </motion.div>
     </div>
   );
 }
 
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const { user, profile } = useAuth();
   const isLoggedIn = !!user;
@@ -109,52 +183,46 @@ export default function LandingPage() {
     <main className="pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden w-full min-h-[420px] sm:min-h-[500px] flex flex-col items-center justify-center px-4 pt-8 pb-8 text-center">
-        {/* Background */}
+      <section className="relative overflow-hidden w-full min-h-[420px] sm:min-h-[520px] flex flex-col items-center justify-center px-4 pt-10 pb-10 text-center">
         <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={HERO_IMG}
-            alt=""
-            aria-hidden
+          <img src={HERO_IMG} alt="" aria-hidden
             className="w-full h-full object-cover object-center"
-            style={{ opacity: 0.10, filter: "saturate(0) brightness(0.6)" }}
-          />
+            style={{ opacity: 0.08, filter: "saturate(0) brightness(0.5)" }} />
           <div className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.75) 100%)" }} />
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.8) 100%)" }} />
         </div>
 
-        <div className="relative z-10 w-full max-w-lg mx-auto space-y-6">
-          {/* Wordmark */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+        <div className="relative z-10 w-full max-w-lg mx-auto space-y-7">
+          {/* Logo mark */}
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
             className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpg" alt="ZeroQCM" className="h-10 w-10 rounded-lg object-cover" />
+            <img src="/logo.jpg" alt="ZeroQCM"
+              className="h-11 w-11 rounded-xl object-cover"
+              style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.1)" }} />
           </motion.div>
 
           {isLoggedIn ? (
             <LoggedInHero name={userName} />
           ) : (
             <>
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}>
-                <h1 className="text-[32px] sm:text-[42px] font-bold tracking-tight leading-[1.1]" style={{ color: "var(--text)" }}>
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.55, ease: [0.22,1,0.36,1] }}>
+                <h1 className="text-[32px] sm:text-[44px] font-bold tracking-tight leading-[1.1]" style={{ color: "var(--text)" }}>
                   La révision médicale,<br />
-                  <span style={{ color: "rgba(255,255,255,0.5)" }}>réinventée.</span>
+                  <span style={{ color: "rgba(255,255,255,0.4)" }}>réinventée.</span>
                 </h1>
               </motion.div>
-
-              <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
                 className="text-sm max-w-xs mx-auto leading-relaxed"
-                style={{ color: "rgba(255,255,255,0.5)" }}>
+                style={{ color: "rgba(255,255,255,0.45)" }}>
                 180 000 questions. 5 facultés. IA à chaque étape.
               </motion.p>
-
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
                 className="flex flex-col sm:flex-row gap-2.5 justify-center">
                 <Link href="/semestres"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white text-black hover:bg-zinc-100 transition-all">
-                  Commencer
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  Commencer <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link href="/auth"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
@@ -165,9 +233,8 @@ export default function LandingPage() {
             </>
           )}
 
-          {/* Stats strip — guests only */}
           {!isLoggedIn && (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
               className="rounded-2xl grid grid-cols-3 divide-x px-2 py-4"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
               <AnimatedCounter value={180650} label="Questions" />
@@ -180,43 +247,82 @@ export default function LandingPage() {
 
       {/* ── Subject ticker ── */}
       <div className="py-3 border-y overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <Marquee speed={30} className="gap-3">
+        <Marquee speed={28} className="gap-3">
           {SUBJECTS.map((s) => (
             <span key={s} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap"
-              style={{ background: "rgba(255,255,255,0.025)", borderColor: "rgba(255,255,255,0.07)", color: "var(--text-muted)" }}>
-              <span className="w-1 h-1 rounded-full inline-block" style={{ background: "rgba(255,255,255,0.3)" }} />
+              style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)", color: "var(--text-muted)" }}>
+              <span className="w-1 h-1 rounded-full inline-block" style={{ background: "rgba(255,255,255,0.25)" }} />
               {s}
             </span>
           ))}
         </Marquee>
       </div>
 
-      {/* ── Features ── */}
-      <section className="px-4 py-12 max-w-2xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px rounded-2xl overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          {FEATURES.map(({ icon: Icon, title, desc }, idx) => (
-            <div key={title}
-              className="px-5 py-5 space-y-2 transition-all"
-              style={{ background: "var(--bg)" }}>
-              <Icon className="w-4 h-4 mb-3" style={{ color: "rgba(255,255,255,0.5)" }} />
-              <p className="text-sm font-semibold tracking-tight" style={{ color: "var(--text)" }}>{title}</p>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
-            </div>
-          ))}
-        </div>
+      {/* ── Hadith — bilingual, premium typography ── */}
+      <section className="px-4 pt-14 pb-10 max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-3xl px-6 py-10 sm:px-10 sm:py-12 overflow-hidden text-center"
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          {/* subtle top line accent */}
+          <div className="absolute top-0 left-1/4 right-1/4 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }} />
+
+          {/* Arabic */}
+          <p className="text-[26px] sm:text-[34px] font-bold leading-relaxed mb-4"
+            dir="rtl"
+            style={{
+              color: "rgba(255,255,255,0.9)",
+              fontFamily: "'Noto Naskh Arabic', 'Scheherazade New', serif",
+              letterSpacing: "0.02em",
+            }}>
+            {HADITH_AR}
+          </p>
+
+          {/* divider */}
+          <div className="w-10 h-px mx-auto mb-4"
+            style={{ background: "rgba(255,255,255,0.15)" }} />
+
+          {/* French */}
+          <p className="text-base sm:text-lg font-light italic leading-relaxed mb-3"
+            style={{
+              color: "rgba(255,255,255,0.55)",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              letterSpacing: "0.01em",
+            }}>
+            {HADITH_FR}
+          </p>
+
+          {/* Source */}
+          <p className="text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "rgba(255,255,255,0.22)" }}>
+            {HADITH_SRC}
+          </p>
+        </motion.div>
       </section>
 
-      {/* ── Hadith / Study quote ── */}
-      <section className="px-4 pb-12 max-w-2xl mx-auto">
-        <div className="rounded-2xl px-6 py-8 text-center space-y-3"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <p className="text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Sagesse</p>
-          <blockquote className="text-base sm:text-lg font-medium leading-relaxed italic"
-            style={{ color: "rgba(255,255,255,0.75)" }}>
-            {HADITH}
-          </blockquote>
-          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>{HADITH_SOURCE}</p>
+      {/* ── Features grid — numbered, scroll-reveal ── */}
+      <section className="px-4 pb-14 max-w-2xl mx-auto">
+        {/* section label */}
+        <motion.p
+          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-[10px] uppercase tracking-[0.2em] text-center mb-8"
+          style={{ color: "rgba(255,255,255,0.25)" }}>
+          Fonctionnalités
+        </motion.p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {FEATURES.map((f, i) => (
+            <FeatureCard key={f.title} {...f} index={i} />
+          ))}
         </div>
       </section>
 
