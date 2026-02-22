@@ -32,6 +32,14 @@ export function Sidebar() {
       .then(({ data }) => setSemesters(data ?? []));
   }, []);
 
+  // Filter sidebar semesters to the user's enrolled semester group
+  const userSemNum = profile?.semestre
+    ? (profile.semestre.match(/[sS](\d)/)?.[1] ?? null)
+    : null;
+  const visibleSemesters = userSemNum
+    ? semesters.filter((s) => s.semestre_id.toUpperCase().includes("S" + userSemNum))
+    : semesters;
+
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 border-r z-50 transition-colors overflow-y-auto"
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
@@ -42,7 +50,7 @@ export function Sidebar() {
           </div>
           <div>
             <p className="text-sm font-bold" style={{ color: "var(--text)" }}>FMPC QCM</p>
-            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>43 985 questions · 5 facultés</p>
+            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>FMPC · S1–S7</p>
           </div>
         </div>
       </div>
@@ -76,7 +84,7 @@ export function Sidebar() {
                 ? [1,2,3,4,5].map(i => (
                     <div key={i} className="h-9 mx-1 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
                   ))
-                : semesters.map((sem) => {
+                : visibleSemesters.map((sem) => {
                     const href = `/semestres/${encodeURIComponent(sem.semestre_id)}`;
                     const active = path === href || path.startsWith(href + "/");
                     return (
