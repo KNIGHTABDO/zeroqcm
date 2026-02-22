@@ -99,7 +99,7 @@ async function scrapeActivity(act: Activity, jwt: string, key: Buffer, moduleId:
   }
   // Upsert choices in batches of 500
   for (let i = 0; i < choiceRows.length; i += 500) {
-    await supabase.from("choices").upsert(choiceRows.slice(i, i + 500) as Parameters<typeof supabase.from>[0][], { onConflict: "id_choix" });
+    await supabase.from("choices").upsert(choiceRows.slice(i, i + 500) as unknown as Record<string, unknown>[], { onConflict: "id_choix" });
   }
   return { q: questions.length, c: choiceRows.length };
 }
