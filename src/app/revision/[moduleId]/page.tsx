@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { submitAnswer } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { QuizImage } from "@/components/ui/QuizImage";
 
 type Choice = { id: string; id_choix: number; contenu: string; est_correct: boolean; pourcentage: number; explication: string | null };
 type Question = { id: string; texte: string; image_url: string | null; choices: Choice[] };
