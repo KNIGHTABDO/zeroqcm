@@ -11,10 +11,10 @@ interface QuizImageProps {
  * QuizImage — safe image renderer for ZeroQCM question images.
  *
  * Handles:
- * 1. Railway.app CDN images → routed through /api/image-proxy to avoid CORS
- * 2. image_coords strings → not actual images, render as null  
- * 3. Any URL → error fallback (hide + show broken icon)
- * 4. Light mode → subtle border + bg for visibility
+ * 1. Railway.app CDN images → routed through /api/image-proxy to avoid CORS on mobile
+ * 2. image_coords strings → not actual images, render as null
+ * 3. Any URL → error fallback (hide broken img, show placeholder)
+ * 4. Light/dark mode → CSS variable tokens for border + bg
  */
 export function QuizImage({ src, alt = "Illustration", className = "" }: QuizImageProps) {
   const [errored, setErrored] = useState(false);
@@ -31,15 +31,11 @@ export function QuizImage({ src, alt = "Illustration", className = "" }: QuizIma
   if (errored) {
     return (
       <div
-        className={\`flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm \${className}\`}
-        style={{
-          background: "var(--surface-alt)",
-          border: "1px solid var(--border)",
-          color: "var(--text-muted)",
-        }}
+        className="flex flex-col items-center justify-center gap-1 rounded-xl py-6 w-full"
+        style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
       >
-        <span>🖼️</span>
-        <span>Image non disponible</span>
+        <span className="text-2xl">🖼️</span>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Image non disponible</p>
       </div>
     );
   }
@@ -50,7 +46,7 @@ export function QuizImage({ src, alt = "Illustration", className = "" }: QuizIma
       src={displaySrc}
       alt={alt}
       onError={() => setErrored(true)}
-      className={\`question-image \${className}\`}
+      className={`question-image rounded-xl w-full object-contain max-h-56 ${className}`}
       style={{
         background: "var(--surface-alt)",
         border: "1px solid var(--border)",
