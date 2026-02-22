@@ -258,52 +258,47 @@ export default function LandingPage() {
         </Marquee>
       </div>
 
-      {/* ── Hadith — bilingual, premium typography ── */}
+      {/* ── Quranic Ayah — Arabic only, premium typography ── */}
       <section className="px-4 pt-14 pb-10 max-w-2xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="relative rounded-3xl px-6 py-10 sm:px-10 sm:py-12 overflow-hidden text-center"
+          className="relative rounded-3xl px-6 py-12 sm:px-10 sm:py-14 overflow-hidden text-center"
           style={{
-            background: "rgba(255,255,255,0.025)",
+            background: "rgba(255,255,255,0.02)",
             border: "1px solid rgba(255,255,255,0.07)",
           }}
         >
-          {/* subtle top line accent */}
+          {/* top accent line */}
           <div className="absolute top-0 left-1/4 right-1/4 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }} />
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }} />
 
-          {/* Arabic */}
-          <p className="text-[26px] sm:text-[34px] font-bold leading-relaxed mb-4"
+          {/* Ayah */}
+          <p
             dir="rtl"
+            className="leading-[2.2] mb-6"
             style={{
-              color: "rgba(255,255,255,0.9)",
-              fontFamily: "'Noto Naskh Arabic', 'Scheherazade New', serif",
-              letterSpacing: "0.02em",
-            }}>
-            {HADITH_AR}
-          </p>
-
-          {/* divider */}
-          <div className="w-10 h-px mx-auto mb-4"
-            style={{ background: "rgba(255,255,255,0.15)" }} />
-
-          {/* French */}
-          <p className="text-base sm:text-lg font-light italic leading-relaxed mb-3"
-            style={{
-              color: "rgba(255,255,255,0.55)",
-              fontFamily: "Georgia, 'Times New Roman', serif",
+              color: "rgba(255,255,255,0.92)",
+              fontFamily: "'Scheherazade New', 'Noto Naskh Arabic', serif",
+              fontSize: "clamp(1.35rem, 4vw, 1.85rem)",
+              fontWeight: 400,
               letterSpacing: "0.01em",
             }}>
-            {HADITH_FR}
+            {AYAH_AR}
           </p>
 
           {/* Source */}
-          <p className="text-[11px] uppercase tracking-[0.18em]"
-            style={{ color: "rgba(255,255,255,0.22)" }}>
-            {HADITH_SRC}
+          <p
+            dir="rtl"
+            style={{
+              color: "rgba(255,255,255,0.28)",
+              fontFamily: "'Noto Naskh Arabic', serif",
+              fontSize: "0.8rem",
+              letterSpacing: "0.03em",
+            }}>
+            {AYAH_SRC}
           </p>
         </motion.div>
       </section>
