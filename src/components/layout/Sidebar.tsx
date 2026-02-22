@@ -2,18 +2,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, BookOpen, BarChart2, User, Settings, Stethoscope, Sun, Moon, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "../auth/AuthProvider";
+import { supabase } from "@/lib/supabase";
 
-const FACULTIES = [
-  { id: "s1_fmpc", label: "S1 FMPC", questions: 10697 },
-  { id: "s1_fmpr", label: "S1 FMPR", questions: 10495 },
-  { id: "s1_fmpm", label: "S1 FMPM", questions: 8461 },
-  { id: "s1_um6", label: "S1 UM6SS", questions: 7188 },
-  { id: "s1_fmpdf", label: "S1 FMPDF", questions: 7144 },
-];
+type Semester = { semestre_id: string; nom: string; faculty: string; total_questions: number };
 
 const NAV = [
   { href: "/", icon: Home, label: "Tableau de bord" },
@@ -27,6 +22,15 @@ export function Sidebar() {
   const { theme, toggle } = useTheme();
   const { user, profile } = useAuth();
   const [semOpen, setSemOpen] = useState(true);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("semesters")
+      .select("semestre_id, nom, faculty, total_questions")
+      .order("faculty")
+      .then(({ data }) => setSemesters(data ?? []));
+  }, []);
 
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 border-r z-50 transition-colors overflow-y-auto"
@@ -63,58 +67,56 @@ export function Sidebar() {
             className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all hover:bg-white/[0.04]"
             style={{ color: "var(--text-muted)" }}>
             <span>Semestres</span>
-            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", semOpen && "rotate-180")} />
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", semOpen ? "" : "-rotate-90")} />
           </button>
+
           {semOpen && (
             <div className="mt-1 space-y-0.5">
-              {FACULTIES.map((f) => {
-                const href = `/semestres/${f.id}`;
-                const active = path.startsWith(href);
-                return (
-                  <Link key={f.id} href={href}
-                    className={cn("flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all",
-                      active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}
-                    style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
-                    <div className="flex items-center gap-2.5">
-                      <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="font-medium">{f.label}</span>
-                    </div>
-                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {(f.questions/1000).toFixed(0)}k
-                    </span>
-                  </Link>
-                );
-              })}
+              {semesters.length === 0
+                ? [1,2,3,4,5].map(i => (
+                    <div key={i} className="h-9 mx-1 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+                  ))
+                : semesters.map((sem) => {
+                    const href = `/semestres/${encodeURIComponent(sem.semestre_id)}`;
+                    const active = path === href || path.startsWith(href + "/");
+                    return (
+                      <Link key={sem.semestre_id} href={href}
+                        className={cn("flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all",
+                          active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}
+                        style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{sem.nom}</span>
+                        </div>
+                        <span className="text-[10px] flex-shrink-0 ml-1" style={{ color: "var(--text-muted)" }}>
+                          {(sem.total_questions ?? 0).toLocaleString()}
+                        </span>
+                      </Link>
+                    );
+                  })}
             </div>
           )}
         </div>
       </nav>
 
-      <div className="px-4 py-3 border-t space-y-2 flex-shrink-0" style={{ borderColor: "var(--border)" }}>
+      {/* User avatar + theme toggle */}
+      <div className="px-3 py-3 border-t space-y-1 flex-shrink-0" style={{ borderColor: "var(--border)" }}>
         <button onClick={toggle}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/[0.04]"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"
           style={{ color: "var(--text-secondary)" }}>
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           {theme === "dark" ? "Mode clair" : "Mode sombre"}
         </button>
-        {user ? (
-          <div className="flex items-center gap-2.5 px-3 py-2">
-            <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-              <span className="text-[9px] font-bold text-blue-400">
+        {user && (
+          <Link href="/profil"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-white/[0.04]"
+            style={{ color: "var(--text-secondary)" }}>
+            <div className="w-6 h-6 rounded-lg bg-blue-500/15 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-xs font-bold text-blue-400">
                 {(profile?.full_name ?? user.email ?? "?")[0].toUpperCase()}
               </span>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium truncate" style={{ color: "var(--text)" }}>
-                {profile?.full_name ?? user.email?.split("@")[0]}
-              </p>
-              <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{user.email}</p>
-            </div>
-          </div>
-        ) : (
-          <Link href="/auth"
-            className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white transition-all">
-            Se connecter
+            <span className="truncate text-xs">{profile?.full_name ?? user.email}</span>
           </Link>
         )}
       </div>

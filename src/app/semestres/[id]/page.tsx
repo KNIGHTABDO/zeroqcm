@@ -8,45 +8,49 @@ import { supabase } from "@/lib/supabase";
 import { ModuleCardSkeleton } from "@/components/ui/Skeleton";
 
 interface Module {
-  id: number; nom: string; total_questions: number; total_activities: number;
+  id: number;
+  nom: string;
+  total_questions: number;
+  total_activities: number;
+  description: string | null;
 }
 
-const SEM_LABELS: Record<string, string> = {
-  s1_fmpc: "S1 FMPC", s1_fmpdf: "S1 FMPDF", "s1_fmpdf": "S1 FMPDF",
-  s1_fmpm: "S1 FMPM", s1_fmpr: "S1 FMPR", s1_um6: "S1 UM6SS",
-  "S1_FMPM": "S1 FMPM", "S1_FMPR": "S1 FMPR", "S1_UM6": "S1 UM6SS", "s1_FMPDF": "S1 FMPDF",
-};
+interface Semester {
+  semestre_id: string;
+  nom: string;
+  faculty: string;
+  total_questions: number;
+  total_modules: number;
+}
 
 export default function SemesterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const semId = decodeURIComponent(id);
   const router = useRouter();
+  const [semester, setSemester] = useState<Semester | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Try both lowercase and original case for semester_id
   useEffect(() => {
-    const tryIds = [id, id.toLowerCase(), id.toUpperCase()];
-    // Fetch modules that match any of the id variants (or use ilike)
-    supabase
-      .from("modules")
-      .select("*")
-      .ilike("semester_id", id)
-      .order("nom")
-      .then(({ data }) => {
-        if (data?.length) { setModules(data); setLoading(false); return; }
-        // fallback: try uppercase first char
-        const variants = [id, `s1_${id.split("_").slice(1).join("_")}`, id.toUpperCase()];
-        return supabase.from("modules").select("*").in("semester_id", variants).order("nom");
-      })
-      .then((res) => {
-        if (res && "data" in res && res.data?.length) setModules(res.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [id]);
+    Promise.all([
+      supabase
+        .from("semesters")
+        .select("semestre_id, nom, faculty, total_questions, total_modules")
+        .eq("semestre_id", semId)
+        .single(),
+      supabase
+        .from("modules")
+        .select("id, nom, total_questions, total_activities, description")
+        .eq("semester_id", semId)
+        .order("nom"),
+    ]).then(([{ data: sem }, { data: mods }]) => {
+      setSemester(sem);
+      setModules(mods ?? []);
+      setLoading(false);
+    });
+  }, [semId]);
 
-  const label = SEM_LABELS[id] ?? SEM_LABELS[id.toLowerCase()] ?? id.toUpperCase();
-  const totalQ = modules.reduce((s, m) => s + (m.total_questions || 0), 0);
+  const totalQ = semester?.total_questions ?? modules.reduce((s, m) => s + (m.total_questions || 0), 0);
 
   return (
     <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
@@ -58,7 +62,7 @@ export default function SemesterPage({ params }: { params: Promise<{ id: string 
         </button>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-xl font-bold">{label}</h1>
+          <h1 className="text-xl font-bold">{semester?.nom ?? semId}</h1>
           {!loading && (
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               {modules.length} modules · {totalQ.toLocaleString()} questions
@@ -68,7 +72,12 @@ export default function SemesterPage({ params }: { params: Promise<{ id: string 
 
         {loading ? (
           <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-            {Array.from({ length: 7 }).map((_, i) => <ModuleCardSkeleton key={i} />)}
+            {Array.from({ length: 6 }).map((_, i) => <ModuleCardSkeleton key={i} />)}
+          </div>
+        ) : modules.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="w-10 h-10 mx-auto mb-3 text-zinc-600" />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Aucun module trouvé</p>
           </div>
         ) : (
           <motion.div
@@ -86,9 +95,11 @@ export default function SemesterPage({ params }: { params: Promise<{ id: string 
                         <BookOpen className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{mod.nom}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+                          {mod.nom}
+                        </p>
                         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                          {(mod.total_questions || 0).toLocaleString()} questions · {mod.total_activities || 0} activités
+                          {mod.total_questions?.toLocaleString()} questions · {mod.total_activities} activités
                         </p>
                       </div>
                       <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />

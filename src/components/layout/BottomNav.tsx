@@ -4,28 +4,30 @@ import { usePathname } from "next/navigation";
 import { Home, BookOpen, BarChart2, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TABS = [
+const NAV = [
   { href: "/", icon: Home, label: "Accueil" },
-  { href: "/semestres/s1_fmpc", icon: BookOpen, label: "S1" },
+  { href: "/semestres/s1", icon: BookOpen, label: "S1 FMPC" },
   { href: "/stats", icon: BarChart2, label: "Stats" },
-  { href: "/settings", icon: Settings, label: "Paramètres" },
   { href: "/profil", icon: User, label: "Profil" },
+  { href: "/settings", icon: Settings, label: "Réglages" },
 ];
 
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t z-40 lg:hidden pb-safe"
-      style={{ background: "rgba(0,0,0,0.85)", borderColor: "var(--border)", backdropFilter: "blur(20px)" }}>
-      <div className="flex items-center justify-around py-2 max-w-md mx-auto">
-        {TABS.map((tab) => {
-          const active = path === tab.href || (tab.href !== "/" && path.startsWith(tab.href));
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 border-t z-50"
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+      <div className="flex items-center justify-around px-2 py-2 safe-pb">
+        {NAV.map((item) => {
+          const active = path === item.href || (item.href !== "/" && path.startsWith(item.href));
           return (
-            <Link key={tab.href} href={tab.href}
-              className={cn("flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all",
-                active ? "text-white" : "text-zinc-600")}>
-              <tab.icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+            <Link key={item.href} href={item.href}
+              className={cn("flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[52px]",
+                active ? "opacity-100" : "opacity-50 hover:opacity-75")}>
+              <item.icon className="w-5 h-5" style={{ color: active ? "var(--text)" : "var(--text-secondary)" }} />
+              <span className="text-[10px] font-medium" style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
+                {item.label}
+              </span>
             </Link>
           );
         })}

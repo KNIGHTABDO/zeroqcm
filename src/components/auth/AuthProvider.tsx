@@ -9,7 +9,7 @@ type AuthCtxType = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, name: string, faculty?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -46,15 +46,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(data);
   }
 
-  async function signUp(email: string, password: string, name: string) {
+  async function signUp(email: string, password: string, name: string, faculty: string = "FMPC") {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
+    // Trigger creates the profile — but also upsert here in case trigger is slow
     if (data.user) {
-      await supabase.from("profiles").insert({
+      await supabase.from("profiles").upsert({
         id: data.user.id,
         full_name: name,
-        username: email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, ""),
-      });
+        username: email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase(),
+        faculty,
+        annee_etude: 1,
+        preferences: { theme: "dark", ai_model: "gemini-2.0-flash", ai_key: null, notifications: true, language: "fr" },
+      }, { onConflict: "id" });
+      await loadProfile(data.user.id);
     }
     return { error: null };
   }
@@ -66,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    setProfile(null);
   }
 
   async function refreshProfile() {
