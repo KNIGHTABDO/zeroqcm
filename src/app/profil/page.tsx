@@ -20,11 +20,38 @@ const FACULTIES = Object.keys(FACULTY_DEFAULT_SEM);
 
 // Real semesters available per faculty in DB. Expand this when S2 data is seeded.
 const FACULTY_SEMESTERS: Record<string, { id: string; label: string }[]> = {
-  FMPC:  [{ id: "s1",       label: "S1 FMPC"  }],
-  FMPDF: [{ id: "s1_FMPDF", label: "S1 FMPDF" }],
-  FMPM:  [{ id: "S1_FMPM",  label: "S1 FMPM"  }],
-  FMPR:  [{ id: "S1_FMPR",  label: "S1 FMPR"  }],
-  UM6SS: [{ id: "S1_UM6",   label: "S1 UM6SS" }],
+  FMPC:  [
+    { id: "s1",       label: "S1 FMPC"  },
+    { id: "s3",       label: "S3 FMPC"  },
+    { id: "s5",       label: "S5 FMPC"  },
+    { id: "s7",       label: "S7 FMPC"  },
+    { id: "s9",       label: "S9 FMPC"  },
+  ],
+  FMPDF: [
+    { id: "s1_FMPDF", label: "S1 FMPDF" },
+    // S3+ not yet available for FMPDF
+  ],
+  FMPM:  [
+    { id: "S1_FMPM",  label: "S1 FMPM"  },
+    { id: "S3_FMPM",  label: "S3 FMPM"  },
+    { id: "S5_FMPM",  label: "S5 FMPM"  },
+    { id: "S7_FMPM",  label: "S7 FMPM"  },
+    { id: "S9_FMPM",  label: "S9 FMPM"  },
+  ],
+  FMPR:  [
+    { id: "S1_FMPR",  label: "S1 FMPR"  },
+    { id: "S3_FMPR",  label: "S3 FMPR"  },
+    { id: "S5_FMPR",  label: "S5 FMPR"  },
+    { id: "S7_FMPR",  label: "S7 FMPR"  },
+    { id: "S9_FMPR",  label: "S9 FMPR"  },
+  ],
+  UM6SS: [
+    { id: "S1_UM6",   label: "S1 UM6SS" },
+    { id: "S3_UM6",   label: "S3 UM6SS" },
+    { id: "S5_UM6",   label: "S5 UM6SS" },
+    { id: "S7_UM6",   label: "S7 UM6SS" },
+    { id: "S9_UM6",   label: "S9 UM6SS" },
+  ],
 };
 
 function getSemLabel(fac: string, semId: string): string {
@@ -149,8 +176,8 @@ export default function ProfilPage() {
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>
                   Semestre
-                  {(FACULTY_SEMESTERS[faculty]?.length ?? 0) <= 1 && (
-                    <span className="ml-2 text-[10px] text-amber-400/70">(S2+ bientôt disponible)</span>
+                  {faculty === "FMPDF" && (FACULTY_SEMESTERS[faculty]?.length ?? 0) <= 1 && (
+                    <span className="ml-2 text-[10px] text-amber-400/70">(S3+ bientôt disponible)</span>
                   )}
                 </label>
                 <select value={semId} onChange={e => setSemId(e.target.value)}
