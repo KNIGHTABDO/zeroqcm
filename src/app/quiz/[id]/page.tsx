@@ -10,6 +10,17 @@ import { cn } from "@/lib/utils";
 import { supabase, getActivityWithQuestions, submitAnswer, getComments, addComment } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
+type QuizComment = {
+  id: string;
+  content: string;
+  is_anonymous: boolean;
+  created_at: string;
+  user_id: string;
+  profiles: { username: string | null; avatar_url?: string | null } | null;
+  comment_likes?: { user_id: string }[];
+};
+
+
 type Choice = {
   id: string; id_choix: number; contenu: string;
   est_correct: boolean; pourcentage: number; explication: string | null;
