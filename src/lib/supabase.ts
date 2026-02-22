@@ -90,16 +90,24 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }):
 // ─── Quiz data ────────────────────────────────────────────────────────────────
 export async function getActivityWithQuestions(activityId: number) {
   // Two separate queries — avoids relying on PostgREST join resolution
-  const [{ data: activity }, { data: questions }] = await Promise.all([
+  const [{ data: activity }, { data: allQuestions }] = await Promise.all([
     supabase.from("activities").select("*").eq("id", activityId).single(),
     supabase
       .from("questions")
       .select("*, choices(*)")
       .eq("activity_id", activityId)
-      .neq("source_type", "open")
       .order("position"),
   ]);
-  return { activity, questions: questions ?? [] };
+  // Separate QCM (has choices) vs open/QROC (no choices)
+  const questions = (allQuestions ?? []).filter(
+    (q: { source_type: string; choices: unknown[] }) =>
+      q.source_type !== "open" && Array.isArray(q.choices) && q.choices.length > 0
+  );
+  const openQuestions = (allQuestions ?? []).filter(
+    (q: { source_type: string; choices: unknown[] }) =>
+      q.source_type === "open" || !Array.isArray(q.choices) || q.choices.length === 0
+  );
+  return { activity, questions, openQuestions };
 }
 
 // ─── User progress ────────────────────────────────────────────────────────────
