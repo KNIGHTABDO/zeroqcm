@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { QuizImage } from "@/components/ui/QuizImage";
 import { supabase, getActivityWithQuestions, submitAnswer, getComments, addComment } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -307,10 +308,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     )}
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{oq.texte}</p>
-                  {oq.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={oq.image_url} alt="Illustration" className="rounded-xl w-full object-contain max-h-48 mt-2" />
-                  )}
+                  <QuizImage src={oq.image_url} className="mt-2" />
                   {oq.correction && (
                     <div className="mt-2 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                       <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Correction</p>
@@ -370,10 +368,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             </div>
           )}
           <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--text)" }}>{q.texte}</p>
-          {q.image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={q.image_url} alt="Illustration" className="rounded-xl w-full object-contain max-h-48" />
-          )}
+          <QuizImage src={q.image_url} />
         </div>
 
         <div className="space-y-2">
