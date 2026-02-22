@@ -56,7 +56,7 @@ export default function AuthPage() {
           <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
             {mode === "signin" ? "Connexion" : "Créer un compte"}
           </h1>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>FMPC QCM — Médecine Maroc</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>ZeroQCM — Médecine Maroc</p>
         </div>
 
         <div className="rounded-2xl border p-6 space-y-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
