@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase(),
         faculty,
         annee_etude: 1,
-        preferences: { theme: "dark", ai_model: "gemini-2.0-flash", ai_key: null, notifications: true, language: "fr" },
+        preferences: { theme: "dark", ai_model: "gpt-4o-mini", ai_key: null, notifications: true, language: "fr" },
       }, { onConflict: "id" });
       await loadProfile(data.user.id);
     }
