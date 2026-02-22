@@ -29,7 +29,6 @@ type ParsedAI = OptionExplanation[] | null;
 
 function parseAI(raw: string): ParsedAI {
   try {
-    // Strip any leading/trailing code fence markers that some models add
     let cleaned = raw.trim();
     if (cleaned.startsWith("```")) {
       const firstNewline = cleaned.indexOf("\n");
@@ -41,7 +40,9 @@ function parseAI(raw: string): ParsedAI {
     cleaned = cleaned.trim();
     const p = JSON.parse(cleaned) as OptionExplanation[];
     if (Array.isArray(p) && p.length > 0 && p[0]?.letter) return p;
-  } catch { /* not JSON */ }
+  } catch {
+    // not valid JSON
+  }
   return null;
 }
 
@@ -57,7 +58,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>("quiz");
-  // Track whether AI should fire for current revealed question
   const [shouldFetchAI, setShouldFetchAI] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
@@ -85,14 +85,12 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const q = questions[current];
   const isLast = current === questions.length - 1;
 
-  // Timer
   useEffect(() => {
     if (phase === "result" || loading) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [phase, loading]);
 
-  // Pre-load cached explanation when question changes
   useEffect(() => {
     setAiCached(null); setAiText(""); setAiParsed(null); setShouldFetchAI(false);
     if (!q) return;
@@ -100,41 +98,31 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       .then(({ data }) => { if (data?.explanation) setAiCached(data.explanation); });
   }, [q?.id]);
 
-  // Trigger AI fetch once phase is "revealed" and shouldFetchAI is set
-  // This avoids the React batching race where phase + fetchAI are called together
+  // Trigger AI fetch only after phase="revealed" is committed to the DOM
+  // Avoids React batching race where AI section does not exist yet when stream arrives
   useEffect(() => {
     if (phase !== "revealed" || !shouldFetchAI || !q) return;
     setShouldFetchAI(false);
     doFetchAI(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, shouldFetchAI]);
 
   async function doFetchAI(forceNew: boolean) {
     if (!q) return;
-    // Use cached if available and not forcing
-    if (!forceNew && aiCached) {
-      setAiText(aiCached);
-      setAiParsed(parseAI(aiCached));
-      return;
-    }
+    if (!forceNew && aiCached) { setAiText(aiCached); setAiParsed(parseAI(aiCached)); return; }
     setAiLoading(true); setAiText(""); setAiParsed(null);
     const model = (typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null) ?? "gpt-4o-mini";
-    const opts = q.choices
-      .map((c, i) => `${String.fromCharCode(65 + i)}) ${c.contenu} — ${c.est_correct ? "CORRECTE" : "incorrecte"}`)
-      .join("
-");
-    const prompt = `Question de QCM médical (FMPC):
-"${q.texte}"
-
-Options:
-${opts}
-
-Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte. Commence chaque why par "Car " ou "Parce que ". Réponds uniquement en JSON: [{"letter":"A","contenu":"...","est_correct":true,"why":"..."},...]`;
+    const opts = q.choices.map((c, i) =>
+      String.fromCharCode(65 + i) + ") " + c.contenu + " — " + (c.est_correct ? "CORRECTE" : "incorrecte")
+    ).join("\n");
+    const prompt = "Question de QCM médical (FMPC):\n\"" + q.texte + "\"\n\nOptions:\n" + opts +
+      "\n\nPour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte." +
+      " Commence chaque why par \"Car \" ou \"Parce que \"." +
+      " Réponds uniquement en JSON: [{\"letter\":\"A\",\"contenu\":\"...\",\"est_correct\":true,\"why\":\"...\"},...]";
     let full = "";
     try {
       const res = await fetch("/api/ai-explain", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, model }),
       });
       const reader = res.body?.getReader();
@@ -145,19 +133,14 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
         if (done) break;
         full += dec.decode(value);
         setAiText(full);
-        // Try parsing incrementally so cards appear as stream comes in
         const parsed = parseAI(full);
         if (parsed) setAiParsed(parsed);
       }
-    } catch {
-      full = "Erreur de connexion.";
-      setAiText(full);
-    }
+    } catch { full = "Erreur de connexion."; setAiText(full); }
     setAiLoading(false);
     if (full && !full.startsWith("Erreur")) {
       const parsed = parseAI(full);
       if (parsed) setAiParsed(parsed);
-      // Cache in DB — RLS allows public insert with WITH CHECK (true)
       supabase.from("ai_explanations").upsert(
         { question_id: q.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
         { onConflict: "question_id" }
@@ -178,8 +161,7 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
     if (!q) return;
     const data = await getComments(q.id);
     const norm = (data ?? []).map((c: Record<string, unknown>) => ({
-      ...c,
-      profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
+      ...c, profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
     })) as QuizComment[];
     setComments(norm);
   }
@@ -190,12 +172,11 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
     setCommentText(""); loadComments();
   }
 
-  // "Voir correction" — lock answer + set phase to revealed + queue AI fetch
   function handleReveal() {
     if (!q || selected.size === 0) return;
     lockAndScore();
-    setPhase("revealed");       // state update 1
-    setShouldFetchAI(true);    // state update 2 — triggers useEffect after phase commits
+    setPhase("revealed");
+    setShouldFetchAI(true);
   }
 
   function handleNext() {
@@ -252,12 +233,12 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6" style={{ background: "var(--bg)" }}>
         <div className={`text-6xl font-bold text-${col}-400`}>{pct}%</div>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>{score.correct}/{score.total} correctes · {mins}:{secs.toString().padStart(2,"0")}</p>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>{score.correct}/{score.total} correctes · {mins}:{secs.toString().padStart(2, "0")}</p>
         <p className="text-base font-semibold mt-2" style={{ color: "var(--text)" }}>{activityName}</p>
         <div className="flex gap-3 w-full max-w-xs mt-4">
-          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct:0,total:0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); }}
+          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); }}
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-white/[0.04]"
-            style={{ borderColor:"var(--border)", color:"var(--text)" }}>Recommencer</button>
+            style={{ borderColor: "var(--border)", color: "var(--text)" }}>Recommencer</button>
           <button onClick={() => router.back()} className="flex-1 py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">Terminer</button>
         </div>
       </div>
@@ -270,7 +251,6 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
   return (
     <div className="min-h-screen flex flex-col pb-32" style={{ background: "var(--bg)" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
-      {/* Top bar */}
       <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
         <div className="flex items-center justify-between mb-2">
           <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/[0.06] transition-colors" style={{ color: "var(--text-muted)" }}>
@@ -284,7 +264,7 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
               {score.correct}/{score.total}
             </span>
           )}
-          <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{mins}:{secs.toString().padStart(2,"0")}</span>
+          <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{mins}:{secs.toString().padStart(2, "0")}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -294,10 +274,8 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pt-2 space-y-3">
 
-        {/* Question card */}
         <div className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
           {q.source_question && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -312,83 +290,44 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
           )}
         </div>
 
-        {/* Choices — inline AI explanations per option */}
         <div className="space-y-2">
           {q.choices.map((choice, idx) => {
             const isSel = selected.has(choice.id);
             const letter = String.fromCharCode(65 + idx);
-            const borderColor = rev && choice.est_correct
-              ? "rgba(16,185,129,0.4)"
-              : rev && isSel && !choice.est_correct
-              ? "rgba(239,68,68,0.4)"
-              : isSel ? "rgba(255,255,255,0.22)"
-              : "rgba(255,255,255,0.06)";
-            const bg = rev && choice.est_correct
-              ? "rgba(16,185,129,0.07)"
-              : rev && isSel && !choice.est_correct
-              ? "rgba(239,68,68,0.07)"
-              : isSel ? "rgba(255,255,255,0.06)"
-              : "rgba(255,255,255,0.02)";
-
-            // Per-option AI explanation from parsed JSON
+            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.4)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.4)" : isSel ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)";
+            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)";
             const optWhy = aiParsed?.find((o) => o.letter === letter)?.why;
-            // Fallback: skeleton line for this option while AI is loading
             const showSkeleton = rev && aiLoading && !aiParsed;
-
             return (
-              <motion.button
-                key={choice.id}
-                onClick={() => phase === "quiz" && setSelected((prev) => {
-                  const n = new Set(prev);
-                  n.has(choice.id) ? n.delete(choice.id) : n.add(choice.id);
-                  return n;
-                })}
+              <motion.button key={choice.id}
+                onClick={() => phase === "quiz" && setSelected((prev) => { const n = new Set(prev); n.has(choice.id) ? n.delete(choice.id) : n.add(choice.id); return n; })}
                 disabled={phase !== "quiz"}
                 whileTap={{ scale: phase === "quiz" ? 0.99 : 1 }}
                 className="w-full text-left rounded-xl px-4 py-3 border transition-all"
                 style={{ background: bg, borderColor }}
               >
                 <div className="flex items-start gap-3">
-                  {/* Letter badge */}
-                  <span className="text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border"
-                    style={{
-                      background: rev
-                        ? choice.est_correct ? "rgba(16,185,129,0.2)" : isSel ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.06)"
-                        : isSel ? "rgba(255,255,255,0.12)" : "transparent",
-                      borderColor: rev
-                        ? choice.est_correct ? "rgba(16,185,129,0.4)" : isSel ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"
-                        : isSel ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
-                      color: rev
-                        ? choice.est_correct ? "rgb(16,185,129)" : isSel ? "rgb(239,68,68)" : "var(--text-muted)"
-                        : "var(--text)",
-                    }}>
-                    {letter}
-                  </span>
-
+                  <span className="text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border" style={{
+                    background: rev ? (choice.est_correct ? "rgba(16,185,129,0.2)" : isSel ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.06)") : isSel ? "rgba(255,255,255,0.12)" : "transparent",
+                    borderColor: rev ? (choice.est_correct ? "rgba(16,185,129,0.4)" : isSel ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)") : isSel ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
+                    color: rev ? (choice.est_correct ? "rgb(16,185,129)" : isSel ? "rgb(239,68,68)" : "var(--text-muted)") : "var(--text)",
+                  }}>{letter}</span>
                   <div className="flex-1 min-w-0">
-                    {/* Choice text */}
                     <p className="text-sm leading-snug" style={{ color: "var(--text)" }}>{choice.contenu}</p>
-
-                    {/* ── Inline AI explanation ── */}
                     {rev && (
                       <div className="mt-2">
                         {showSkeleton ? (
-                          // Skeleton while loading
                           <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.06)" }} />
                         ) : optWhy ? (
-                          // AI explanation
                           <div className="flex items-start gap-1.5">
                             <Brain size={10} className="flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
                             <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{optWhy}</p>
                           </div>
                         ) : choice.explication ? (
-                          // Fallback: static explanation from DB
                           <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{choice.explication}</p>
                         ) : null}
                       </div>
                     )}
-
-                    {/* % bar */}
                     {rev && (
                       <div className="mt-1.5 flex items-center gap-2">
                         <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -398,28 +337,19 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
                       </div>
                     )}
                   </div>
-
-                  {/* Correct/wrong icon */}
-                  {rev && (
-                    choice.est_correct
-                      ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                      : isSel
-                      ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
-                      : null
-                  )}
+                  {rev && (choice.est_correct ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" /> : isSel ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" /> : null)}
                 </div>
               </motion.button>
             );
           })}
         </div>
 
-        {/* AI section footer — regenerate button only, no duplicate text */}
         {rev && (
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5">
               <Brain size={12} style={{ color: "var(--accent)" }} />
               <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                {aiLoading ? "Explication IA en cours…" : aiParsed ? "Explication IA" : aiText ? "Explication IA (texte brut)" : "Explication IA"}
+                {aiLoading ? "Explication IA en cours…" : "Explication IA"}
               </span>
               {aiCached && !aiLoading && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
@@ -433,7 +363,6 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
           </div>
         )}
 
-        {/* Comments */}
         {rev && (
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
             <button onClick={() => { setCommentsOpen(!commentsOpen); if (!commentsOpen) loadComments(); }}
@@ -453,7 +382,7 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
                       <div className="pt-3 space-y-2">
                         <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Votre commentaire..." rows={2}
                           className="w-full text-sm rounded-xl px-3 py-2 border resize-none focus:outline-none"
-                          style={{ background:"rgba(255,255,255,0.04)", borderColor:"rgba(255,255,255,0.08)", color:"var(--text)" }} />
+                          style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }} />
                         <div className="flex items-center justify-between">
                           <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
                             <input type="checkbox" checked={commentAnon} onChange={(e) => setCommentAnon(e.target.checked)} className="w-3 h-3" /> Anonyme
@@ -471,7 +400,7 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
                         <div key={c.id} className="space-y-0.5">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{c.is_anonymous ? "Anonyme" : (c.profiles?.username ?? "Utilisateur")}</span>
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleDateString("fr-FR", { day:"numeric", month:"short" })}</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
                           </div>
                           <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.content}</p>
                         </div>
@@ -485,14 +414,13 @@ Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorr
         )}
       </div>
 
-      {/* Fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="flex gap-2.5 max-w-lg mx-auto">
           {phase === "quiz" ? (
             <>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleReveal} disabled={selected.size === 0}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold border transition-all disabled:opacity-30"
-                style={{ borderColor:"rgba(255,255,255,0.12)", color:"var(--text)", background:"rgba(255,255,255,0.04)" }}>
+                style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
                 Voir correction
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext} disabled={selected.size === 0}
