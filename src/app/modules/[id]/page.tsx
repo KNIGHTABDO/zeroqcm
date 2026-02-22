@@ -20,7 +20,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   const moduleId = parseInt(id);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [moduleName, setModuleName] = useState("");
-  const [filter, setFilter] = useState<"all" | "exam" | "exercise">("all");
+  const [tab, setTab] = useState<"exercise" | "exam">("exercise");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [weakCount, setWeakCount] = useState<number | null>(null);
@@ -46,11 +46,12 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
   }, [user, moduleId]);
 
   const filtered = activities
-    .filter((a) => filter === "all" || a.type_activite === filter)
+    .filter((a) => a.type_activite === tab)
     .filter((a) => !search || a.nom.toLowerCase().includes(search.toLowerCase()));
 
   const exams = activities.filter((a) => a.type_activite === "exam").length;
   const exercises = activities.filter((a) => a.type_activite === "exercise").length;
+  const tabCount = tab === "exercise" ? exercises : exams;
 
   return (
     <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
@@ -65,7 +66,7 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           <h1 className="text-xl font-bold">{moduleName}</h1>
           {!loading && (
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {exams} examens · {exercises} exercices
+              {exercises} cours · {exams} examens
             </p>
           )}
         </motion.div>
@@ -93,25 +94,25 @@ export default function ModulePage({ params }: { params: Promise<{ id: string }>
           </motion.div>
         )}
 
-        {/* Search + filters */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Chercher une activité..."
-              className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-sm border focus:outline-none transition-colors"
-              style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
-          </div>
-          <div className="flex gap-2">
-            {(["all", "exam", "exercise"] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border",
-                  filter === f ? "bg-white text-black border-transparent" : "hover:bg-white/[0.04]")}
-                style={{ borderColor: filter === f ? "transparent" : "var(--border)", color: filter === f ? "black" : "var(--text-secondary)" }}>
-                {f === "all" ? "Tout" : f === "exam" ? "Examens" : "Exercices"}
-              </button>
-            ))}
-          </div>
+        {/* Tab: Par cours | Par exam */}
+        <div className="flex rounded-2xl border p-1 gap-1" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          {(["exercise", "exam"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn("flex-1 py-2 rounded-xl text-xs font-semibold transition-all",
+                tab === t ? "bg-blue-600 text-white shadow" : "hover:bg-white/[0.04]")}
+              style={{ color: tab === t ? "white" : "var(--text-secondary)" }}>
+              {t === "exercise" ? `Par cours (${exercises})` : `Par exam (${exams})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={tab === "exercise" ? "Chercher un cours..." : "Chercher un examen..."}
+            className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-sm border focus:outline-none transition-colors"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
         </div>
 
         {loading ? (

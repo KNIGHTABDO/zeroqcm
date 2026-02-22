@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", icon: Home, label: "Accueil" },
-  { href: "/semestres/s1", icon: BookOpen, label: "S1 FMPC" },
+  { href: "/semestres", icon: BookOpen, label: "Semestres" },
   { href: "/stats", icon: BarChart2, label: "Stats" },
   { href: "/profil", icon: User, label: "Profil" },
   { href: "/settings", icon: Settings, label: "Réglages" },

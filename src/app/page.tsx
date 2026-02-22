@@ -64,12 +64,12 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-16 text-center">
+      <section className="relative overflow-hidden min-h-screen flex flex-col items-center justify-center px-4 pt-16 sm:pt-24 pb-12 sm:pb-16 text-center">
         {/* Background radial glows */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full"
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[min(600px,100vw)] h-[min(600px,100vw)] rounded-full"
             style={{ background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full"
+          <div className="absolute bottom-0 right-0 w-[min(400px,80vw)] h-[min(400px,80vw)] rounded-full"
             style={{ background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
         </div>
 
