@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
-export const runtime = "edge";
+// NOTE: Do NOT use edge runtime here — sensitive env vars (GITHUB_MODELS_TOKEN)
+// are NOT available in Edge Runtime. Node.js serverless function is required.
 
 const SYSTEM_PROMPT = [
   "You are a strict medical QCM tutor for Moroccan medicine students (FMPC/FMPR/FMPM/UM6SS/FMPDF).",
@@ -25,6 +26,18 @@ async function streamGhModels(token: string, model: string, messages: Msg[]): Pr
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
     body: JSON.stringify({ model, stream: true, messages, max_tokens: 700, temperature: 0.1 }),
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    const enc = new TextEncoder();
+    return new ReadableStream({
+      start(ctrl) {
+        ctrl.enqueue(enc.encode("Erreur GitHub Models " + res.status + ": " + errText.slice(0, 200)));
+        ctrl.close();
+      },
+    });
+  }
+
   const enc = new TextEncoder();
   return new ReadableStream({
     async start(ctrl) {
@@ -61,7 +74,7 @@ export async function POST(req: NextRequest) {
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
   if (!token) {
-    return new Response("Service IA non configuré.", { status: 200 });
+    return new Response("Erreur: GITHUB_MODELS_TOKEN non configuré sur le serveur.", { status: 200 });
   }
 
   try {
