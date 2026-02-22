@@ -1,33 +1,19 @@
 "use client";
-
 import { usePathname } from "next/navigation";
-import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
+import { BottomNav } from "./BottomNav";
 
-interface AppShellProps {
-  children: React.ReactNode;
-}
+const FULLSCREEN = ["/quiz/", "/auth"];
 
-// Full-screen pages that should hide navigation
-const FULLSCREEN_ROUTES = ["/quiz/"];
-
-export function AppShell({ children }: AppShellProps) {
-  const pathname = usePathname();
-  const isFullscreen = FULLSCREEN_ROUTES.some((r) => pathname.startsWith(r));
-
-  if (isFullscreen) {
-    return <>{children}</>;
-  }
-
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const path = usePathname();
+  const isFullscreen = FULLSCREEN.some((r) => path.startsWith(r));
+  if (isFullscreen) return <>{children}</>;
   return (
-    <div className="flex">
-      {/* Sidebar — visible only on lg+ */}
+    <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <Sidebar />
-
-      {/* Main content */}
-      <div className="flex-1 lg:ml-60 min-h-screen">
+      <div className="flex-1 lg:ml-60">
         {children}
-        {/* Bottom nav — hidden on lg */}
         <BottomNav />
       </div>
     </div>
