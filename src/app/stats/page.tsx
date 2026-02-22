@@ -1,68 +1,71 @@
 "use client";
-
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Target, Flame, Clock, TrendingUp, BookOpen } from "lucide-react";
-
-const PLACEHOLDERS = [
-  { icon: Target, label: "Questions répondues", value: "0", sub: "total" },
-  { icon: TrendingUp, label: "Taux de réussite", value: "—", sub: "global" },
-  { icon: Flame, label: "Série d'étude", value: "0 jours", sub: "consécutifs" },
-  { icon: Clock, label: "Temps total", value: "0 min", sub: "d'étude" },
-];
+import { Target, Flame, Clock, TrendingUp, BookOpen, LogIn } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { getUserStats } from "@/lib/supabase";
+import Link from "next/link";
 
 export default function StatsPage() {
-  return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto px-4 pt-6 pb-28 space-y-6 md:max-w-2xl lg:max-w-3xl">
+  const { user, profile } = useAuth();
+  const [stats, setStats] = useState({ total: 0, correct: 0, rate: 0, streak: 0 });
 
+  useEffect(() => {
+    if (user) getUserStats(user.id).then(setStats);
+  }, [user]);
+
+  const items = [
+    { icon: Target, label: "Questions répondues", value: stats.total.toLocaleString(), color: "text-blue-400" },
+    { icon: TrendingUp, label: "Taux de réussite", value: stats.total > 0 ? `${stats.rate}%` : "—", color: "text-emerald-400" },
+    { icon: Flame, label: "Série active", value: `${stats.streak} jour${stats.streak !== 1 ? "s" : ""}`, color: "text-orange-400" },
+    { icon: Clock, label: "Correctes", value: stats.correct.toLocaleString(), color: "text-violet-400" },
+  ];
+
+  return (
+    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
+      <div className="max-w-md mx-auto px-4 pt-6 space-y-5 md:max-w-2xl lg:max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-xl font-bold">Statistiques</h1>
-          <p className="text-xs text-zinc-600 mt-0.5">Votre progression globale</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Votre progression globale</p>
         </motion.div>
 
-        {/* Stats grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 gap-3 md:grid-cols-4"
-        >
-          {PLACEHOLDERS.map((s) => (
-            <div key={s.label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl p-4 space-y-2">
-              <s.icon className="w-4 h-4 text-blue-400" />
-              <div>
-                <p className="text-xl font-bold text-white">{s.value}</p>
-                <p className="text-[10px] text-zinc-600">{s.sub}</p>
-              </div>
-              <p className="text-xs text-zinc-500">{s.label}</p>
+        {!user ? (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border p-8 text-center space-y-3" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <LogIn className="w-8 h-8 mx-auto text-zinc-600" />
+            <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Connectez-vous pour voir vos stats</p>
+            <Link href="/auth" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 transition-all">
+              Se connecter
+            </Link>
+          </motion.div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {items.map((s, i) => (
+                <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i }}
+                  className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                  <s.icon className={`w-4 h-4 ${s.color}`} />
+                  <p className="text-xl font-bold" style={{ color: "var(--text)" }}>{s.value}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{s.label}</p>
+                </motion.div>
+              ))}
             </div>
-          ))}
-        </motion.div>
 
-        {/* Modules breakdown */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl overflow-hidden"
-        >
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-white/[0.06]">
-            <BookOpen className="w-4 h-4 text-zinc-400" />
-            <p className="text-sm font-semibold text-white">Par module</p>
-          </div>
-          {["Anatomie 1", "Biologie - Génétique", "Biophysique", "Chimie - Biochimie"].map((mod) => (
-            <div key={mod} className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.04] last:border-0">
-              <p className="text-sm text-zinc-400">{mod}</p>
-              <div className="flex items-center gap-3">
-                <div className="w-24 h-1 bg-white/[0.06] rounded-full overflow-hidden">
-                  <div className="h-full w-0 bg-blue-500 rounded-full" />
-                </div>
-                <span className="text-xs text-zinc-600 w-8 text-right">0%</span>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
+            {stats.total === 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="rounded-2xl border p-6 text-center space-y-3" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                <BookOpen className="w-8 h-8 mx-auto text-zinc-600" />
+                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                  Aucune question répondue pour le moment. Commencez un QCM !
+                </p>
+                <Link href="/semestres/s1_fmpc"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 transition-all">
+                  Commencer S1 FMPC
+                </Link>
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
     </main>
   );
