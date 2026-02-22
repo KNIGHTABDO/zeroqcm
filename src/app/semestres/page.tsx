@@ -53,7 +53,7 @@ export default function SemestresPage() {
       if (data?.semestre) {
         const n = parseSNum(data.semestre);
         setUserSNum(n);
-        setSelectedFilter(n); // default: show their semester
+        // Don't auto-select filter — default shows all semesters (better for iPad/new users)
       }
     });
   }, [user]);
