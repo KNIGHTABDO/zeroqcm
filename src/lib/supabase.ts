@@ -144,7 +144,8 @@ export async function getUserStats(userId: string) {
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
-export async function getComments(questionId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getComments(questionId: string): Promise<any[]> {
   const { data } = await supabase
     .from("comments")
     .select("id, content, is_anonymous, created_at, user_id, profiles(username, avatar_url), comment_likes(user_id)")

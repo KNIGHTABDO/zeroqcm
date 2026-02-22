@@ -98,10 +98,15 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setAiLoading(false);
   }
 
-  async function loadComments() {
+    async function loadComments() {
     if (!q) return;
     const data = await getComments(q.id);
-    setComments(data as typeof comments);
+    // Normalize: PostgREST may return profiles as array or object depending on FK registration
+    const normalized = (data ?? []).map((c: any) => ({
+      ...c,
+      profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
+    })) as Comment[];
+    setComments(normalized);
   }
 
   async function postComment() {
