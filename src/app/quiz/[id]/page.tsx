@@ -58,7 +58,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>("quiz");
-  const [shouldFetchAI, setShouldFetchAI] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [elapsed, setElapsed] = useState(0);
@@ -92,50 +91,52 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   }, [phase, loading]);
 
   useEffect(() => {
-    setAiCached(null); setAiText(""); setAiParsed(null); setShouldFetchAI(false);
+    setAiCached(null); setAiText(""); setAiParsed(null);
     if (!q) return;
     supabase.from("ai_explanations").select("explanation").eq("question_id", q.id).maybeSingle()
       .then(({ data }) => { if (data?.explanation) setAiCached(data.explanation); });
   }, [q?.id]);
 
-  // Always-current refs — avoids stale closure in doFetchAI
-  const qRef = useRef<Question | null>(null);
-  const aiCachedRef = useRef<string | null>(null);
-  useEffect(() => { qRef.current = q ?? null; }, [q]);
-  useEffect(() => { aiCachedRef.current = aiCached; }, [aiCached]);
+  // AbortController ref — cancels in-flight AI fetches when user navigates
+  const aiAbortRef = useRef<AbortController | null>(null);
 
-  // Trigger AI fetch only after phase="revealed" is committed to the DOM
+  // Fire AI fetch whenever phase becomes "revealed" for a given question.
+  // useEffect directly on phase+q?.id — no intermediate flag state needed.
   useEffect(() => {
-    if (phase !== "revealed" || !shouldFetchAI || !q) return;
-    setShouldFetchAI(false);
+    if (phase !== "revealed" || !q) return;
     doFetchAI(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, shouldFetchAI, q?.id]);
+  }, [phase, q?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function doFetchAI(forceNew: boolean) {
-    const currentQ = qRef.current;
-    const currentCached = aiCachedRef.current;
-    if (!currentQ) return;
-    if (!forceNew && currentCached) { setAiText(currentCached); setAiParsed(parseAI(currentCached)); return; }
+    if (!q) return;
+    // Cancel any previous in-flight request
+    aiAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiAbortRef.current = controller;
+
+    if (!forceNew && aiCached) { setAiText(aiCached); setAiParsed(parseAI(aiCached)); return; }
     setAiLoading(true); setAiText(""); setAiParsed(null);
     const model = (typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null) ?? "gpt-4o-mini";
-    const opts = currentQ.choices.map((c, i) =>
+    const opts = q.choices.map((c, i) =>
       String.fromCharCode(65 + i) + ") " + c.contenu + " — " + (c.est_correct ? "CORRECTE" : "incorrecte")
     ).join("\n");
-    const prompt = "Question de QCM médical (FMPC):\n\"" + currentQ.texte + "\"\n\nOptions:\n" + opts +
+    const prompt = "Question de QCM médical (FMPC):\n\"" + q.texte + "\"\n\nOptions:\n" + opts +
       "\n\nPour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte." +
       " Commence chaque why par \"Car \" ou \"Parce que \"." +
       " Réponds uniquement en JSON: [{\"letter\":\"A\",\"contenu\":\"...\",\"est_correct\":true,\"why\":\"...\"},...]";
+    const savedQ = q;
     let full = "";
     try {
       const res = await fetch("/api/ai-explain", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, model }),
+        signal: controller.signal,
       });
       const reader = res.body?.getReader();
       const dec = new TextDecoder();
       if (!reader) { setAiLoading(false); return; }
       while (true) {
+        if (controller.signal.aborted) break;
         const { done, value } = await reader.read();
         if (done) break;
         full += dec.decode(value);
@@ -143,15 +144,20 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         const parsed = parseAI(full);
         if (parsed) setAiParsed(parsed);
       }
-    } catch { full = "Erreur de connexion."; setAiText(full); }
-    setAiLoading(false);
-    if (full && !full.startsWith("Erreur")) {
-      const parsed = parseAI(full);
-      if (parsed) setAiParsed(parsed);
-      supabase.from("ai_explanations").upsert(
-        { question_id: currentQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
-        { onConflict: "question_id" }
-      ).then(() => setAiCached(full));
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      full = "Erreur de connexion."; setAiText(full);
+    }
+    if (!controller.signal.aborted) {
+      setAiLoading(false);
+      if (full && !full.startsWith("Erreur")) {
+        const parsed = parseAI(full);
+        if (parsed) setAiParsed(parsed);
+        supabase.from("ai_explanations").upsert(
+          { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
+          { onConflict: "question_id" }
+        ).then(() => setAiCached(full));
+      }
     }
   }
 
@@ -183,7 +189,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     if (!q || selected.size === 0) return;
     lockAndScore();
     setPhase("revealed");
-    setShouldFetchAI(true);
   }
 
   function handleNext() {
