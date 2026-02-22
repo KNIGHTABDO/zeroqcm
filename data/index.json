@@ -1,49 +1,40 @@
 {
-  "source": "DariQCM (dariqcm.vip)",
-  "scraped_at": "2026-02-22",
+  "updated_at": "2026-02-22",
   "supabase": {
-    "url": "https://clcbqtkyrtntixdspxiw.supabase.co",
+    "url": "https://clcbqtkyrtntixdspxiw.supabase.co"
+  },
+  "totals": {
     "semesters": 5,
     "modules": 33,
     "activities": 1038,
     "questions": 43985,
     "choices": 200034
   },
-  "faculties": [
+  "semesters": [
     {
       "id": "s1",
       "nom": "S1 FMPC",
-      "total_questions": 10697,
-      "total_activities": 240,
-      "total_modules": 6
+      "questions": 10697
     },
     {
       "id": "s1_FMPDF",
       "nom": "S1 FMPDF",
-      "total_questions": 7144,
-      "total_activities": 261,
-      "total_modules": 6
+      "questions": 7144
     },
     {
       "id": "S1_FMPM",
       "nom": "S1 FMPM",
-      "total_questions": 8461,
-      "total_activities": 196,
-      "total_modules": 8
+      "questions": 8461
     },
     {
       "id": "S1_FMPR",
       "nom": "S1 FMPR",
-      "total_questions": 10495,
-      "total_activities": 154,
-      "total_modules": 7
+      "questions": 10495
     },
     {
       "id": "S1_UM6",
       "nom": "S1 UM6SS",
-      "total_questions": 7188,
-      "total_activities": 187,
-      "total_modules": 6
+      "questions": 7188
     }
   ]
 }
