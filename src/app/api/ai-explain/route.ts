@@ -3,6 +3,10 @@ import { NextRequest } from "next/server";
 // NOTE: Do NOT use edge runtime here — sensitive env vars (GITHUB_MODELS_TOKEN)
 // are NOT available in Edge Runtime. Node.js serverless function is required.
 
+// Extend timeout to 60s — GitHub Models streaming can take 10-15s on first call.
+// Without this, Vercel Hobby default 10s timeout kills the stream mid-flight.
+export const maxDuration = 60;
+
 const SYSTEM_PROMPT = [
   "You are a strict medical QCM tutor for Moroccan medicine students (FMPC/FMPR/FMPM/UM6SS/FMPDF).",
   "",
