@@ -1,0 +1,49 @@
+{
+  "source": "DariQCM (dariqcm.vip)",
+  "faculty": "FMPC",
+  "semester": "S1",
+  "scraped_at": "2026-02-22",
+  "supabase": {
+    "url": "https://clcbqtkyrtntixdspxiw.supabase.co",
+    "total_questions": 10697,
+    "total_choices": 51484
+  },
+  "modules": [
+    {
+      "id": 26,
+      "nom": "Anatomie 1",
+      "questions": 1212,
+      "file": "module-26.json"
+    },
+    {
+      "id": 28,
+      "nom": "Biologie - Génétique fondamentale",
+      "questions": 2290,
+      "file": "module-28.json"
+    },
+    {
+      "id": 29,
+      "nom": "Biophysique",
+      "questions": 1061,
+      "file": "module-29.json"
+    },
+    {
+      "id": 30,
+      "nom": "Chimie - Biochimie",
+      "questions": 2491,
+      "file": "module-30.json"
+    },
+    {
+      "id": 31,
+      "nom": "Méthodologies d'App et Terminologie",
+      "questions": 1486,
+      "file": "module-31.json"
+    },
+    {
+      "id": 32,
+      "nom": "Santé publique et Biostatistiques",
+      "questions": 2157,
+      "file": "module-32.json"
+    }
+  ]
+}
