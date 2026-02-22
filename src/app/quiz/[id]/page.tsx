@@ -53,6 +53,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const activityId = parseInt(id);
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [openQuestions, setOpenQuestions] = useState<Question[]>([]);
   const [activityName, setActivityName] = useState("");
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
@@ -74,9 +75,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const tyRef = useRef<number | null>(null);
 
   useEffect(() => {
-    getActivityWithQuestions(activityId).then(({ activity, questions: qs }) => {
+    getActivityWithQuestions(activityId).then(({ activity, questions: qs, openQuestions: oqs }) => {
       setActivityName(activity?.nom ?? "QCM");
       setQuestions(qs as Question[]);
+      setOpenQuestions((oqs ?? []) as Question[]);
       setLoading(false);
     });
   }, [activityId]);
@@ -267,7 +269,69 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     );
   }
 
-  if (!q) return null;
+  // ── Empty state: all questions are QROC / open-ended (no choices) ────────────
+  if (!q) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
+        {/* Header */}
+        <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
+          <div className="flex items-center gap-3 mb-1">
+            <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/[0.06] transition-colors" style={{ color: "var(--text-muted)" }}>
+              <ArrowLeft size={18} />
+            </button>
+            <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{activityName}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-4">
+          {/* Notice */}
+          <div className="rounded-2xl border px-5 py-6 text-center space-y-2"
+            style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)" }}>
+            <p className="text-2xl">📝</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Questions rédactionnelles</p>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              Cet examen contient uniquement des questions ouvertes (schémas, rédaction). Elles ne peuvent pas être notées automatiquement — consultez les ci-dessous pour votre révision.
+            </p>
+          </div>
+
+          {/* Open questions list */}
+          {openQuestions.length > 0 && (
+            <div className="space-y-3">
+              {openQuestions.map((oq, idx) => (
+                <div key={oq.id} className="rounded-xl border px-4 py-3 space-y-1.5"
+                  style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
+                    {oq.source_question && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{oq.source_question}</span>
+                    )}
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{oq.texte}</p>
+                  {oq.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={oq.image_url} alt="Illustration" className="rounded-xl w-full object-contain max-h-48 mt-2" />
+                  )}
+                  {oq.correction && (
+                    <div className="mt-2 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                      <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Correction</p>
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{oq.correction}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Back button */}
+        <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "rgba(255,255,255,0.06)" }}>
+          <button onClick={() => router.back()} className="w-full max-w-lg mx-auto flex items-center justify-center py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
   const rev = phase === "revealed";
 
   return (
