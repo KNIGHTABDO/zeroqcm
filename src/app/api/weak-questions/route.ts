@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("questions")
     .select("id, texte, image_url, activity_id, module_id, choices(*)")
+    .neq("source_type", "open")
     .in("id", weakIds);
 
   if (moduleId) query = query.eq("module_id", parseInt(moduleId));

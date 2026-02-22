@@ -96,6 +96,7 @@ export async function getActivityWithQuestions(activityId: number) {
       .from("questions")
       .select("*, choices(*)")
       .eq("activity_id", activityId)
+      .neq("source_type", "open")
       .order("position"),
   ]);
   return { activity, questions: questions ?? [] };

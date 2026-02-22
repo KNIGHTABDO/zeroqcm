@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
   let query = supabase
     .from("questions")
     .select("*, choices(*)")
+    .neq("source_type", "open")
     .in("id", weakIds);
   if (moduleId) query = query.eq("module_id", moduleId);
   const { data: questions } = await query;
