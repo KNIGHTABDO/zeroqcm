@@ -1,133 +1,175 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Target, Flame, TrendingUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { BookOpen, Brain, BarChart2, Sparkles, ChevronRight, Star, Users, Target, Zap, ArrowRight } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-const SEMESTERS = [
-  { id: "s1_fmpc", label: "S1", faculty: "FMPC", questions: 10697, modules: 6, color: "blue" },
-  { id: "s2_fmpc", label: "S2", faculty: "FMPC", questions: 0, modules: 0, color: "blue", soon: true },
-  { id: "s3_fmpc", label: "S3", faculty: "FMPC", questions: 0, modules: 0, color: "blue", soon: true },
+const FEATURES = [
+  { icon: Brain, title: "IA explique chaque réponse", desc: "Corrections instantanées avec l'intelligence artificielle. Comprenez, ne mémorisez pas.", color: "blue" },
+  { icon: Target, title: "10 697 questions S1", desc: "Tous les examens passés de la FMPC — Normale, Rattrapage, depuis 2013.", color: "emerald" },
+  { icon: BarChart2, title: "Statistiques en temps réel", desc: "Taux de réussite par module, série d'étude, questions faibles — visibles en un coup d'œil.", color: "violet" },
+  { icon: Zap, title: "Mode examen ultra-rapide", desc: "Interface plein-écran sans distraction. Vos doigts sur les touches, votre cerveau sur les questions.", color: "amber" },
 ];
 
-const STATS = [
-  { icon: Target, label: "Questions révisées", value: "—", color: "text-blue-400" },
-  { icon: Flame, label: "Série active", value: "0 jours", color: "text-orange-400" },
-  { icon: TrendingUp, label: "Taux de réussite", value: "—", color: "text-emerald-400" },
+const STATS_DISPLAY = [
+  { value: "10 697", label: "Questions S1" },
+  { value: "240", label: "Sessions d'examen" },
+  { value: "100%", label: "Gratuit" },
+  { value: "≪0.6s", label: "Temps de chargement" },
 ];
 
-export default function Dashboard() {
+export default function LandingPage() {
+  const { user } = useAuth();
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto px-4 pt-6 pb-28 space-y-6 md:max-w-2xl lg:max-w-none lg:px-0">
+    <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
 
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="space-y-1"
-        >
-          <p className="text-xs text-zinc-600 tracking-widest uppercase">FMPC · Médecine</p>
-          <h1 className="text-xl font-bold text-white">Bonjour 👋</h1>
-          <p className="text-sm text-zinc-500">Prêt à réviser aujourd&apos;hui ?</p>
-        </motion.div>
+      {/* Hero */}
+      <section className="relative overflow-hidden min-h-[90vh] flex flex-col items-center justify-center px-4 pt-20 pb-16 lg:pt-32">
+        {/* BG glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-500/[0.07] rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-violet-500/[0.05] rounded-full blur-[100px]" />
+        </div>
 
-        {/* Quick stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08 }}
-          className="grid grid-cols-3 gap-2"
-        >
-          {STATS.map((s) => (
-            <div key={s.label} className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl p-3 space-y-1">
-              <s.icon className={cn("w-4 h-4", s.color)} />
-              <p className="text-base font-bold text-white">{s.value}</p>
-              <p className="text-[10px] text-zinc-600 leading-tight">{s.label}</p>
-            </div>
-          ))}
-        </motion.div>
+        <div className="relative z-10 max-w-3xl mx-auto text-center space-y-6">
+          {/* Badge */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-xs text-blue-300 font-medium">S1 FMPC · 10 697 questions disponibles</span>
+          </motion.div>
 
-        {/* Semesters */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="space-y-3"
-        >
-          <div className="flex items-center justify-between px-1">
-            <p className="text-sm font-semibold text-white">Semestres</p>
-            <span className="text-xs text-zinc-600">FMPC</span>
+          {/* Title */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }}>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+              Révisez comme<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">
+                jamais avant.
+              </span>
+            </h1>
+          </motion.div>
+
+          {/* Sub */}
+          <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="text-base md:text-lg max-w-xl mx-auto leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            La plateforme QCM premium pour les étudiants de la FMPC.
+            Interface obsédante, corrections IA, statistiques précises.
+          </motion.p>
+
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
+            className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            {user ? (
+              <Link href="/semestres/s1_fmpc"
+                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm shadow-xl shadow-blue-500/20 transition-all">
+                Continuer S1 FMPC
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth"
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm shadow-xl shadow-blue-500/20 transition-all">
+                  Commencer gratuitement
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link href="/semestres/s1_fmpc"
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl border font-semibold text-sm transition-all hover:bg-white/[0.04]"
+                  style={{ borderColor: "var(--border)", color: "var(--text)" }}>
+                  Voir S1 FMPC
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Hero Image */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.6 }}
+          className="relative mt-12 w-full max-w-2xl mx-auto">
+          <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://drive.google.com/uc?export=view&id=152UVX3jDqkWf88JN9G1OhKGBsf-2bK_Z"
+              alt="FMPC QCM hero"
+              className="w-full h-48 md:h-72 object-cover"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </div>
+        </motion.div>
+      </section>
 
-          <div className="space-y-2 lg:grid lg:grid-cols-3 lg:gap-3 lg:space-y-0">
-            {SEMESTERS.map((sem, i) => (
-              <motion.div
-                key={sem.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.06 }}
-              >
-                {sem.soon ? (
-                  <div className="bg-[#0d0d0d] border border-white/[0.04] rounded-2xl px-5 py-4 opacity-40 cursor-not-allowed">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-zinc-600" />
-                          <p className="text-sm font-semibold text-zinc-400">{sem.label}</p>
-                        </div>
-                        <p className="text-xs text-zinc-600 mt-0.5">Bientôt disponible</p>
-                      </div>
-                      <span className="text-[10px] text-zinc-700 border border-zinc-800 rounded-lg px-2 py-1">SOON</span>
-                    </div>
-                  </div>
-                ) : (
-                  <Link href={`/semestres/${sem.id}`}>
-                    <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl px-5 py-4 hover:bg-white/[0.06] active:bg-white/[0.08] transition-all cursor-pointer group">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                              <BookOpen className="w-3 h-3 text-blue-400" />
-                            </div>
-                            <p className="text-sm font-semibold text-white">{sem.label} · {sem.faculty}</p>
-                          </div>
-                          <p className="text-xs text-zinc-500">{sem.modules} modules · {sem.questions.toLocaleString()} questions</p>
-                          {/* Progress bar */}
-                          <div className="h-1 w-32 bg-white/[0.06] rounded-full overflow-hidden">
-                            <div className="h-full w-0 bg-blue-500 rounded-full" />
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-zinc-400 transition-colors" />
-                      </div>
-                    </div>
-                  </Link>
-                )}
+      {/* Stats strip */}
+      <section className="py-10 border-y" style={{ borderColor: "var(--border)" }}>
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {STATS_DISPLAY.map((s, i) => (
+              <motion.div key={s.label}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
+                className="text-center">
+                <p className="text-2xl font-bold" style={{ color: "var(--text)" }}>{s.value}</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{s.label}</p>
               </motion.div>
             ))}
           </div>
-        </motion.div>
+        </div>
+      </section>
 
-        {/* Quick start card */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl p-5 space-y-3"
-        >
-          <p className="text-sm font-semibold text-white">Démarrage rapide</p>
-          <p className="text-xs text-zinc-600">Continuez là où vous vous êtes arrêté.</p>
-          <Link href="/semestres/s1_fmpc">
-            <button className="w-full py-3.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all mt-1">
-              Commencer S1 FMPC
-            </button>
+      {/* Features */}
+      <section className="py-16 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Conçu pour ceux qui veulent vraiment progresser</h2>
+            <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>Pas une app de révision de plus. Une arme.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            {FEATURES.map((f, i) => (
+              <motion.div key={f.title}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * i }}
+                className="rounded-2xl px-5 py-5 space-y-3 border transition-all hover:bg-white/[0.02]"
+                style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center
+                  ${f.color === "blue" ? "bg-blue-500/10 border border-blue-500/20" :
+                    f.color === "emerald" ? "bg-emerald-500/10 border border-emerald-500/20" :
+                    f.color === "violet" ? "bg-violet-500/10 border border-violet-500/20" :
+                    "bg-amber-500/10 border border-amber-500/20"}`}>
+                  <f.icon className={`w-4 h-4
+                    ${f.color === "blue" ? "text-blue-400" :
+                      f.color === "emerald" ? "text-emerald-400" :
+                      f.color === "violet" ? "text-violet-400" :
+                      "text-amber-400"}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{f.title}</p>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Bottom */}
+      <section className="py-16 px-4">
+        <div className="max-w-md mx-auto text-center space-y-5">
+          <Sparkles className="w-8 h-8 text-blue-400 mx-auto" />
+          <h2 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Prêt à changer votre façon de réviser ?</h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Gratuit. Sans pub. Pour vous.</p>
+          <Link href={user ? "/semestres/s1_fmpc" : "/auth"}
+            className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm shadow-xl shadow-blue-500/20 transition-all">
+            {user ? "Continuer mes révisions" : "Créer un compte gratuit"}
+            <ArrowRight className="w-4 h-4" />
           </Link>
-        </motion.div>
+        </div>
+      </section>
 
-      </div>
+      {/* Footer */}
+      <footer className="py-8 px-4 border-t text-center" style={{ borderColor: "var(--border)" }}>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          © 2026 FMPC QCM · Université Hassan II Casablanca · Fait avec ❤️ pour les étudiants
+        </p>
+      </footer>
     </main>
   );
 }
