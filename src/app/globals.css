@@ -57,3 +57,13 @@ body {
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 0.5rem;
 }
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
