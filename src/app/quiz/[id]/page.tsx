@@ -98,24 +98,31 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       .then(({ data }) => { if (data?.explanation) setAiCached(data.explanation); });
   }, [q?.id]);
 
+  // Always-current refs — avoids stale closure in doFetchAI
+  const qRef = useRef<Question | null>(null);
+  const aiCachedRef = useRef<string | null>(null);
+  useEffect(() => { qRef.current = q ?? null; }, [q]);
+  useEffect(() => { aiCachedRef.current = aiCached; }, [aiCached]);
+
   // Trigger AI fetch only after phase="revealed" is committed to the DOM
-  // Avoids React batching race where AI section does not exist yet when stream arrives
   useEffect(() => {
     if (phase !== "revealed" || !shouldFetchAI || !q) return;
     setShouldFetchAI(false);
     doFetchAI(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, shouldFetchAI]);
+  }, [phase, shouldFetchAI, q?.id]);
 
   async function doFetchAI(forceNew: boolean) {
-    if (!q) return;
-    if (!forceNew && aiCached) { setAiText(aiCached); setAiParsed(parseAI(aiCached)); return; }
+    const currentQ = qRef.current;
+    const currentCached = aiCachedRef.current;
+    if (!currentQ) return;
+    if (!forceNew && currentCached) { setAiText(currentCached); setAiParsed(parseAI(currentCached)); return; }
     setAiLoading(true); setAiText(""); setAiParsed(null);
     const model = (typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null) ?? "gpt-4o-mini";
-    const opts = q.choices.map((c, i) =>
+    const opts = currentQ.choices.map((c, i) =>
       String.fromCharCode(65 + i) + ") " + c.contenu + " — " + (c.est_correct ? "CORRECTE" : "incorrecte")
     ).join("\n");
-    const prompt = "Question de QCM médical (FMPC):\n\"" + q.texte + "\"\n\nOptions:\n" + opts +
+    const prompt = "Question de QCM médical (FMPC):\n\"" + currentQ.texte + "\"\n\nOptions:\n" + opts +
       "\n\nPour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte." +
       " Commence chaque why par \"Car \" ou \"Parce que \"." +
       " Réponds uniquement en JSON: [{\"letter\":\"A\",\"contenu\":\"...\",\"est_correct\":true,\"why\":\"...\"},...]";
@@ -142,7 +149,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       const parsed = parseAI(full);
       if (parsed) setAiParsed(parsed);
       supabase.from("ai_explanations").upsert(
-        { question_id: q.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
+        { question_id: currentQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
         { onConflict: "question_id" }
       ).then(() => setAiCached(full));
     }
