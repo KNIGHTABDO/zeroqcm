@@ -48,7 +48,7 @@ export function Sidebar() {
             <Stethoscope className="w-3.5 h-3.5 text-blue-400" />
           </div>
           <div>
-            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>FMPC QCM</p>
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>ZeroQCM</p>
             <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>FMPC · S1–S7</p>
           </div>
         </div>
