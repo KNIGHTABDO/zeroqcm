@@ -128,7 +128,7 @@ export default function LandingPage() {
         {/* Stats strip */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46 }}
           className="rounded-2xl border grid grid-cols-3 divide-x px-2 py-4"
-          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)", divideColor: "rgba(255,255,255,0.08)" }}>
+          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}>
           <AnimatedCounter value={43985} label="Questions" />
           <AnimatedCounter value={1038} label="Activités" />
           <AnimatedCounter value={5} label="Facultés" />
