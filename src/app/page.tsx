@@ -8,9 +8,9 @@ import {
 import { Marquee } from "@/components/ui/Marquee";
 import { useCounter } from "@/hooks/useCounter";
 
-const HERO_IMG = "https://lh3.googleusercontent.com/d/152UVX3jDqkWf88JN9G1OhKGBsf-2bK_Z";
-const STUDY_IMG = "https://lh3.googleusercontent.com/d/1RNvKT0tMRPqPweCMk18sDGT-ncNUn6LG";
-const ANATOMY_IMG = "https://lh3.googleusercontent.com/d/1zahKrj7hM_I2a_wD39cWrOz8FP9iDmrG";
+const HERO_IMG = "/images/hero.jpg";
+const STUDY_IMG = "/images/study.jpg";
+const ANATOMY_IMG = "/images/anatomy.jpg";
 
 const FEATURES = [
   {
