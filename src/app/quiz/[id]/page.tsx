@@ -340,7 +340,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                       <div className="mt-2">
                         {showSkeleton ? (
                           <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.06)" }} />
-                        ) : rev && !aiLoading && !aiParsed && aiText.startsWith("Erreur") && i === 0 ? (
+                        ) : rev && !aiLoading && !aiParsed && aiText.startsWith("Erreur") && idx === 0 ? (
                           <p className="text-[10px]" style={{ color: "rgba(239,68,68,0.8)" }}>⚠ {aiText.slice(0, 80)}</p>
                         ) : optWhy ? (
                           <div className="flex items-start gap-1.5">
