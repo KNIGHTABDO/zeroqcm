@@ -32,12 +32,11 @@ export function Sidebar() {
       .then(({ data }) => setSemesters(data ?? []));
   }, []);
 
-  // Filter sidebar semesters to the user's enrolled semester group
-  const userSemNum = profile?.semestre
-    ? (profile.semestre.match(/[sS](\d)/)?.[1] ?? null)
-    : null;
-  const visibleSemesters = userSemNum
-    ? semesters.filter((s) => s.semestre_id.toUpperCase().includes("S" + userSemNum))
+  // Map annee_etude → odd semester number (1→S1, 2→S3, 3→S5, 4→S7, 5→S9)
+  const YEAR_TO_SEM: Record<number, string> = { 1: "S1", 2: "S3", 3: "S5", 4: "S7", 5: "S9" };
+  const userSemKey = profile?.annee_etude ? (YEAR_TO_SEM[profile.annee_etude] ?? null) : null;
+  const visibleSemesters = userSemKey
+    ? semesters.filter((s) => s.semestre_id.toUpperCase().startsWith(userSemKey) || s.semestre_id.toUpperCase().includes("_" + userSemKey.replace("S","") + "_") || s.nom.toUpperCase().includes(userSemKey))
     : semesters;
 
   return (
