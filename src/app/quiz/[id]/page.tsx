@@ -29,8 +29,12 @@ type ParsedAI = OptionExplanation[] | null;
 
 function parseAI(raw: string): ParsedAI {
   try {
-    const p = JSON.parse(raw) as OptionExplanation[];
-    if (Array.isArray(p) && p[0]?.letter) return p;
+    // Handle potential ```json ``` code block wrapping
+    const cleaned = raw.replace(/^```(?:json)?
+?/i, "").replace(/
+?```$/i, "").trim();
+    const p = JSON.parse(cleaned) as OptionExplanation[];
+    if (Array.isArray(p) && p.length > 0 && p[0]?.letter) return p;
   } catch { /* not JSON */ }
   return null;
 }
@@ -47,6 +51,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>("quiz");
+  // Track whether AI should fire for current revealed question
+  const [shouldFetchAI, setShouldFetchAI] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [elapsed, setElapsed] = useState(0);
@@ -73,38 +79,58 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const q = questions[current];
   const isLast = current === questions.length - 1;
 
+  // Timer
   useEffect(() => {
     if (phase === "result" || loading) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [phase, loading]);
 
+  // Pre-load cached explanation when question changes
   useEffect(() => {
-    setAiCached(null); setAiText(""); setAiParsed(null);
+    setAiCached(null); setAiText(""); setAiParsed(null); setShouldFetchAI(false);
     if (!q) return;
     supabase.from("ai_explanations").select("explanation").eq("question_id", q.id).maybeSingle()
       .then(({ data }) => { if (data?.explanation) setAiCached(data.explanation); });
   }, [q?.id]);
 
-  function lockAndScore() {
-    if (!q || selected.size === 0) return;
-    const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
-    const ok = selected.size === correctIds.size && [...selected].every((id) => correctIds.has(id));
-    setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }));
-    setAnsweredCount((n) => n + 1);
-    if (user) submitAnswer({ userId: user.id, questionId: q.id, activityId, selectedChoiceIds: [...selected], isCorrect: ok, timeSpent: elapsed });
-  }
+  // Trigger AI fetch once phase is "revealed" and shouldFetchAI is set
+  // This avoids the React batching race where phase + fetchAI are called together
+  useEffect(() => {
+    if (phase !== "revealed" || !shouldFetchAI || !q) return;
+    setShouldFetchAI(false);
+    doFetchAI(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, shouldFetchAI]);
 
-  async function fetchAI(forceNew = false) {
+  async function doFetchAI(forceNew: boolean) {
     if (!q) return;
-    if (!forceNew && aiCached) { setAiText(aiCached); setAiParsed(parseAI(aiCached)); return; }
+    // Use cached if available and not forcing
+    if (!forceNew && aiCached) {
+      setAiText(aiCached);
+      setAiParsed(parseAI(aiCached));
+      return;
+    }
     setAiLoading(true); setAiText(""); setAiParsed(null);
-    const model = localStorage.getItem("fmpc-ai-model") ?? "gpt-4o-mini";
-    const opts = q.choices.map((c, i) => `${String.fromCharCode(65+i)}) ${c.contenu} — ${c.est_correct ? "CORRECTE" : "incorrecte"}`).join("\n");
-    const prompt = `Tu es un tuteur en médecine FMPC. Pour la question suivante, explique CHAQUE option (A, B, C…) en une phrase courte: pourquoi elle est correcte ou incorrecte. Réponds en JSON strict: [{"letter":"A","contenu":"…","est_correct":true,"why":"…"}, …]\n\nQuestion: "${q.texte}"\nOptions:\n${opts}\n\nRègles: JSON uniquement, français, max 25 mots par why, commence par "Car " ou "Parce que ".`;
+    const model = (typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null) ?? "gpt-4o-mini";
+    const opts = q.choices
+      .map((c, i) => `${String.fromCharCode(65 + i)}) ${c.contenu} — ${c.est_correct ? "CORRECTE" : "incorrecte"}`)
+      .join("
+");
+    const prompt = `Question de QCM médical (FMPC):
+"${q.texte}"
+
+Options:
+${opts}
+
+Pour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte. Commence chaque why par "Car " ou "Parce que ". Réponds uniquement en JSON: [{"letter":"A","contenu":"...","est_correct":true,"why":"..."},...]`;
     let full = "";
     try {
-      const res = await fetch("/api/ai-explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, model }) });
+      const res = await fetch("/api/ai-explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, model }),
+      });
       const reader = res.body?.getReader();
       const dec = new TextDecoder();
       if (!reader) { setAiLoading(false); return; }
@@ -113,20 +139,42 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         if (done) break;
         full += dec.decode(value);
         setAiText(full);
+        // Try parsing incrementally so cards appear as stream comes in
+        const parsed = parseAI(full);
+        if (parsed) setAiParsed(parsed);
       }
-    } catch { full = "Erreur de connexion à l'IA."; setAiText(full); }
+    } catch {
+      full = "Erreur de connexion.";
+      setAiText(full);
+    }
     setAiLoading(false);
     if (full && !full.startsWith("Erreur")) {
       const parsed = parseAI(full);
       if (parsed) setAiParsed(parsed);
-      supabase.from("ai_explanations").upsert({ question_id: q.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model }, { onConflict: "question_id" }).then(() => setAiCached(full));
+      // Cache in DB — RLS allows public insert with WITH CHECK (true)
+      supabase.from("ai_explanations").upsert(
+        { question_id: q.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
+        { onConflict: "question_id" }
+      ).then(() => setAiCached(full));
     }
+  }
+
+  function lockAndScore() {
+    if (!q || selected.size === 0) return;
+    const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
+    const ok = selected.size === correctIds.size && [...selected].every((cid) => correctIds.has(cid));
+    setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }));
+    setAnsweredCount((n) => n + 1);
+    if (user) submitAnswer({ userId: user.id, questionId: q.id, activityId, selectedChoiceIds: [...selected], isCorrect: ok, timeSpent: elapsed });
   }
 
   async function loadComments() {
     if (!q) return;
     const data = await getComments(q.id);
-    const norm = (data ?? []).map((c: Record<string, unknown>) => ({ ...c, profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null) })) as QuizComment[];
+    const norm = (data ?? []).map((c: Record<string, unknown>) => ({
+      ...c,
+      profiles: Array.isArray(c.profiles) ? (c.profiles[0] ?? null) : (c.profiles ?? null),
+    })) as QuizComment[];
     setComments(norm);
   }
 
@@ -136,15 +184,14 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setCommentText(""); loadComments();
   }
 
-  // "Voir correction" — lock answer + reveal + AI
+  // "Voir correction" — lock answer + set phase to revealed + queue AI fetch
   function handleReveal() {
     if (!q || selected.size === 0) return;
     lockAndScore();
-    setPhase("revealed");
-    fetchAI();
+    setPhase("revealed");       // state update 1
+    setShouldFetchAI(true);    // state update 2 — triggers useEffect after phase commits
   }
 
-  // "Suivant" — lock answer (if still in quiz) + skip to next
   function handleNext() {
     if (!q) return;
     if (phase === "quiz" && selected.size > 0) lockAndScore();
@@ -169,7 +216,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selected, q]);
 
-  useEffect(() => { window.addEventListener("keydown", handleKey); return () => window.removeEventListener("keydown", handleKey); }, [handleKey]);
+  useEffect(() => {
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [handleKey]);
 
   function onTouchStart(e: React.TouchEvent) { txRef.current = e.touches[0].clientX; tyRef.current = e.touches[0].clientY; }
   function onTouchEnd(e: React.TouchEvent) {
@@ -209,6 +259,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   }
 
   if (!q) return null;
+  const rev = phase === "revealed";
 
   return (
     <div className="min-h-screen flex flex-col pb-32" style={{ background: "var(--bg)" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -240,10 +291,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pt-2 space-y-3">
 
-        {/* Question */}
+        {/* Question card */}
         <div className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
           {q.source_question && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{q.source_question}</span>
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{q.source_type}</span>
             </div>
@@ -255,30 +306,83 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           )}
         </div>
 
-        {/* Choices */}
+        {/* Choices — inline AI explanations per option */}
         <div className="space-y-2">
           {q.choices.map((choice, idx) => {
             const isSel = selected.has(choice.id);
-            const rev = phase === "revealed";
-            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.35)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.35)" : isSel ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)";
-            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)";
-            const optWhy = aiParsed?.find((o) => o.letter === String.fromCharCode(65+idx))?.why;
+            const letter = String.fromCharCode(65 + idx);
+            const borderColor = rev && choice.est_correct
+              ? "rgba(16,185,129,0.4)"
+              : rev && isSel && !choice.est_correct
+              ? "rgba(239,68,68,0.4)"
+              : isSel ? "rgba(255,255,255,0.22)"
+              : "rgba(255,255,255,0.06)";
+            const bg = rev && choice.est_correct
+              ? "rgba(16,185,129,0.07)"
+              : rev && isSel && !choice.est_correct
+              ? "rgba(239,68,68,0.07)"
+              : isSel ? "rgba(255,255,255,0.06)"
+              : "rgba(255,255,255,0.02)";
+
+            // Per-option AI explanation from parsed JSON
+            const optWhy = aiParsed?.find((o) => o.letter === letter)?.why;
+            // Fallback: skeleton line for this option while AI is loading
+            const showSkeleton = rev && aiLoading && !aiParsed;
+
             return (
-              <motion.button key={choice.id}
-                onClick={() => phase === "quiz" && setSelected((prev) => { const n = new Set(prev); n.has(choice.id) ? n.delete(choice.id) : n.add(choice.id); return n; })}
+              <motion.button
+                key={choice.id}
+                onClick={() => phase === "quiz" && setSelected((prev) => {
+                  const n = new Set(prev);
+                  n.has(choice.id) ? n.delete(choice.id) : n.add(choice.id);
+                  return n;
+                })}
                 disabled={phase !== "quiz"}
                 whileTap={{ scale: phase === "quiz" ? 0.99 : 1 }}
                 className="w-full text-left rounded-xl px-4 py-3 border transition-all"
-                style={{ background: bg, borderColor }}>
+                style={{ background: bg, borderColor }}
+              >
                 <div className="flex items-start gap-3">
+                  {/* Letter badge */}
                   <span className="text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border"
-                    style={{ background: isSel ? "rgba(255,255,255,0.12)" : "transparent", borderColor: isSel ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)", color: "var(--text)" }}>
-                    {String.fromCharCode(65+idx)}
+                    style={{
+                      background: rev
+                        ? choice.est_correct ? "rgba(16,185,129,0.2)" : isSel ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.06)"
+                        : isSel ? "rgba(255,255,255,0.12)" : "transparent",
+                      borderColor: rev
+                        ? choice.est_correct ? "rgba(16,185,129,0.4)" : isSel ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"
+                        : isSel ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
+                      color: rev
+                        ? choice.est_correct ? "rgb(16,185,129)" : isSel ? "rgb(239,68,68)" : "var(--text-muted)"
+                        : "var(--text)",
+                    }}>
+                    {letter}
                   </span>
+
                   <div className="flex-1 min-w-0">
+                    {/* Choice text */}
                     <p className="text-sm leading-snug" style={{ color: "var(--text)" }}>{choice.contenu}</p>
-                    {rev && optWhy && <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{optWhy}</p>}
-                    {rev && !optWhy && choice.explication && <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{choice.explication}</p>}
+
+                    {/* ── Inline AI explanation ── */}
+                    {rev && (
+                      <div className="mt-2">
+                        {showSkeleton ? (
+                          // Skeleton while loading
+                          <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.06)" }} />
+                        ) : optWhy ? (
+                          // AI explanation
+                          <div className="flex items-start gap-1.5">
+                            <Brain size={10} className="flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
+                            <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{optWhy}</p>
+                          </div>
+                        ) : choice.explication ? (
+                          // Fallback: static explanation from DB
+                          <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{choice.explication}</p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* % bar */}
                     {rev && (
                       <div className="mt-1.5 flex items-center gap-2">
                         <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -288,58 +392,52 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                       </div>
                     )}
                   </div>
-                  {rev && (choice.est_correct ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" /> : isSel ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" /> : null)}
+
+                  {/* Correct/wrong icon */}
+                  {rev && (
+                    choice.est_correct
+                      ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                      : isSel
+                      ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+                      : null
+                  )}
                 </div>
               </motion.button>
             );
           })}
         </div>
 
-        {/* AI explanation */}
-        {phase === "revealed" && (
-          <div className="rounded-2xl border p-4 space-y-3" style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Brain size={14} style={{ color: "var(--accent)" }} />
-                <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Explication IA</span>
-                {aiCached && !aiLoading && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>}
-              </div>
+        {/* AI section footer — regenerate button only, no duplicate text */}
+        {rev && (
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              <Brain size={12} style={{ color: "var(--accent)" }} />
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                {aiLoading ? "Explication IA en cours…" : aiParsed ? "Explication IA" : aiText ? "Explication IA (texte brut)" : "Explication IA"}
+              </span>
               {aiCached && !aiLoading && (
-                <button onClick={() => fetchAI(true)} className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
-                  <RefreshCw size={10} /> Régénérer
-                </button>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
               )}
             </div>
-            {aiLoading ? (
-              <div className="space-y-2">{[0,1,2].map((i) => <div key={i} className="h-3 rounded animate-pulse" style={{ background:"rgba(255,255,255,0.06)", width:`${80-i*12}%` }} />)}</div>
-            ) : aiParsed ? (
-              <div className="space-y-2">
-                {aiParsed.map((opt) => (
-                  <div key={opt.letter} className="flex items-start gap-2.5 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                    <span className="font-bold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px]"
-                      style={{ background: opt.est_correct ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.12)", color: opt.est_correct ? "rgb(16,185,129)" : "rgb(239,68,68)" }}>
-                      {opt.letter}
-                    </span>
-                    <span>{opt.why}</span>
-                    {opt.est_correct ? <CheckCircle size={11} className="text-emerald-400 flex-shrink-0 mt-0.5" /> : <XCircle size={11} className="text-red-400 flex-shrink-0 mt-0.5" />}
-                  </div>
-                ))}
-              </div>
-            ) : aiText ? (
-              <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiText}</p>
-            ) : null}
+            {!aiLoading && (aiParsed || aiText) && (
+              <button onClick={() => doFetchAI(true)} className="flex items-center gap-1 text-[10px] hover:text-zinc-300 transition-colors" style={{ color: "var(--text-muted)" }}>
+                <RefreshCw size={10} /> Régénérer
+              </button>
+            )}
           </div>
         )}
 
         {/* Comments */}
-        {phase === "revealed" && (
+        {rev && (
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
             <button onClick={() => { setCommentsOpen(!commentsOpen); if (!commentsOpen) loadComments(); }}
               className="flex items-center gap-2 w-full px-4 py-3 text-sm transition-all hover:bg-white/[0.04]"
               style={{ color: "var(--text-muted)" }}>
               <MessageCircle size={13} />
               {commentsOpen ? "Masquer les commentaires" : "Commentaires"}
-              {comments.length > 0 && !commentsOpen && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400">{comments.length}</span>}
+              {comments.length > 0 && !commentsOpen && (
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400">{comments.length}</span>
+              )}
             </button>
             <AnimatePresence>
               {commentsOpen && (
@@ -348,7 +446,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     {user && (
                       <div className="pt-3 space-y-2">
                         <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Votre commentaire..." rows={2}
-                          className="w-full text-sm rounded-xl px-3 py-2 border resize-none focus:outline-none transition-colors"
+                          className="w-full text-sm rounded-xl px-3 py-2 border resize-none focus:outline-none"
                           style={{ background:"rgba(255,255,255,0.04)", borderColor:"rgba(255,255,255,0.08)", color:"var(--text)" }} />
                         <div className="flex items-center justify-between">
                           <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
@@ -362,15 +460,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     )}
                     {comments.length === 0 ? (
                       <p className="text-xs py-2" style={{ color: "var(--text-muted)" }}>Soyez le premier à commenter</p>
-                    ) : comments.map((c) => (
-                      <div key={c.id} className="space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{c.is_anonymous ? "Anonyme" : (c.profiles?.username ?? "Utilisateur")}</span>
-                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleDateString("fr-FR", { day:"numeric", month:"short" })}</span>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c.id} className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{c.is_anonymous ? "Anonyme" : (c.profiles?.username ?? "Utilisateur")}</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleDateString("fr-FR", { day:"numeric", month:"short" })}</span>
+                          </div>
+                          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.content}</p>
                         </div>
-                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.content}</p>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -386,7 +486,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             <>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleReveal} disabled={selected.size === 0}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold border transition-all disabled:opacity-30"
-                style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                style={{ borderColor:"rgba(255,255,255,0.12)", color:"var(--text)", background:"rgba(255,255,255,0.04)" }}>
                 Voir correction
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext} disabled={selected.size === 0}
@@ -403,7 +503,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           )}
         </div>
         <p className="text-center text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
-          {phase === "quiz" ? "1–5 choisir · C correction · → suivant" : "← Glisser à gauche pour continuer"}
+          {phase === "quiz" ? "1–5 choisir · C correction · → suivant" : "← Glisser pour continuer"}
         </p>
       </div>
     </div>
