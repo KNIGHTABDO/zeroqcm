@@ -11,8 +11,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        <title>FMPC QCM — Révisez comme jamais</title>
-        <meta name="description" content="La plateforme de révision premium pour les étudiants en médecine de la FMPC. 10,697 questions S1 avec corrections, statistiques et IA." />
+        <title>ZeroQCM — La révision médicale, réinventée</title>
+        <meta name="description" content="ZeroQCM — La plateforme de révision premium pour les étudiants en médecine du Maroc. 180 000+ questions, IA, révision ciblée, stats." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#000000" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
