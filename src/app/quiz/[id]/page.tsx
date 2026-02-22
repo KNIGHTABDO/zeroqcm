@@ -116,7 +116,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
     if (!forceNew && aiCached) { setAiText(aiCached); setAiParsed(parseAI(aiCached)); return; }
     setAiLoading(true); setAiText(""); setAiParsed(null);
-    const model = (typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null) ?? "gpt-4o-mini";
+    const VALID_GH_MODELS = new Set([
+      "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini",
+      "Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct",
+      "Mistral-Large-2", "Phi-4", "Phi-4-mini", "Cohere-Command-R-Plus-08-2024",
+      "DeepSeek-R1", "DeepSeek-V3",
+    ]);
+    const rawModel = typeof localStorage !== "undefined" ? localStorage.getItem("fmpc-ai-model") : null;
+    const model = rawModel && VALID_GH_MODELS.has(rawModel) ? rawModel : "gpt-4o-mini";
+    if (typeof localStorage !== "undefined" && rawModel && !VALID_GH_MODELS.has(rawModel)) {
+      localStorage.setItem("fmpc-ai-model", "gpt-4o-mini");
+    }
     const opts = q.choices.map((c, i) =>
       String.fromCharCode(65 + i) + ") " + c.contenu + " — " + (c.est_correct ? "CORRECTE" : "incorrecte")
     ).join("\n");
@@ -330,6 +340,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                       <div className="mt-2">
                         {showSkeleton ? (
                           <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.06)" }} />
+                        ) : rev && !aiLoading && !aiParsed && aiText.startsWith("Erreur") && i === 0 ? (
+                          <p className="text-[10px]" style={{ color: "rgba(239,68,68,0.8)" }}>⚠ {aiText.slice(0, 80)}</p>
                         ) : optWhy ? (
                           <div className="flex items-start gap-1.5">
                             <Brain size={10} className="flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
