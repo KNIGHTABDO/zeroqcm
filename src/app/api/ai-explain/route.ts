@@ -78,11 +78,22 @@ export async function POST(req: NextRequest) {
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
   if (!token) {
-    return new Response("Erreur: GITHUB_MODELS_TOKEN non configuré sur le serveur.", { status: 200 });
+    return new Response("[]", { headers, status: 200 });
   }
 
+  // Sanitize model — guard against stale localStorage values (e.g. "gemini-2.0-flash")
+  // that are not valid GitHub Models identifiers.
+  const VALID_MODELS = new Set([
+    "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini",
+    "Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct",
+    "Mistral-Large-2", "Phi-4", "Phi-4-mini", "Phi-4-multimodal-instruct",
+    "Cohere-Command-R-Plus-08-2024", "DeepSeek-R1", "DeepSeek-V3",
+    "AI21-Jamba-1.5-Large", "AI21-Jamba-1.5-Mini",
+  ]);
+  const safeModel = VALID_MODELS.has(modelId) ? modelId : "gpt-4o-mini";
+
   try {
-    const stream = await streamGhModels(token, modelId, [
+    const stream = await streamGhModels(token, safeModel, [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ]);
