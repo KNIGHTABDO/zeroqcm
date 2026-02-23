@@ -169,12 +169,19 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       localStorage.setItem("fmpc-ai-model", "gpt-4o-mini");
     }
     const opts = q.choices.map((c, i) =>
-      String.fromCharCode(65 + i) + ") " + c.contenu + " — " + (c.est_correct ? "CORRECTE" : "incorrecte")
+      String.fromCharCode(65 + i) + ") " + c.contenu + " [" + (c.est_correct ? "CORRECTE" : "INCORRECTE") + "]"
     ).join("\n");
-    const prompt = "Question de QCM médical (FMPC):\n\"" + q.texte + "\"\n\nOptions:\n" + opts +
-      "\n\nPour CHAQUE option, explique en max 25 mots pourquoi elle est correcte ou incorrecte." +
-      " Commence chaque why par \"Car \" ou \"Parce que \"." +
-      " Réponds uniquement en JSON: [{\"letter\":\"A\",\"contenu\":\"...\",\"est_correct\":true,\"why\":\"...\"},...]";
+    // Build a rich context for the AI
+    const correctionCtx = q.correction ? "\n\nCorrection officielle : " + q.correction : "";
+    const sourceCtx     = q.source_question ? " (source : " + q.source_question + ")" : "";
+    const prompt =
+      "## QCM Médical" + sourceCtx + "\n\n" +
+      "**Question :** " + q.texte + "\n\n" +
+      "**Options :**\n" + opts +
+      correctionCtx +
+      "\n\n## Consigne\n" +
+      "Explique chaque option avec profondeur pédagogique maximale (mécanisme, physiopatho, formules si nécessaire, valeurs normales, pièges classiques, mnémotechniques).\n" +
+      "Réponds UNIQUEMENT en JSON : [\"letter\":\"A\",\"contenu\":\"...\",\"est_correct\":true,\"why\":\"...\"},...]";
     const savedQ = q;
     let full = "";
     try {
