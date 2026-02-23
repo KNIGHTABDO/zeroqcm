@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Settings, Brain, Sun, Moon, Check, LogOut, ChevronDown, Loader2 } from "lucide-react";
 import { useTheme } from "@/components/layout/ThemeProvider";
@@ -34,13 +34,12 @@ const PREFERRED_ORDER = [
 function isTextModel(m: GhModel) {
   const t = (m.task ?? "").toLowerCase();
   const ty = (m.model_type ?? "").toLowerCase();
-  // Keep chat/text-gen models, skip embeddings/image/audio/code-only
   return (
     t.includes("chat") ||
     t.includes("text-generation") ||
     t.includes("text") ||
     ty.includes("chat") ||
-    (!t && !ty) // unknown type — include and let user decide
+    (!t && !ty)
   );
 }
 
@@ -65,6 +64,11 @@ export default function SettingsPage() {
   const [modelOpen, setModelOpen] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Ref for the trigger button — used to position the dropdown correctly
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
   // Load saved model preference
   useEffect(() => {
     const saved =
@@ -79,7 +83,6 @@ export default function SettingsPage() {
     fetch("/api/gh-models")
       .then((r) => r.json())
       .then((data: GhModel[]) => {
-        // Filter to text/chat models, sort preferred ones first
         const chat = data.filter(isTextModel);
         chat.sort((a, b) => {
           const ai = PREFERRED_ORDER.indexOf(a.id);
@@ -92,7 +95,6 @@ export default function SettingsPage() {
         setModels(chat);
       })
       .catch(() => {
-        // Fallback static list if the API fails
         setModels([
           { id: "gpt-4o-mini", name: "GPT-4o Mini" },
           { id: "gpt-4o", name: "GPT-4o" },
@@ -103,6 +105,36 @@ export default function SettingsPage() {
       })
       .finally(() => setLoadingModels(false));
   }, []);
+
+  // When dropdown opens, calculate the position of the trigger so we can
+  // render the panel with `position: fixed` — this escapes all stacking
+  // contexts and guarantees it renders on top of everything.
+  useEffect(() => {
+    if (modelOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: "fixed",
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
+  }, [modelOpen]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!modelOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (
+        triggerRef.current?.contains(e.target as Node) ||
+        dropdownRef.current?.contains(e.target as Node)
+      ) return;
+      setModelOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [modelOpen]);
 
   async function save() {
     localStorage.setItem("fmpc-ai-model", selectedModel);
@@ -159,64 +191,77 @@ export default function SettingsPage() {
             <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
               Modèle
             </label>
-            <div className="relative">
-              <button
-                onClick={() => setModelOpen((v) => !v)}
-                disabled={loadingModels}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all disabled:opacity-50"
+
+            {/* Trigger button */}
+            <button
+              ref={triggerRef}
+              onClick={() => setModelOpen((v) => !v)}
+              disabled={loadingModels}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all disabled:opacity-50"
+              style={{
+                background: "var(--surface-alt)",
+                borderColor: modelOpen ? "var(--border-strong)" : "var(--border)",
+                color: "var(--text)",
+              }}
+            >
+              <span className="flex items-center gap-2">
+                {loadingModels ? (
+                  <Loader2 size={13} className="animate-spin" style={{ color: "var(--text-muted)" }} />
+                ) : null}
+                {loadingModels ? "Chargement…" : (current.name || modelLabel(current.id))}
+              </span>
+              <ChevronDown
+                size={14}
                 style={{
-                  background: "var(--surface-alt)",
-                  borderColor: "var(--border)",
-                  color: "var(--text)",
+                  color: "var(--text-muted)",
+                  transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s",
+                }}
+              />
+            </button>
+
+            {/* Dropdown panel — rendered with position:fixed so it escapes all
+                stacking contexts. Background uses var(--bg) for full opacity. */}
+            {modelOpen && models.length > 0 && (
+              <div
+                ref={dropdownRef}
+                style={{
+                  ...dropdownStyle,
+                  background: "var(--bg)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                  overflowY: "auto",
+                  maxHeight: "260px",
+                  boxShadow: "var(--shadow)",
                 }}
               >
-                <span className="flex items-center gap-2">
-                  {loadingModels ? (
-                    <Loader2 size={13} className="animate-spin" style={{ color: "var(--text-muted)" }} />
-                  ) : null}
-                  {loadingModels ? "Chargement…" : (current.name || modelLabel(current.id))}
-                </span>
-                <ChevronDown
-                  size={14}
-                  style={{
-                    color: "var(--text-muted)",
-                    transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform 0.15s",
-                  }}
-                />
-              </button>
-
-              {modelOpen && models.length > 0 && (
-                <div
-                  className="absolute z-50 mt-1 w-full rounded-xl border overflow-hidden overflow-y-auto"
-                  style={{
-                    background: "var(--surface-elevated, var(--surface))",
-                    borderColor: "var(--border-strong)",
-                    maxHeight: "260px",
-                    boxShadow: "var(--shadow)",
-                  }}
-                >
-                  {models.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm border-b last:border-0 transition-all text-left"
-                      style={{ borderColor: "var(--border-subtle)", color: "var(--text)" }}
-                    >
-                      <div>
-                        <div className="font-medium">{m.name || modelLabel(m.id)}</div>
-                        {m.publisher && (
-                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                            {m.publisher}
-                          </div>
-                        )}
-                      </div>
-                      {selectedModel === m.id && <Check size={13} style={{ color: "var(--accent)" }} />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors"
+                    style={{
+                      borderBottom: "1px solid var(--border-subtle)",
+                      color: "var(--text)",
+                      background: selectedModel === m.id ? "var(--surface-active)" : "transparent",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-hover)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}
+                  >
+                    <div>
+                      <div className="font-medium">{m.name || modelLabel(m.id)}</div>
+                      {m.publisher && (
+                        <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                          {m.publisher}
+                        </div>
+                      )}
+                    </div>
+                    {selectedModel === m.id && <Check size={13} style={{ color: "var(--accent)" }} />}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Alimenté par{" "}
@@ -239,9 +284,9 @@ export default function SettingsPage() {
             onClick={save}
             className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{
-              background: saved ? "rgba(34,197,94,0.15)" : "var(--text)",
-              color: saved ? "rgb(34,197,94)" : "var(--bg)",
-              border: saved ? "1px solid rgba(34,197,94,0.3)" : "none",
+              background: saved ? "var(--success-subtle)" : "var(--text)",
+              color: saved ? "var(--success)" : "var(--bg)",
+              border: saved ? "1px solid var(--success-border)" : "none",
             }}
           >
             {saved ? "✓ Enregistré" : "Enregistrer"}
