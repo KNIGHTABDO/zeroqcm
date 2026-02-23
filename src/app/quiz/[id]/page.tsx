@@ -73,6 +73,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   // history[index] = Set of choice ids the user selected at that question
   const [history, setHistory] = useState<Map<number, Set<string>>>(new Map());
+  // session persistence
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [comments, setComments] = useState<QuizComment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentAnon, setCommentAnon] = useState(false);
@@ -81,13 +83,44 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const tyRef = useRef<number | null>(null);
 
   useEffect(() => {
-    getActivityWithQuestions(activityId).then(({ activity, questions: qs, openQuestions: oqs }) => {
+    async function loadData() {
+      const { activity, questions: qs, openQuestions: oqs } = await getActivityWithQuestions(activityId);
       setActivityName(activity?.nom ?? "QCM");
       setQuestions(qs as Question[]);
       setOpenQuestions((oqs ?? []) as Question[]);
+
+      // Restore incomplete session if one exists
+      if (user && qs.length > 0) {
+        const { data: session } = await supabase
+          .from("quiz_sessions")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("activity_id", activityId)
+          .eq("completed", false)
+          .maybeSingle();
+
+        if (session) {
+          const answersObj = (session.answers ?? {}) as Record<string, string[]>;
+          const restoredHistory = new Map<number, Set<string>>();
+          (qs as Question[]).forEach((q: Question, idx: number) => {
+            if (answersObj[q.id]) restoredHistory.set(idx, new Set(answersObj[q.id]));
+          });
+          setHistory(restoredHistory);
+          const idx = session.current_idx ?? 0;
+          setCurrent(idx);
+          setElapsed(session.time_elapsed ?? 0);
+          setScore({ correct: session.score_correct ?? 0, total: session.score_total ?? 0 });
+          setAnsweredCount(Object.keys(answersObj).length);
+          const wasAnswered = answersObj[(qs as Question[])[idx]?.id];
+          setPhase(wasAnswered ? "revealed" : "quiz");
+          if (wasAnswered) setSelected(new Set(wasAnswered));
+        }
+      }
       setLoading(false);
-    });
-  }, [activityId]);
+    }
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityId, user]);
 
   const q = questions[current];
   const isLast = current === questions.length - 1;
@@ -179,15 +212,53 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  function lockAndScore() {
+
+  // ── Session persistence ────────────────────────────────────────────────────
+  function buildAnswersPayload(hist: Map<number, Set<string>>, qs: typeof questions) {
+    const obj: Record<string, string[]> = {};
+    hist.forEach((sel, idx) => {
+      if (qs[idx]) obj[qs[idx].id] = [...sel];
+    });
+    return obj;
+  }
+
+  function saveSession(
+    hist: Map<number, Set<string>>,
+    idx: number,
+    elapsedSec: number,
+    sc: { correct: number; total: number },
+    done: boolean
+  ) {
+    if (!user || !activityId || questions.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const answersPayload = buildAnswersPayload(hist, questions);
+      await supabase.from("quiz_sessions").upsert({
+        user_id: user.id,
+        activity_id: activityId,
+        answers: answersPayload,
+        current_idx: idx,
+        time_elapsed: elapsedSec,
+        score_correct: sc.correct,
+        score_total: sc.total,
+        completed: done,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,activity_id" });
+    }, 800); // debounce 800ms to avoid hammering on fast navigation
+  }
+
+    function lockAndScore() {
     // Save selection to history so user can review prev questions
-    setHistory(prev => { const n = new Map(prev); n.set(current, new Set(selected)); return n; });
+    const newHistory = new Map(history); newHistory.set(current, new Set(selected));
+    setHistory(newHistory);
     if (!q || selected.size === 0) return;
     const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
     const ok = selected.size === correctIds.size && [...selected].every((cid) => correctIds.has(cid));
-    setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }));
+    const newScore = { correct: score.correct + (ok ? 1 : 0), total: score.total + 1 };
+    setScore(newScore);
     setAnsweredCount((n) => n + 1);
     if (user) submitAnswer({ userId: user.id, questionId: q.id, activityId, selectedChoiceIds: [...selected], isCorrect: ok, timeSpent: elapsed });
+    saveSession(newHistory, current, elapsed, newScore, false);
   }
 
 
@@ -230,8 +301,13 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   function handleNext() {
     if (!q) return;
     if (phase === "quiz" && selected.size > 0) lockAndScore();
-    if (isLast) { setPhase("result"); return; }
-    setCurrent((c) => c + 1);
+    if (isLast) {
+      setPhase("result");
+      saveSession(history, current, elapsed, score, true); // mark completed
+      return;
+    }
+    const nextIdx = current + 1;
+    setCurrent(nextIdx);
     setSelected(new Set());
     setPhase("quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
@@ -243,8 +319,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     const prevSel = history.get(prevIdx);
     setSelected(prevSel ? new Set(prevSel) : new Set());
     setCurrent(prevIdx);
-    setPhase("revealed");
+    setPhase(history.has(prevIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
+    saveSession(history, prevIdx, elapsed, score, false);
   }
 
   const handleKey = useCallback((e: KeyboardEvent) => {
@@ -295,7 +372,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>{score.correct}/{score.total} correctes · {mins}:{secs.toString().padStart(2, "0")}</p>
         <p className="text-base font-semibold mt-2" style={{ color: "var(--text)" }}>{activityName}</p>
         <div className="flex gap-3 w-full max-w-xs mt-4">
-          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); }}
+          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); setHistory(new Map()); if (user) supabase.from("quiz_sessions").delete().eq("user_id", user.id).eq("activity_id", activityId).then(() => {}); }}
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-white/[0.04]"
             style={{ borderColor: "var(--border)", color: "var(--text)" }}>Recommencer</button>
           <button onClick={() => router.back()} className="flex-1 py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">Terminer</button>
@@ -552,6 +629,13 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <div className="flex gap-2.5 max-w-lg mx-auto">
           {phase === "quiz" ? (
             <>
+              {current > 0 && (
+                <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrev}
+                  className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                  ←
+                </motion.button>
+              )}
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleReveal} disabled={selected.size === 0}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold border transition-all disabled:opacity-30"
                 style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
