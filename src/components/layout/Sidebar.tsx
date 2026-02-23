@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown } from "lucide-react";
+import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
