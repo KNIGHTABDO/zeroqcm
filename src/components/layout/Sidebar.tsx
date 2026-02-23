@@ -13,6 +13,8 @@ type Semester = { semestre_id: string; nom: string; faculty: string; total_quest
 const NAV = [
   { href: "/", icon: Home, label: "Tableau de bord" },
   { href: "/stats", icon: BarChart2, label: "Statistiques" },
+  { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
+  { href: "/leaderboard", icon: Trophy, label: "Classement" },
   { href: "/profil", icon: User, label: "Profil" },
   { href: "/settings", icon: Settings, label: "Paramètres" },
 ];

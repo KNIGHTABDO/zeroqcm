@@ -176,3 +176,39 @@ export async function addComment(params: {
     is_anonymous: params.isAnonymous,
   }).select().single();
 }
+
+// ── Bookmarks ─────────────────────────────────────────────────────────────────
+export async function toggleBookmark(userId: string, questionId: string): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from("bookmarks")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("question_id", questionId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("bookmarks").delete().eq("id", existing.id);
+    return false; // removed
+  } else {
+    await supabase.from("bookmarks").insert({ user_id: userId, question_id: questionId });
+    return true; // added
+  }
+}
+
+export async function isBookmarked(userId: string, questionId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("bookmarks")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("question_id", questionId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function getBookmarksCount(userId: string): Promise<number> {
+  const { count } = await supabase
+    .from("bookmarks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  return count ?? 0;
+}

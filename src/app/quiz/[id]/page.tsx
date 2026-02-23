@@ -2,12 +2,13 @@
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, CheckCircle, XCircle, Brain, MessageCircle, Send, RefreshCw, Loader2
+  ArrowLeft, CheckCircle, XCircle, Brain, MessageCircle, Send, RefreshCw, Loader2, Bookmark, BookmarkCheck
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { QuizImage } from "@/components/ui/QuizImage";
-import { supabase, getActivityWithQuestions, submitAnswer, getComments, addComment } from "@/lib/supabase";
+import { RichText } from "@/components/ui/RichText";
+import { supabase, getActivityWithQuestions, submitAnswer, getComments, addComment, toggleBookmark, isBookmarked } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type QuizComment = {
@@ -68,6 +69,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCached, setAiCached] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [comments, setComments] = useState<QuizComment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentAnon, setCommentAnon] = useState(false);
@@ -367,7 +370,24 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{q.source_type}</span>
             </div>
           )}
-          <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--text)" }}>{q.texte}</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <RichText text={q.texte} className="font-medium" />
+            </div>
+            {user && (
+              <button
+                onClick={handleBookmark}
+                disabled={bookmarkLoading}
+                className="flex-shrink-0 p-1.5 rounded-lg transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                title={bookmarked ? "Retirer des favoris" : "Ajouter aux favoris"}
+              >
+                {bookmarked
+                  ? <BookmarkCheck size={16} style={{ color: "var(--accent)" }} />
+                  : <Bookmark size={16} style={{ color: "var(--text-muted)" }} />
+                }
+              </button>
+            )}
+          </div>
           <QuizImage src={q.image_url} />
         </div>
 
@@ -394,7 +414,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     color: rev ? (choice.est_correct ? "rgb(16,185,129)" : isSel ? "rgb(239,68,68)" : "var(--text-muted)") : "var(--text)",
                   }}>{letter}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug" style={{ color: "var(--text)" }}>{choice.contenu}</p>
+                    <RichText text={choice.contenu} />
                     {rev && (
                       <div className="mt-2">
                         {showSkeleton ? (

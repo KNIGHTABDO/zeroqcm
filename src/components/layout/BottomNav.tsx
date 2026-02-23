@@ -1,15 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart2, User, Settings } from "lucide-react";
+import { Home, BookOpen, Bookmark, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", icon: Home, label: "Accueil" },
   { href: "/semestres", icon: BookOpen, label: "Semestres" },
-  { href: "/stats", icon: BarChart2, label: "Stats" },
+  { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
+  { href: "/leaderboard", icon: Trophy, label: "Top" },
   { href: "/profil", icon: User, label: "Profil" },
-  { href: "/settings", icon: Settings, label: "Réglages" },
 ];
 
 export function BottomNav() {
