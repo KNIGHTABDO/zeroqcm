@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
 import { Sidebar } from "./Sidebar";
@@ -15,18 +15,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const path   = usePathname();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  // null = checking, true = approved, false = not approved
+
+  // null = unknown/checking | true = approved | false = not approved
   const [activated, setActivated] = useState<boolean | null>(null);
+  const checkingRef = useRef<string | null>(null);  // tracks which user we're checking
 
   const isFullscreen   = FULLSCREEN.some((r) => path.startsWith(r));
-  const needsLockCheck = !isFullscreen && NO_LOCK_PATHS.every((p) => path !== p && !path.startsWith(p));
+  const needsLockCheck = !isFullscreen &&
+    NO_LOCK_PATHS.every((p) => path !== p && !path.startsWith(p));
 
   useEffect(() => {
-    // Reset when path changes so stale state doesn't flash
+    // Always reset when the path or user changes
     setActivated(null);
+    checkingRef.current = null;
 
-    if (!needsLockCheck || authLoading) return;
-    if (!user) return;
+    if (!needsLockCheck) return;
+    if (authLoading) return;
+    if (!user) {
+      // Not logged in on a protected page → send to auth
+      router.replace("/auth");
+      return;
+    }
+
+    // Avoid duplicate concurrent checks for the same user
+    if (checkingRef.current === user.id) return;
+    checkingRef.current = user.id;
 
     supabase
       .from("activation_keys")
@@ -34,43 +47,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
+        if (checkingRef.current !== user.id) return; // stale check
         if (error) { setActivated(false); return; }
         setActivated(data?.status === "approved");
       });
-  }, [user, authLoading, needsLockCheck, path]);
+  }, [user?.id, authLoading, needsLockCheck, path]);  // use user?.id not user (stable primitive)
 
   if (isFullscreen) return <>{children}</>;
 
-  // While checking activation for a protected page: render nothing (prevents content flash)
-  const isChecking = needsLockCheck && !authLoading && user && activated === null;
-  const isLocked   = needsLockCheck && !authLoading && user && activated === false;
+  // On a protected page, block content until we KNOW activation status:
+  // - authLoading: session resolving
+  // - user exists but activated is still null: DB check in-flight
+  // - activated is false: denied
+  const isProtected = needsLockCheck;
+  const isSpinning  = isProtected && (authLoading || (!!user && activated === null));
+  const isLocked    = isProtected && !authLoading && !!user && activated === false;
+  const hideContent = isSpinning || isLocked;
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <Sidebar />
       <div className="flex-1 min-w-0 overflow-x-hidden lg:ml-64 pb-20 lg:pb-0">
-        {/* Hide content while checking or locked — prevents any flash */}
-        <div style={{ visibility: (isChecking || isLocked) ? "hidden" : "visible" }}>
+        {/* Render children in DOM (for hydration) but hide until cleared */}
+        <div style={{ visibility: hideContent ? "hidden" : "visible" }}>
           {children}
         </div>
         <BottomNav />
       </div>
 
-      {/* Checking: minimal centered spinner */}
       <AnimatePresence>
-        {isChecking && (
+        {/* Full-page spinner while resolving auth / activation */}
+        {isSpinning && (
           <motion.div
             key="checking"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className="fixed inset-0 z-[100] flex items-center justify-center"
             style={{ background: "var(--bg)" }}
           >
-            <div className="w-7 h-7 rounded-full border-2 animate-spin"
-              style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }} />
+            <div
+              className="w-7 h-7 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }}
+            />
           </motion.div>
         )}
 
-        {/* Locked: full overlay */}
+        {/* Activation lock overlay */}
         {isLocked && (
           <motion.div
             key="lock-overlay"
@@ -99,8 +121,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </div>
               <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
                   <Lock className="w-7 h-7 text-white/60" />
                 </div>
               </div>
