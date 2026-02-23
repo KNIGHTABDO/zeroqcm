@@ -16,30 +16,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // null = unknown/checking | true = approved | false = not approved
+  // null = checking | true = approved | false = not approved
   const [activated, setActivated] = useState<boolean | null>(null);
-  const checkingRef = useRef<string | null>(null);  // tracks which user we're checking
+  const lastCheckedUser = useRef<string | null>(null);
 
   const isFullscreen   = FULLSCREEN.some((r) => path.startsWith(r));
   const needsLockCheck = !isFullscreen &&
     NO_LOCK_PATHS.every((p) => path !== p && !path.startsWith(p));
 
   useEffect(() => {
-    // Always reset when the path or user changes
-    setActivated(null);
-    checkingRef.current = null;
-
-    if (!needsLockCheck) return;
-    if (authLoading) return;
-    if (!user) {
-      // Not logged in on a protected page → send to auth
-      router.replace("/auth");
+    if (!needsLockCheck) {
+      setActivated(null);
+      lastCheckedUser.current = null;
       return;
     }
+    if (authLoading) return;
+    if (!user) return; // middleware handles unauthenticated redirect
 
-    // Avoid duplicate concurrent checks for the same user
-    if (checkingRef.current === user.id) return;
-    checkingRef.current = user.id;
+    // Already checked this user — don't re-check on every path change
+    if (lastCheckedUser.current === user.id) return;
+
+    setActivated(null); // reset to show spinner while querying
+    lastCheckedUser.current = user.id;
 
     supabase
       .from("activation_keys")
@@ -47,28 +45,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
-        if (checkingRef.current !== user.id) return; // stale check
+        if (lastCheckedUser.current !== user.id) return; // stale
         if (error) { setActivated(false); return; }
         setActivated(data?.status === "approved");
       });
-  }, [user?.id, authLoading, needsLockCheck, path]);  // use user?.id not user (stable primitive)
+  }, [user?.id, authLoading, needsLockCheck]);  // removed `path` — check is per-user, not per-page
+
+  // Re-check when user changes (logout/login)
+  useEffect(() => {
+    if (!user) {
+      setActivated(null);
+      lastCheckedUser.current = null;
+    }
+  }, [user?.id]);
 
   if (isFullscreen) return <>{children}</>;
 
-  // On a protected page, block content until we KNOW activation status:
-  // - authLoading: session resolving
-  // - user exists but activated is still null: DB check in-flight
-  // - activated is false: denied
-  const isProtected = needsLockCheck;
-  const isSpinning  = isProtected && (authLoading || (!!user && activated === null));
-  const isLocked    = isProtected && !authLoading && !!user && activated === false;
-  const hideContent = isSpinning || isLocked;
+  const isChecking = needsLockCheck && !authLoading && !!user && activated === null;
+  const isLocked   = needsLockCheck && !authLoading && !!user && activated === false;
+  const hideContent = isChecking || isLocked;
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <Sidebar />
       <div className="flex-1 min-w-0 overflow-x-hidden lg:ml-64 pb-20 lg:pb-0">
-        {/* Render children in DOM (for hydration) but hide until cleared */}
         <div style={{ visibility: hideContent ? "hidden" : "visible" }}>
           {children}
         </div>
@@ -76,8 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <AnimatePresence>
-        {/* Full-page spinner while resolving auth / activation */}
-        {isSpinning && (
+        {isChecking && (
           <motion.div
             key="checking"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -92,7 +91,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </motion.div>
         )}
 
-        {/* Activation lock overlay */}
         {isLocked && (
           <motion.div
             key="lock-overlay"
