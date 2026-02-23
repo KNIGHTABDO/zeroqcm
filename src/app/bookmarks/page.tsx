@@ -40,7 +40,8 @@ export default function BookmarksPage() {
       .select("id, question_id, created_at, questions(id, texte, activity_id, activities(id, nom, modules(nom)))")
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
-    setBookmarks((data ?? []) as BookmarkedQuestion[]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setBookmarks((data ?? []) as unknown as BookmarkedQuestion[]);
     setLoading(false);
   }
 
