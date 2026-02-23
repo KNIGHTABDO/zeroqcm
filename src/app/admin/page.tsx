@@ -93,7 +93,7 @@ function RegenSection() {
   async function startRegen(forceParam: boolean) {
     if (!regenStats) return;
     abortRef.current = false;
-    const target = forceParam ? regenStats.total_questions : regenStats.missing;
+    const target = forceParam ? regenStats.total_explained : regenStats.missing;
     setProgress({ done: 0, total: target, errors: 0 });
     setPhase("running");
 
