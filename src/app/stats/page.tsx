@@ -10,7 +10,7 @@ import { StatCardSkeleton } from "@/components/ui/Skeleton";
 // Animated SVG ring component
 function ProgressRing({
   value, max = 100, size = 80, stroke = 6,
-  color = "#3b82f6", label, sublabel,
+  color = "var(--accent)", label, sublabel,
 }: {
   value: number; max?: number; size?: number; stroke?: number;
   color?: string; label: string; sublabel?: string;
@@ -68,9 +68,9 @@ export default function StatsPage() {
   }, [user, authLoading]);
 
   const rings = [
-    { value: stats.total, max: Math.max(stats.total, 500), color: "#3b82f6", label: "Répondues", sublabel: "questions" },
-    { value: stats.correct, max: Math.max(stats.total, 1), color: "#10b981", label: "Correctes", sublabel: `${stats.total > 0 ? stats.rate : 0}%` },
-    { value: stats.streak, max: Math.max(stats.streak, 30), color: "#f97316", label: "Série", sublabel: "jours" },
+    { value: stats.total, max: Math.max(stats.total, 500), color: "var(--accent)", label: "Répondues", sublabel: "questions" },
+    { value: stats.correct, max: Math.max(stats.total, 1), color: "var(--success)", label: "Correctes", sublabel: `${stats.total > 0 ? stats.rate : 0}%` },
+    { value: stats.streak, max: Math.max(stats.streak, 30), color: "var(--warning)", label: "Série", sublabel: "jours" },
   ];
 
   return (
@@ -121,14 +121,14 @@ export default function StatsPage() {
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Taux de réussite global</p>
-                  <span className={`text-sm font-bold ${stats.rate >= 70 ? "text-emerald-400" : stats.rate >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                  <span className="text-sm font-bold" style={{ color: stats.rate >= 70 ? "var(--success)" : stats.rate >= 50 ? "var(--warning)" : "var(--error)" }}>
                     {stats.rate}%
                   </span>
                 </div>
                 <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-active)" }}>
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ background: stats.rate >= 70 ? "#10b981" : stats.rate >= 50 ? "#f59e0b" : "#ef4444" }}
+                    style={{ background: stats.rate >= 70 ? "var(--success)" : stats.rate >= 50 ? "var(--warning)" : "var(--error)" }}
                     initial={{ width: 0 }}
                     animate={{ width: `${stats.rate}%` }}
                     transition={{ duration: 1.2, ease: "easeOut", delay: 0.4 }}
@@ -147,10 +147,10 @@ export default function StatsPage() {
                 className="rounded-2xl border px-5 py-4 flex items-center gap-4"
                 style={{ background: "var(--warning-subtle)", borderColor: "var(--warning-border)" }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--warning-subtle)", border: "1px solid var(--warning-border)" }}>
-                  <Flame className="w-5 h-5 text-orange-400" />
+                  <Flame className="w-5 h-5" style={{ color: "var(--warning)" }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-orange-400">
+                  <p className="text-sm font-semibold" style={{ color: "var(--warning)" }}>
                     {stats.streak} jour{stats.streak > 1 ? "s" : ""} de suite 🔥
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
