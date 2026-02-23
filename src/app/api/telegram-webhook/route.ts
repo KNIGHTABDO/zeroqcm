@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
+export const dynamic     = "force-dynamic";
+export const maxDuration = 30; // prevent Vercel Hobby 10s cold-start timeout
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN!;
 const SUPABASE_URL   = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   const userId    = callbackData.replace(/^(approve|deny)_/, "");
   const newStatus = isApprove ? "approved" : "denied";
 
-  // ── Answer callback FIRST — clears the loading spinner immediately ─────────
+  // ── 1. Answer callback IMMEDIATELY — clears loading spinner ───────────────
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     }),
   });
 
-  // ── DB update ─────────────────────────────────────────────────────────────
+  // ── 2. Update DB via service-role (bypasses RLS) ──────────────────────────
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -62,9 +63,13 @@ export async function POST(req: NextRequest) {
     .update(updatePayload)
     .eq("user_id", userId);
 
-  if (dbErr) console.error("DB update error:", dbErr);
+  if (dbErr) {
+    console.error("DB update error:", JSON.stringify(dbErr));
+  } else {
+    console.log(`activation_keys updated: user=${userId} status=${newStatus}`);
+  }
 
-  // ── Fetch profile for display name ────────────────────────────────────────
+  // ── 3. Fetch display name for edited message ──────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
     .select("username, full_name")
@@ -73,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   const displayName = escapeHtml(profile?.full_name || profile?.username || userId.slice(0, 8));
 
-  // ── Edit original message to show final result ────────────────────────────
+  // ── 4. Edit original Telegram message to show result ─────────────────────
   const now = new Date().toLocaleString("fr-FR", { timeZone: "Africa/Casablanca" });
   const resultText = isApprove
     ? `✅ <b>Approuvé</b>
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
 👤 ${displayName}
 🆔 <code>${userId}</code>`;
 
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+  const editRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -96,6 +101,8 @@ export async function POST(req: NextRequest) {
       parse_mode: "HTML",
     }),
   });
+  const editJson = await editRes.json();
+  if (!editJson.ok) console.error("editMessageText error:", JSON.stringify(editJson));
 
   return NextResponse.json({ ok: true });
 }

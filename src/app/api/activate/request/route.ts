@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
+export const dynamic     = "force-dynamic";
+export const maxDuration = 30;
 
 const BOT_TOKEN         = process.env.TELEGRAM_BOT_TOKEN!;
 const ADMIN_ID          = process.env.TELEGRAM_ADMIN_ID!;
@@ -9,12 +10,12 @@ const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const SERVICE_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-function escapeHtml(s: string): string {
+function escapeHtml(s: string | null | undefined): string {
+  if (!s) return "";
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 export async function POST(req: NextRequest) {
-  // ── Auth: get user from Bearer token ──────────────────────────────────────
   const auth = req.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -29,12 +30,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Session invalide" }, { status: 401 });
   }
 
-  // ── Service-role client for DB writes ─────────────────────────────────────
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // ── Check current status ──────────────────────────────────────────────────
   const { data: existing } = await admin
     .from("activation_keys")
     .select("status")
@@ -45,21 +44,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: "approved" });
   }
 
-  // ── Fetch user profile ─────────────────────────────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
     .select("username, full_name, annee_etude, faculty")
     .eq("id", user.id)
     .maybeSingle();
 
-  const displayName = profile?.full_name || profile?.username || user.email?.split("@")[0] || "Inconnu";
+  const displayName = escapeHtml(profile?.full_name || profile?.username || user.email?.split("@")[0] || "Inconnu");
   const semester    = profile?.annee_etude ? `S${(profile.annee_etude * 2) - 1}` : "N/A";
   const now         = new Date().toLocaleString("fr-FR", {
     timeZone: "Africa/Casablanca", day: "2-digit", month: "short",
     year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 
-  // ── Upsert activation_keys ─────────────────────────────────────────────────
   const { error: upsertErr } = await admin
     .from("activation_keys")
     .upsert({
@@ -70,15 +67,14 @@ export async function POST(req: NextRequest) {
     }, { onConflict: "user_id" });
 
   if (upsertErr) {
-    console.error("Upsert error:", upsertErr);
+    console.error("Upsert error:", JSON.stringify(upsertErr));
     return NextResponse.json({ error: "Erreur base de données" }, { status: 500 });
   }
 
-  // ── Send Telegram message (HTML, not MarkdownV2) ───────────────────────────
   const text = [
     "🔔 <b>Nouvelle demande d'activation ZeroQCM</b>",
     "",
-    `👤 <b>Nom:</b> ${escapeHtml(displayName)}`,
+    `👤 <b>Nom:</b> ${displayName}`,
     `📧 <b>Email:</b> ${escapeHtml(user.email ?? "")}`,
     `📚 <b>Semestre:</b> ${semester}`,
     `🏫 <b>Faculté:</b> ${escapeHtml(profile?.faculty || "FMPC")}`,
@@ -98,7 +94,6 @@ export async function POST(req: NextRequest) {
     },
   };
 
-  let telegramMsgId: number | null = null;
   try {
     const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method:  "POST",
@@ -107,9 +102,8 @@ export async function POST(req: NextRequest) {
     });
     const tgJson = await tgRes.json();
     if (tgJson.ok) {
-      telegramMsgId = tgJson.result.message_id;
       await admin.from("activation_keys")
-        .update({ telegram_message_id: telegramMsgId })
+        .update({ telegram_message_id: tgJson.result.message_id })
         .eq("user_id", user.id);
     } else {
       console.error("Telegram sendMessage error:", JSON.stringify(tgJson));
