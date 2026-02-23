@@ -1,5 +1,5 @@
 "use client";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { useRef } from "react";
 import {
@@ -12,7 +12,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 
 const HERO_IMG = "/images/hero.jpg";
 
-// ── Features data ────────────────────────────────────────────────────────────
+// ── Features data ─────────────────────────────────────────────────────────
 const FEATURES = [
   { icon: Brain,         num: "01", title: "IA intégrée",       desc: "Explication streamée par GPT-4 directement après chaque réponse." },
   { icon: Zap,           num: "02", title: "Multi-facultés",    desc: "FMPC · FMPR · FMPM · UM6SS · FMPDF — toutes les filières en un seul endroit." },
@@ -22,9 +22,14 @@ const FEATURES = [
   { icon: Sparkles,      num: "06", title: "Accès immédiat",    desc: "Compte en quelques secondes. Aucune vérification e-mail." },
 ];
 
-// ── Quranic ayah ──────────────────────────────────────────────────────────────
-const AYAH_AR = "وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئًا وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ";
+// ── Quranic ayah (An-Nahl 16:78) ──────────────────────────────────────────
+const AYAH_AR  = "وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئًا وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ";
 const AYAH_SRC = "سورة النحل — الآية ٧٨";
+
+// ── Morning duaa (authentic, Bukhari / Muslim) ─────────────────────────────
+const DUAA_AR  = "اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا وَرِزْقًا طَيِّبًا وَعَمَلًا مُتَقَبَّلًا";
+const DUAA_FR  = "Ô Allah, je Te demande un savoir utile, une subsistance purifiée et une bonne action acceptée.";
+const DUAA_SRC = "رواه ابن ماجه · دعاء الصباح";
 
 const SUBJECTS = [
   "Embryologie","Biologie Cellulaire","Génétique","Histologie","Anatomie",
@@ -32,7 +37,7 @@ const SUBJECTS = [
   "Sémiologie","Pathologie","Neurologie","Cardiologie","Radiologie",
 ];
 
-// ── Animated counter ──────────────────────────────────────────────────────────
+// ── Animated counter ──────────────────────────────────────────────────────
 function AnimatedCounter({ value, label }: { value: number; label: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
@@ -47,7 +52,7 @@ function AnimatedCounter({ value, label }: { value: number; label: string }) {
   );
 }
 
-// ── Feature card with scroll-reveal ──────────────────────────────────────────
+// ── Feature card with scroll-reveal ──────────────────────────────────────
 function FeatureCard({ icon: Icon, num, title, desc, index }: {
   icon: React.ElementType; num: string; title: string; desc: string; index: number;
 }) {
@@ -61,9 +66,8 @@ function FeatureCard({ icon: Icon, num, title, desc, index }: {
       transition={{ duration: 0.55, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
       className="group relative flex flex-col gap-4 px-5 py-6 rounded-2xl cursor-default select-none"
       style={{
-        background: "rgba(255,255,255,0.025)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        backdropFilter: "blur(8px)",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
       }}
     >
       {/* number watermark */}
@@ -82,112 +86,132 @@ function FeatureCard({ icon: Icon, num, title, desc, index }: {
       </div>
       {/* hover shimmer line */}
       <div className="absolute bottom-0 left-0 right-0 h-px rounded-b-2xl transition-opacity opacity-0 group-hover:opacity-100"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)" }} />
+        style={{ background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
     </motion.div>
   );
 }
 
-// ── Logged-in shortcuts ────────────────────────────────────────────────────────
-function LoggedInHero({ name }: { name: string }) {
-  const firstName = name?.split(" ")[0] ?? "Étudiant";
-
-  const quickLinks = [
-    {
-      href: "/semestres",
-      icon: BookOpen,
-      label: "Reprendre la révision",
-      sublabel: "Continuez là où vous vous êtes arrêté",
-    },
-    {
-      href: "/stats",
-      icon: TrendingUp,
-      label: "Mes statistiques",
-      sublabel: "Taux de réussite · séries · progression",
-    },
-    {
-      href: "/revision",
-      icon: Flame,
-      label: "Révision ciblée",
-      sublabel: "Questions où vous peinez le plus",
-    },
-  ];
-
+// ── Islamic block (ayah / duaa) ───────────────────────────────────────────
+function IslamicBlock({ ar, src, fr }: { ar: string; src: string; fr?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
-    <div className="flex flex-col items-center text-center w-full max-w-sm mx-auto space-y-7">
-      {/* Greeting */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.5 }}>
-        <p className="text-[11px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--text-muted)" }}>
-          Bon retour
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 16 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="relative rounded-2xl px-5 py-6 text-center overflow-hidden"
+      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+    >
+      {/* top hairline accent */}
+      <div className="absolute top-0 left-1/4 right-1/4 h-px"
+        style={{ background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
+      <p dir="rtl" className="leading-[2.1] mb-3"
+        style={{
+          color: "var(--text)",
+          fontFamily: "'Scheherazade New', 'Noto Naskh Arabic', serif",
+          fontSize: "clamp(1.1rem, 3.5vw, 1.5rem)",
+          fontWeight: 400,
+        }}>
+        {ar}
+      </p>
+      {fr && (
+        <p className="text-xs leading-relaxed italic mb-3" style={{ color: "var(--text-secondary)" }}>
+          {fr}
         </p>
-        <h1 className="text-[30px] sm:text-[36px] font-bold tracking-tight" style={{ color: "var(--text)" }}>
-          {firstName}
-        </h1>
-      </motion.div>
-
-      {/* Quick-link cards — spaced, premium */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
-        className="w-full space-y-3">
-        {quickLinks.map(({ href, icon: Icon, label, sublabel }, i) => (
-          <motion.div
-            key={href}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.25 + i * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
-            <Link href={href}>
-              <div
-                className="group flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.07)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)";
-                }}
-              >
-                {/* icon container */}
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Icon className="w-4 h-4" style={{ color: "rgba(255,255,255,0.7)" }} />
-                </div>
-                {/* text */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold tracking-tight" style={{ color: "var(--text)" }}>{label}</p>
-                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>
-                </div>
-                {/* arrow */}
-                <ArrowRight className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-60 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-200"
-                  style={{ color: "var(--text)" }} />
-              </div>
-            </Link>
-          </motion.div>
-        ))}
-      </motion.div>
-    </div>
+      )}
+      <p dir="rtl" className="text-[11px]" style={{ color: "var(--text-muted)", fontFamily: "'Noto Naskh Arabic', serif" }}>
+        {src}
+      </p>
+    </motion.div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Logged-in view ────────────────────────────────────────────────────────
+function LoggedInHome({ name }: { name: string }) {
+  const firstName = name?.split(" ")[0] ?? "Étudiant";
+
+  const quickLinks = [
+    { href: "/semestres",  icon: BookOpen,    label: "Reprendre la révision",  sublabel: "Continuez là où vous vous êtes arrêté" },
+    { href: "/stats",      icon: TrendingUp,  label: "Mes statistiques",       sublabel: "Taux de réussite · séries · progression" },
+    { href: "/revision",   icon: Flame,       label: "Révision ciblée",        sublabel: "Questions où vous peinez le plus" },
+  ];
+
+  return (
+    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
+      <div className="max-w-md mx-auto px-4 pt-8 pb-10 space-y-6">
+
+        {/* Greeting */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.5 }}>
+          <p className="text-[11px] uppercase tracking-[0.2em] mb-2" style={{ color: "var(--text-muted)" }}>
+            Bon retour
+          </p>
+          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight" style={{ color: "var(--text)" }}>
+            {firstName}
+          </h1>
+        </motion.div>
+
+        {/* Morning duaa */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}>
+          <IslamicBlock ar={DUAA_AR} src={DUAA_SRC} fr={DUAA_FR} />
+        </motion.div>
+
+        {/* Quick-link cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5 }}
+          className="space-y-2.5">
+          {quickLinks.map(({ href, icon: Icon, label, sublabel }, i) => (
+            <motion.div
+              key={href}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
+              <Link href={href}>
+                <div
+                  className="group flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--surface-hover)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--surface)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
+                  }}
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                    style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+                    <Icon className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold tracking-tight" style={{ color: "var(--text)" }}>{label}</p>
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-50 transition-all -translate-x-1 group-hover:translate-x-0 duration-200"
+                    style={{ color: "var(--text)" }} />
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Quranic ayah */}
+        <IslamicBlock ar={AYAH_AR} src={AYAH_SRC} />
+
+      </div>
+    </main>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const { user, profile } = useAuth();
   const isLoggedIn = !!user;
   const userName = profile?.full_name ?? profile?.username ?? user?.email?.split("@")[0] ?? "";
 
-  // ── Authenticated users get a clean dashboard — no hero noise ──────────────
   if (isLoggedIn) {
-    return (
-      <main
-        className="min-h-screen flex items-center justify-center px-4 py-16"
-        style={{ background: "var(--bg)", color: "var(--text)" }}
-      >
-        <LoggedInHero name={userName} />
-      </main>
-    );
+    return <LoggedInHome name={userName} />;
   }
 
   return (
@@ -216,7 +240,7 @@ export default function LandingPage() {
 
           <>
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.55, ease: [0.22,1,0.36,1] }}>
-              <h1 className="text-[32px] sm:text-[44px] font-bold tracking-tight leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h1 className="text-[32px] sm:text-[44px] font-bold tracking-tight leading-[1.1]" style={{ color: "rgba(255,255,255,0.95)" }}>
                 La révision médicale,<br />
                 <span style={{ color: "rgba(255,255,255,0.4)" }}>réinventée.</span>
               </h1>
@@ -243,7 +267,7 @@ export default function LandingPage() {
           {(
             <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
               className="rounded-2xl grid grid-cols-3 divide-x px-2 py-4"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(12px)" }}>
               <AnimatedCounter value={180650} label="Questions" />
               <AnimatedCounter value={6369} label="Activités" />
               <AnimatedCounter value={5} label="Facultés" />
@@ -257,15 +281,15 @@ export default function LandingPage() {
         <Marquee speed={28} className="gap-3">
           {SUBJECTS.map((s) => (
             <span key={s} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap"
-              style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)", color: "var(--text-muted)" }}>
-              <span className="w-1 h-1 rounded-full inline-block" style={{ background: "rgba(255,255,255,0.25)" }} />
+              style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
+              <span className="w-1 h-1 rounded-full inline-block" style={{ background: "var(--text-disabled)" }} />
               {s}
             </span>
           ))}
         </Marquee>
       </div>
 
-      {/* ── Quranic Ayah — Arabic only, premium typography ── */}
+      {/* ── Quranic Ayah ── */}
       <section className="px-4 pt-14 pb-10 max-w-2xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -273,21 +297,13 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative rounded-3xl px-6 py-12 sm:px-10 sm:py-14 overflow-hidden text-center"
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.07)",
-          }}
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         >
-          {/* top accent line */}
           <div className="absolute top-0 left-1/4 right-1/4 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }} />
-
-          {/* Ayah */}
-          <p
-            dir="rtl"
-            className="leading-[2.2] mb-6"
+            style={{ background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
+          <p dir="rtl" className="leading-[2.2] mb-6"
             style={{
-              color: "rgba(255,255,255,0.92)",
+              color: "var(--text)",
               fontFamily: "'Scheherazade New', 'Noto Naskh Arabic', serif",
               fontSize: "clamp(1.35rem, 4vw, 1.85rem)",
               fontWeight: 400,
@@ -295,12 +311,9 @@ export default function LandingPage() {
             }}>
             {AYAH_AR}
           </p>
-
-          {/* Source */}
-          <p
-            dir="rtl"
+          <p dir="rtl"
             style={{
-              color: "rgba(255,255,255,0.28)",
+              color: "var(--text-muted)",
               fontFamily: "'Noto Naskh Arabic', serif",
               fontSize: "0.8rem",
               letterSpacing: "0.03em",
@@ -310,17 +323,15 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ── Features grid — numbered, scroll-reveal ── */}
+      {/* ── Features grid ── */}
       <section className="px-4 pb-14 max-w-2xl mx-auto">
-        {/* section label */}
         <motion.p
           initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
           transition={{ duration: 0.5 }}
           className="text-[10px] uppercase tracking-[0.2em] text-center mb-8"
-          style={{ color: "rgba(255,255,255,0.25)" }}>
+          style={{ color: "var(--text-muted)" }}>
           Fonctionnalités
         </motion.p>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {FEATURES.map((f, i) => (
             <FeatureCard key={f.title} {...f} index={i} />

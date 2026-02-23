@@ -194,8 +194,8 @@ export default function ProfilPage() {
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "var(--text-muted)" }}>Faculté</label>
                 <select value={faculty} onChange={e => handleFacultyChange(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40"
-                  style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}>
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40 appearance-none"
+                  style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--input-text)" }}>
                   {FACULTIES.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
@@ -207,8 +207,8 @@ export default function ProfilPage() {
                   )}
                 </label>
                 <select value={semId} onChange={e => setSemId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40"
-                  style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}>
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-blue-500/40 appearance-none"
+                  style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--input-text)" }}>
                   {(FACULTY_SEMESTERS[faculty] ?? []).map(s => (
                     <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
@@ -216,7 +216,7 @@ export default function ProfilPage() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setEditing(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm border transition-all hover:bg-white/[0.04]"
+                  className="flex-1 py-2.5 rounded-xl text-sm border transition-all"
                   style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>Annuler</button>
                 <button onClick={save} disabled={saving}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all" style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
@@ -234,12 +234,12 @@ export default function ProfilPage() {
                 <span className="text-[10px] px-2 py-1 rounded-lg" style={{ color: "var(--accent)", background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
                   {curFac}
                 </span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                <span className="text-[10px] px-2 py-1 rounded-lg" style={{ color: "var(--success)", background: "var(--success-subtle)", border: "1px solid var(--success-border)" }}>
                   {activeSemLabel}
                 </span>
               </div>
               <button onClick={() => setEditing(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:bg-white/[0.06]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all 06]"
                 style={{ color: "var(--text-muted)" }}>
                 <Edit2 className="w-3 h-3" /> Modifier
               </button>
@@ -269,7 +269,7 @@ export default function ProfilPage() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="space-y-2">
           <Link href={"/semestres/" + activeSemId}
-            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all hover:bg-white/[0.04]"
+            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3">
               <BookOpen className="w-4 h-4" style={{ color: "var(--accent)" }} />
@@ -281,16 +281,16 @@ export default function ProfilPage() {
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>&#8594;</span>
           </Link>
           <Link href="/stats"
-            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all hover:bg-white/[0.04]"
+            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3">
-              <Target className="w-4 h-4 text-emerald-400" />
+              <Target className="w-4 h-4" style={{ color: "var(--success)" }} />
               <span className="text-sm font-medium" style={{ color: "var(--text)" }}>Statistiques</span>
             </div>
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>&#8594;</span>
           </Link>
           <Link href="/settings"
-            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all hover:bg-white/[0.04]"
+            className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3">
               <Settings className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
