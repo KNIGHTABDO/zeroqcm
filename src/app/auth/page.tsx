@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Stethoscope, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -51,7 +51,10 @@ export default function AuthPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto">
-            <Stethoscope className="w-6 h-6 text-blue-400" />
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
+                  <rect width="40" height="40" rx="10" fill="var(--text)" />
+                  <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="var(--bg)" fontSize="18" fontWeight="700" fontFamily="system-ui,-apple-system,sans-serif">Z</text>
+                </svg>
           </div>
           <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
             {mode === "signin" ? "Connexion" : "Créer un compte"}

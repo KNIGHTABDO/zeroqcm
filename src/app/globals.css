@@ -79,11 +79,17 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(255, 255, 255, 0.10);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.20);
+
+  /* Skeleton */
+  --skeleton-from: rgba(255, 255, 255, 0.04);
+  --skeleton-to:   rgba(255, 255, 255, 0.08);
 }
 
 /* ── Light mode overrides ── */
 .light,
 [data-theme="light"] {
+  --skeleton-from: rgba(0, 0, 0, 0.04);
+  --skeleton-to:   rgba(0, 0, 0, 0.08);
   --bg:              #f8f8f8;
   --bg-secondary:    #f0f0f0;
   --bg-tertiary:     #e8e8e8;

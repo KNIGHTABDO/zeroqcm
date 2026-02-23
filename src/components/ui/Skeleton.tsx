@@ -6,7 +6,7 @@ export function Skeleton({ className }: { className?: string }) {
     <div
       className={cn("skeleton", className)}
       style={{
-        background: "linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%)",
+        background: "linear-gradient(90deg, var(--skeleton-from) 0%, var(--skeleton-to) 50%, var(--skeleton-from) 100%)",
         backgroundSize: "200% 100%",
         animation: "shimmer 1.5s ease-in-out infinite",
         borderRadius: "0.75rem",

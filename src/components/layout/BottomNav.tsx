@@ -22,8 +22,9 @@ export function BottomNav() {
           const active = path === item.href || (item.href !== "/" && path.startsWith(item.href));
           return (
             <Link key={item.href} href={item.href}
-              className={cn("flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[52px]",
-                active ? "opacity-100" : "opacity-50 hover:opacity-75")}>
+              className={cn("flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl transition-all min-w-[52px] min-h-[48px] justify-center",
+                active ? "opacity-100" : "opacity-50 hover:opacity-75")}
+              style={active ? { background: "var(--nav-item-active)" } : {}}>
               <item.icon className="w-5 h-5" style={{ color: active ? "var(--text)" : "var(--text-secondary)" }} />
               <span className="text-[10px] font-medium" style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
                 {item.label}

@@ -299,7 +299,7 @@ export default function SettingsPage() {
             <button onClick={toggle}
               className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all"
               style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text)" }}>
-              <span>{theme === "dark" ? "Mode sombre" : "Mode clair"}</span>
+              <span>{theme === "dark" ? "Mode clair" : "Mode sombre"}</span>
               <div className="relative w-10 h-5 rounded-full transition-colors"
                 style={{ background: theme === "dark" ? "var(--accent)" : "var(--surface-active)" }}>
                 <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"

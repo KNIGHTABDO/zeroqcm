@@ -372,7 +372,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>{score.correct}/{score.total} correctes · {mins}:{secs.toString().padStart(2, "0")}</p>
         <p className="text-base font-semibold mt-2" style={{ color: "var(--text)" }}>{activityName}</p>
         <div className="flex gap-3 w-full max-w-xs mt-4">
-          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); setHistory(new Map()); if (user) supabase.from("quiz_sessions").delete().eq("user_id", user.id).eq("activity_id", activityId).then(() => {}); }}
+          <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); setHistory(new Map()); setAiCached(null); if (user) supabase.from("quiz_sessions").delete().eq("user_id", user.id).eq("activity_id", activityId).then(() => {}); }}
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-white/[0.04]"
             style={{ borderColor: "var(--border)", color: "var(--text)" }}>Recommencer</button>
           <button onClick={() => router.back()} className="flex-1 py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">Terminer</button>
