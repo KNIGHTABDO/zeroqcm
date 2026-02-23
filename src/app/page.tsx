@@ -1,6 +1,7 @@
 "use client";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { useRef } from "react";
 import {
   Brain, Zap, BarChart2, MessageCircle, Shield, Sparkles, ArrowRight,
@@ -85,7 +86,7 @@ function FeatureCard({ icon: Icon, num, title, desc, index }: {
         <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
       </div>
       {/* hover shimmer line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px rounded-b-2xl transition-opacity opacity-0 group-hover:opacity-100"
+      <div className="absolute bottom-0 left-0 right-0 h-px rounded-b-2xl transition-opacity duration-300 ease-in-out opacity-0 group-hover:opacity-100"
         style={{ background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
     </motion.div>
   );
@@ -220,9 +221,8 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section className="relative overflow-hidden w-full min-h-[420px] sm:min-h-[520px] flex flex-col items-center justify-center px-4 pt-10 pb-10 text-center">
         <div className="absolute inset-0 z-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={HERO_IMG} alt="" aria-hidden
-            className="w-full h-full object-cover object-center"
+          <Image src={HERO_IMG} alt="" aria-hidden fill sizes="100vw" priority
+            className="object-cover object-center"
             style={{ opacity: 0.08, filter: "saturate(0) brightness(0.5)" }} />
           <div className="absolute inset-0"
             style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.8) 100%)" }} />
@@ -233,7 +233,7 @@ export default function LandingPage() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
             className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpg" alt="ZeroQCM"
+            <Image src="/logo.jpg" alt="ZeroQCM" width={44} height={44}
               className="h-11 w-11 rounded-xl object-cover"
               style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.1)" }} />
           </motion.div>

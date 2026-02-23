@@ -326,6 +326,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (!q) return;
+    const handled = ["1","2","3","4","5","c","C","Enter","ArrowRight","ArrowLeft"," "];
+    if (handled.includes(e.key)) e.preventDefault();
     if (phase === "quiz") {
       const idx = ["1","2","3","4","5"].indexOf(e.key);
       if (idx !== -1 && q.choices[idx]) {
@@ -503,8 +505,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           {q.choices.map((choice, idx) => {
             const isSel = selected.has(choice.id);
             const letter = String.fromCharCode(65 + idx);
-            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.4)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.4)" : isSel ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)";
-            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)";
+            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.4)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.4)" : isSel ? "var(--accent, rgba(255,255,255,0.6))" : "rgba(255,255,255,0.06)";
+            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.02)";
             const optWhy = aiParsed?.find((o) => o.letter === letter)?.why;
             const showSkeleton = rev && aiLoading && !aiParsed;
             return (
