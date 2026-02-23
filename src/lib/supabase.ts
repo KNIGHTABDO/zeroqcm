@@ -1,11 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: true, autoRefreshToken: true },
-});
+// createBrowserClient stores session in cookies (not localStorage)
+// so Next.js middleware can read the session server-side via @supabase/ssr
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 // ─── Types matching the REAL DB schema ────────────────────────────────────────
 export type Profile = {
@@ -89,7 +89,6 @@ export async function upsertProfile(profile: Partial<Profile> & { id: string }):
 
 // ─── Quiz data ────────────────────────────────────────────────────────────────
 export async function getActivityWithQuestions(activityId: number) {
-  // Two separate queries — avoids relying on PostgREST join resolution
   const [{ data: activity }, { data: allQuestions }] = await Promise.all([
     supabase.from("activities").select("*").eq("id", activityId).single(),
     supabase
@@ -98,7 +97,6 @@ export async function getActivityWithQuestions(activityId: number) {
       .eq("activity_id", activityId)
       .order("position"),
   ]);
-  // Separate QCM (has choices) vs open/QROC (no choices)
   const questions = (allQuestions ?? []).filter(
     (q: { source_type: string; choices: unknown[] }) =>
       q.source_type !== "open" && Array.isArray(q.choices) && q.choices.length > 0
@@ -188,10 +186,10 @@ export async function toggleBookmark(userId: string, questionId: string): Promis
 
   if (existing) {
     await supabase.from("bookmarks").delete().eq("id", existing.id);
-    return false; // removed
+    return false;
   } else {
     await supabase.from("bookmarks").insert({ user_id: userId, question_id: questionId });
-    return true; // added
+    return true;
   }
 }
 
