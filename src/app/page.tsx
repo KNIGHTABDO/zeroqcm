@@ -70,13 +70,13 @@ function FeatureCard({ icon: Icon, num, title, desc, index }: {
     >
       {/* number watermark */}
       <span className="absolute top-4 right-5 text-[11px] font-mono tabular-nums"
-        style={{ color: "rgba(255,255,255,0.12)" }}>
+        style={{ color: "var(--text-disabled)" }}>
         {num}
       </span>
       {/* icon */}
       <div className="w-8 h-8 flex items-center justify-center rounded-xl"
-        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <Icon className="w-4 h-4" style={{ color: "rgba(255,255,255,0.6)" }} />
+        style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+        <Icon className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
       </div>
       <div>
         <p className="text-sm font-semibold tracking-tight mb-1.5" style={{ color: "var(--text)" }}>{title}</p>
@@ -118,7 +118,7 @@ function LoggedInHero({ name }: { name: string }) {
     <div className="flex flex-col items-center text-center w-full max-w-sm mx-auto space-y-7">
       {/* Greeting */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.5 }}>
-        <p className="text-[11px] uppercase tracking-[0.2em] mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <p className="text-[11px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--text-muted)" }}>
           Bon retour
         </p>
         <h1 className="text-[30px] sm:text-[36px] font-bold tracking-tight" style={{ color: "var(--text)" }}>
@@ -160,7 +160,7 @@ function LoggedInHero({ name }: { name: string }) {
                 {/* text */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold tracking-tight" style={{ color: "var(--text)" }}>{label}</p>
-                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{sublabel}</p>
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{sublabel}</p>
                 </div>
                 {/* arrow */}
                 <ArrowRight className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-60 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-200"
@@ -247,7 +247,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Subject ticker ── */}
-      <div className="py-3 border-y overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="py-3 border-y overflow-hidden w-full max-w-full" style={{ borderColor: "var(--border)" }}>
         <Marquee speed={28} className="gap-3">
           {SUBJECTS.map((s) => (
             <span key={s} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap"
