@@ -168,17 +168,56 @@ function RegenSection() {
         {/* Coverage stats */}
         {regenStats && (
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Total questions",  value: regenStats.total_questions.toLocaleString(), color: "rgba(255,255,255,0.5)" },
-              { label: "Expliquées",       value: regenStats.total_explained.toLocaleString(), color: "#22c55e" },
-              { label: "Manquantes",       value: regenStats.missing.toLocaleString(),          color: regenStats.missing > 0 ? "#fbbf24" : "#22c55e" },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl p-3 text-center"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-lg font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
-                <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</p>
-              </div>
-            ))}
+            {/* Total questions — no action */}
+            <div className="rounded-xl p-3 text-center"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: "rgba(255,255,255,0.5)" }}>{regenStats.total_questions.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Total questions</p>
+            </div>
+
+            {/* Expliquées — Régénérer button */}
+            <div className="rounded-xl p-3 text-center relative group"
+              style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.15)" }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: "#22c55e" }}>{regenStats.total_explained.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Expliquées</p>
+              {phase === "idle" && regenStats.total_explained > 0 && (
+                <button
+                  onClick={() => startRegen(true)}
+                  title="Régénérer toutes les explications existantes"
+                  className="mt-2 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-md text-[9px] font-semibold transition-all"
+                  style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>
+                  <RefreshCw size={8} /> Régénérer
+                </button>
+              )}
+              {phase === "running" && (
+                <div className="mt-2 flex items-center gap-1 mx-auto justify-center">
+                  <div className="w-2 h-2 rounded-full border border-green-400 border-t-transparent animate-spin" />
+                  <span className="text-[9px]" style={{ color: "#22c55e" }}>{pct}%</span>
+                </div>
+              )}
+            </div>
+
+            {/* Manquantes — Compléter button */}
+            <div className="rounded-xl p-3 text-center"
+              style={{
+                background: regenStats.missing > 0 ? "rgba(251,191,36,0.04)" : "rgba(255,255,255,0.03)",
+                border: regenStats.missing > 0 ? "1px solid rgba(251,191,36,0.15)" : "1px solid rgba(255,255,255,0.06)"
+              }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: regenStats.missing > 0 ? "#fbbf24" : "#22c55e" }}>{regenStats.missing.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Manquantes</p>
+              {phase === "idle" && regenStats.missing > 0 && (
+                <button
+                  onClick={() => startRegen(false)}
+                  title="Générer les explications manquantes"
+                  className="mt-2 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-md text-[9px] font-semibold transition-all"
+                  style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
+                  <Zap size={8} /> Compléter
+                </button>
+              )}
+              {phase === "idle" && regenStats.missing === 0 && (
+                <p className="text-[9px] mt-1.5" style={{ color: "rgba(34,197,94,0.5)" }}>✓ Complet</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -272,44 +311,16 @@ function RegenSection() {
           )}
         </AnimatePresence>
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-2">
-          {phase === "idle" || phase === "done" || phase === "error" || phase === "checking" ? (
-            <>
-              {/* Button A: fill missing only */}
-              <button
-                onClick={() => startRegen(false)}
-                disabled={phase === "checking" || !regenStats || regenStats.missing === 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>
-                {phase === "checking" ? (
-                  <div className="w-3.5 h-3.5 rounded-full border border-current border-t-transparent animate-spin" />
-                ) : (
-                  <Zap className="w-3.5 h-3.5" />
-                )}
-                {regenStats?.missing === 0 ? "Tout est à jour ✓" : `Compléter manquantes (${regenStats?.missing.toLocaleString() ?? "…"})`}
-              </button>
-
-              {/* Button B: regenerate ALL (overwrite) */}
-              <button
-                onClick={() => startRegen(true)}
-                disabled={phase === "checking" || !regenStats}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-                style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" }}>
-                <RefreshCw className="w-3.5 h-3.5" />
-                Tout régénérer ({regenStats?.total_questions.toLocaleString() ?? "…"})
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={stopRegen}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <div className="w-3 h-3 rounded-sm" style={{ background: "#f87171" }} />
-              Arrêter
-            </button>
-          )}
-        </div>
+        {/* Stop button — only visible during active run */}
+        {phase === "running" && (
+          <button
+            onClick={stopRegen}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <div className="w-3 h-3 rounded-sm" style={{ background: "#f87171" }} />
+            Arrêter
+          </button>
+        )}
 
         <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>
           Traitement par lots de {REGEN_BATCH} questions · GitHub Models · Mise en cache automatique en base
