@@ -186,7 +186,23 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     if (user) submitAnswer({ userId: user.id, questionId: q.id, activityId, selectedChoiceIds: [...selected], isCorrect: ok, timeSpent: elapsed });
   }
 
-  async function loadComments() {
+
+  // ── Bookmarks ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || !q) return;
+    isBookmarked(user.id, q.id).then(setBookmarked);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, q?.id]);
+
+  async function handleBookmark() {
+    if (!user || !q || bookmarkLoading) return;
+    setBookmarkLoading(true);
+    const newState = await toggleBookmark(user.id, q.id);
+    setBookmarked(newState);
+    setBookmarkLoading(false);
+  }
+
+    async function loadComments() {
     if (!q) return;
     const data = await getComments(q.id);
     const norm = (data ?? []).map((c: Record<string, unknown>) => ({
