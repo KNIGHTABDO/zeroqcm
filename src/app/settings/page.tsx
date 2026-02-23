@@ -145,7 +145,7 @@ export default function SettingsPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border p-4 space-y-4"
-          style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
         >
           <div className="flex items-center gap-2">
             <Brain size={15} style={{ color: "var(--accent)" }} />
@@ -163,10 +163,10 @@ export default function SettingsPage() {
               <button
                 onClick={() => setModelOpen((v) => !v)}
                 disabled={loadingModels}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-white/20 disabled:opacity-50"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all disabled:opacity-50"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  borderColor: "rgba(255,255,255,0.08)",
+                  background: "var(--surface-alt)",
+                  borderColor: "var(--border)",
                   color: "var(--text)",
                 }}
               >
@@ -191,17 +191,17 @@ export default function SettingsPage() {
                   className="absolute z-50 mt-1 w-full rounded-xl border overflow-hidden overflow-y-auto"
                   style={{
                     background: "var(--surface-elevated, var(--surface))",
-                    borderColor: "rgba(255,255,255,0.1)",
+                    borderColor: "var(--border-strong)",
                     maxHeight: "260px",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                    boxShadow: "var(--shadow)",
                   }}
                 >
                   {models.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm border-b last:border-0 transition-all hover:bg-white/[0.05] text-left"
-                      style={{ borderColor: "rgba(255,255,255,0.04)", color: "var(--text)" }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm border-b last:border-0 transition-all text-left"
+                      style={{ borderColor: "var(--border-subtle)", color: "var(--text)" }}
                     >
                       <div>
                         <div className="font-medium">{m.name || modelLabel(m.id)}</div>
@@ -254,7 +254,7 @@ export default function SettingsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
           className="rounded-2xl border p-4"
-          style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
         >
           <div className="flex items-center gap-2 mb-3">
             {theme === "dark" ? <Moon size={15} style={{ color: "var(--accent)" }} /> : <Sun size={15} style={{ color: "var(--accent)" }} />}
@@ -264,13 +264,13 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={toggle}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-white/20"
-            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all"
+            style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text)" }}
           >
             <span>{theme === "dark" ? "Mode sombre" : "Mode clair"}</span>
             <div
               className="relative w-10 h-5 rounded-full transition-colors"
-              style={{ background: theme === "dark" ? "var(--accent)" : "rgba(255,255,255,0.15)" }}
+              style={{ background: theme === "dark" ? "var(--accent)" : "var(--surface-active)" }}
             >
               <div
                 className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
@@ -287,7 +287,7 @@ export default function SettingsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="rounded-2xl border p-4 space-y-3"
-            style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}
           >
             <div className="flex items-center gap-2">
               <Settings size={15} style={{ color: "var(--accent)" }} />
@@ -306,7 +306,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm transition-all hover:border-red-500/30 hover:bg-red-500/5"
-              style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgb(239,68,68)" }}
+              style={{ borderColor: "var(--border)", color: "rgb(239,68,68)" }}
             >
               <LogOut size={14} />
               Se déconnecter
