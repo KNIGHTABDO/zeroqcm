@@ -1,111 +1,142 @@
 "use client";
 import React from "react";
-/**
- * RichText — renders question/answer text with full markdown support.
- *
- * Handles: tables (|…|), bold (**…**), italic, code (`…`), lists,
- * line breaks, and superscript/subscript patterns common in medical QCMs.
- */
 
 interface RichTextProps {
   text: string;
   className?: string;
 }
 
-// Parse a pipe-table string → { headers, rows }
-function parseTable(raw: string): { headers: string[]; rows: string[][] } | null {
-  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
-  const tableLines = lines.filter(l => l.startsWith("|"));
+// ── Inline renderer ────────────────────────────────────────────────────────────
+// Handles: **bold**, *italic*, `code`, ^sup, _sub
+function renderInline(text: string, baseKey: string): React.ReactNode {
+  if (!text) return null;
+
+  const result: React.ReactNode[] = [];
+  let i = 0;
+  let keyIdx = 0;
+  let buf = "";
+
+  const flush = () => {
+    if (buf) { result.push(<React.Fragment key={`${baseKey}-t${keyIdx++}`}>{buf}</React.Fragment>); buf = ""; }
+  };
+
+  while (i < text.length) {
+    // **bold**
+    if (text[i] === "*" && text[i + 1] === "*") {
+      const end = text.indexOf("**", i + 2);
+      if (end !== -1) {
+        flush();
+        result.push(<strong key={`${baseKey}-b${keyIdx++}`} className="font-semibold" style={{ color: "var(--text)" }}>{text.slice(i + 2, end)}</strong>);
+        i = end + 2; continue;
+      }
+    }
+    // *italic*
+    if (text[i] === "*" && text[i + 1] !== "*") {
+      const end = text.indexOf("*", i + 1);
+      if (end !== -1) {
+        flush();
+        result.push(<em key={`${baseKey}-em${keyIdx++}`}>{text.slice(i + 1, end)}</em>);
+        i = end + 1; continue;
+      }
+    }
+    // `code`
+    if (text[i] === "`") {
+      const end = text.indexOf("`", i + 1);
+      if (end !== -1) {
+        flush();
+        result.push(
+          <code key={`${baseKey}-c${keyIdx++}`}
+            className="px-1 py-0.5 rounded text-[0.8em] font-mono"
+            style={{ background: "var(--surface-active)", color: "var(--accent)" }}>
+            {text.slice(i + 1, end)}
+          </code>
+        );
+        i = end + 1; continue;
+      }
+    }
+    // ^superscript (e.g. ^2)
+    if (text[i] === "^") {
+      let j = i + 1;
+      while (j < text.length && text[j] !== " " && text[j] !== "^") j++;
+      if (j > i + 1) {
+        flush();
+        result.push(<sup key={`${baseKey}-sup${keyIdx++}`} className="text-[0.7em]">{text.slice(i + 1, j)}</sup>);
+        i = j; continue;
+      }
+    }
+    // _subscript_ (only when surrounded by non-space)
+    if (text[i] === "_" && i > 0 && text[i - 1] !== " ") {
+      const end = text.indexOf("_", i + 1);
+      if (end !== -1 && end < i + 20) {
+        flush();
+        result.push(<sub key={`${baseKey}-sub${keyIdx++}`} className="text-[0.7em]">{text.slice(i + 1, end)}</sub>);
+        i = end + 1; continue;
+      }
+    }
+    buf += text[i];
+    i++;
+  }
+  flush();
+  return result.length === 1 ? result[0] : <>{result}</>;
+}
+
+// ── Table parser ────────────────────────────────────────────────────────────────
+function parseTable(lines: string[]): { headers: string[]; rows: string[][] } | null {
+  const tableLines = lines.filter(l => l.trim().startsWith("|"));
   if (tableLines.length < 2) return null;
 
-  const parseCells = (line: string) =>
-    line.split("|").map(c => c.trim()).filter((_, i, a) => i > 0 && i < a.length - 1);
+  const parseCells = (line: string): string[] =>
+    line.split("|").map(c => c.trim()).filter((_, idx, a) => idx > 0 && idx < a.length - 1);
 
   const headers = parseCells(tableLines[0]);
-  const rows = tableLines
-    .slice(1)
-    .filter(l => !/^[|\s-]+$/.test(l))
-    .map(parseCells);
-
+  // Skip separator line (---)
+  const dataLines = tableLines.slice(1).filter(l => {
+    const stripped = l.replace(/[|\-\s]/g, "");
+    return stripped.length > 0;
+  });
+  const rows = dataLines.map(parseCells);
   return headers.length > 0 ? { headers, rows } : null;
 }
 
-// Inline markdown: **bold**, *italic*, `code`, sub/superscript
-function renderInline(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  // Process all inline patterns
-  let remaining = text;
-  let key = 0;
-
-  const patterns: [RegExp, (m: RegExpMatchArray) => React.ReactNode][] = [
-    [/\*\*(.+?)\*\*/ms,  (m) => <strong key={key++} className="font-semibold" style={{ color: "var(--text)" }}>{m[1]}</strong>],
-    [/\*(.+?)\*,       (m) => <em key={key++} style={{ color: "var(--text)" }}>{m[1]}</em>],
-    [/`([^`]+)`/,          (m) => <code key={key++} className="px-1 py-0.5 rounded text-[0.8em] font-mono" style={{ background: "var(--surface-active)", color: "var(--accent)" }}>{m[1]}</code>],
-    [/\^([^\s^]+)/,       (m) => <sup key={key++} className="text-[0.7em]">{m[1]}</sup>],
-    [/_([^_]+)_/,          (m) => <sub key={key++} className="text-[0.7em]">{m[1]}</sub>],
-  ];
-
-  while (remaining.length > 0) {
-    let earliest: { index: number; match: RegExpMatchArray; node: React.ReactNode } | null = null;
-
-    for (const [re, fn] of patterns) {
-      const m = remaining.match(re);
-      if (m && m.index !== undefined) {
-        if (!earliest || m.index < earliest.index) {
-          earliest = { index: m.index, match: m, node: fn(m) };
-        }
-      }
-    }
-
-    if (!earliest) {
-      parts.push(<span key={key++}>{remaining}</span>);
-      break;
-    }
-
-    if (earliest.index > 0) {
-      parts.push(<span key={key++}>{remaining.slice(0, earliest.index)}</span>);
-    }
-    parts.push(earliest.node);
-    remaining = remaining.slice(earliest.index + earliest.match[0].length);
-  }
-
-  return parts;
-}
-
+// ── Main component ──────────────────────────────────────────────────────────────
 export function RichText({ text, className = "" }: RichTextProps) {
   if (!text) return null;
 
-  // Split text into blocks (separated by double newline or table blocks)
-  const blocks = text.split("\n\n");
+  // Split into double-newline blocks, preserving table blocks
+  const rawBlocks = text.split("\n\n");
   const elements: React.ReactNode[] = [];
-  let key = 0;
 
-  for (const block of blocks) {
+  rawBlocks.forEach((block, blockIdx) => {
     const trimmed = block.trim();
-    if (!trimmed) continue;
+    if (!trimmed) return;
 
-    // Detect markdown table
-    if (trimmed.includes("|") && trimmed.split("\n").filter(l => l.trim().startsWith("|")).length >= 2) {
-      const table = parseTable(trimmed);
+    const lines = trimmed.split("\n").map(l => l.trim());
+
+    // ── Table block
+    const hasTable = lines.some(l => l.startsWith("|"));
+    if (hasTable && lines.length >= 2) {
+      const table = parseTable(lines);
       if (table) {
         elements.push(
-          <div key={key++} className="overflow-x-auto my-2 rounded-xl" style={{ border: "1px solid var(--border)" }}>
+          <div key={`block-${blockIdx}`} className="overflow-x-auto my-2 rounded-xl" style={{ border: "1px solid var(--border)" }}>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr style={{ background: "var(--surface-active)" }}>
                   {table.headers.map((h, i) => (
-                    <th key={i} className="px-3 py-2 text-left font-semibold" style={{ color: "var(--text)", borderBottom: "1px solid var(--border)" }}>
-                      {renderInline(h)}
+                    <th key={i} className="px-3 py-2 text-left font-semibold whitespace-nowrap"
+                      style={{ color: "var(--text)", borderBottom: "1px solid var(--border)" }}>
+                      {renderInline(h, `th-${blockIdx}-${i}`)}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {table.rows.map((row, ri) => (
-                  <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--surface-alt)" }}>
+                  <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
                     {row.map((cell, ci) => (
-                      <td key={ci} className="px-3 py-2" style={{ color: "var(--text)", borderTop: "1px solid var(--border-subtle)" }}>
-                        {renderInline(cell)}
+                      <td key={ci} className="px-3 py-2"
+                        style={{ color: "var(--text)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                        {renderInline(cell, `td-${blockIdx}-${ri}-${ci}`)}
                       </td>
                     ))}
                   </tr>
@@ -114,57 +145,61 @@ export function RichText({ text, className = "" }: RichTextProps) {
             </table>
           </div>
         );
-        continue;
+        return;
       }
     }
 
-    // Bullet/unordered list
-    const listLines = trimmed.split("\n");
-    const isList = listLines.every(l => /^[\-\*•]\s/.test(l.trim()));
-    if (isList && listLines.length > 1) {
+    // ── Bullet list (- item or • item)
+    const isBulletList = lines.length > 1 && lines.every(l => l.startsWith("- ") || l.startsWith("* ") || l.startsWith("• "));
+    if (isBulletList) {
       elements.push(
-        <ul key={key++} className="list-none space-y-1 my-1">
-          {listLines.map((l, i) => (
+        <ul key={`block-${blockIdx}`} className="list-none space-y-1 my-1">
+          {lines.map((l, i) => (
             <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
               <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--accent)" }} />
-              <span style={{ color: "var(--text)" }}>{renderInline(l.replace(/^[\-\*•]\s/, ""))}</span>
+              <span style={{ color: "var(--text)" }}>{renderInline(l.slice(2), `bullet-${blockIdx}-${i}`)}</span>
             </li>
           ))}
         </ul>
       );
-      continue;
+      return;
     }
 
-    // Numbered list
-    const numLines = trimmed.split("\n");
-    const isNumList = numLines.every(l => /^\d+[.)\s]/.test(l.trim()));
-    if (isNumList && numLines.length > 1) {
+    // ── Numbered list (1. item or 1) item)
+    const isNumList = lines.length > 1 && lines.every(l => {
+      const first = l.split(" ")[0];
+      return first.endsWith(".") || first.endsWith(")");
+    });
+    if (isNumList) {
       elements.push(
-        <ol key={key++} className="list-none space-y-1 my-1">
-          {numLines.map((l, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
-              <span className="text-[10px] font-bold mt-0.5 flex-shrink-0 w-4 text-right" style={{ color: "var(--accent)" }}>{i + 1}.</span>
-              <span style={{ color: "var(--text)" }}>{renderInline(l.replace(/^\d+[.)\s]+/, ""))}</span>
-            </li>
-          ))}
+        <ol key={`block-${blockIdx}`} className="list-none space-y-1 my-1">
+          {lines.map((l, i) => {
+            const spaceIdx = l.indexOf(" ");
+            const content = spaceIdx > -1 ? l.slice(spaceIdx + 1) : l;
+            return (
+              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
+                <span className="text-[10px] font-bold mt-0.5 flex-shrink-0 w-4 text-right" style={{ color: "var(--accent)" }}>{i + 1}.</span>
+                <span style={{ color: "var(--text)" }}>{renderInline(content, `num-${blockIdx}-${i}`)}</span>
+              </li>
+            );
+          })}
         </ol>
       );
-      continue;
+      return;
     }
 
-    // Plain paragraph — handle single-newline line breaks within block
-    const lines = trimmed.split("\n");
+    // ── Plain paragraph — handle single newlines as <br>
     elements.push(
-      <p key={key++} className={`text-sm leading-relaxed ${className}`} style={{ color: "var(--text)" }}>
+      <p key={`block-${blockIdx}`} className={`text-sm leading-relaxed ${className}`} style={{ color: "var(--text)" }}>
         {lines.map((line, li) => (
-          <span key={li}>
-            {renderInline(line)}
+          <React.Fragment key={li}>
+            {renderInline(line, `para-${blockIdx}-${li}`)}
             {li < lines.length - 1 && <br />}
-          </span>
+          </React.Fragment>
         ))}
       </p>
     );
-  }
+  });
 
   return <div className="space-y-1">{elements}</div>;
 }
