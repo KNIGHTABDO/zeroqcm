@@ -26,7 +26,7 @@ function ProgressRing({
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
           {/* Track */}
           <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+            stroke="var(--border)" strokeWidth={stroke} />
           {/* Progress */}
           <motion.circle
             cx={size/2} cy={size/2} r={r} fill="none"
@@ -90,10 +90,10 @@ export default function StatsPage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border p-8 text-center space-y-3"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-            <LogIn className="w-8 h-8 mx-auto text-zinc-600" />
+            <LogIn className="w-8 h-8 mx-auto" style={{ color: "var(--text-muted)" }} />
             <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Connectez-vous pour voir vos stats</p>
             <Link href="/auth"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 transition-all">
+              style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
               Se connecter
             </Link>
           </motion.div>
@@ -125,7 +125,7 @@ export default function StatsPage() {
                     {stats.rate}%
                   </span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-active)" }}>
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: stats.rate >= 70 ? "#10b981" : stats.rate >= 50 ? "#f59e0b" : "#ef4444" }}
@@ -145,8 +145,8 @@ export default function StatsPage() {
             {stats.streak > 0 && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                 className="rounded-2xl border px-5 py-4 flex items-center gap-4"
-                style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
+                style={{ background: "var(--warning-subtle)", borderColor: "var(--warning-border)" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--warning-subtle)", border: "1px solid var(--warning-border)" }}>
                   <Flame className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
@@ -165,12 +165,12 @@ export default function StatsPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
                 className="rounded-2xl border p-6 text-center space-y-3"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                <BookOpen className="w-8 h-8 mx-auto text-zinc-600" />
+                <BookOpen className="w-8 h-8 mx-auto" style={{ color: "var(--text-muted)" }} />
                 <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                   Aucune question répondue pour le moment.
                 </p>
                 <Link href="/semestres/s1_fmpc"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 transition-all">
+                  style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
                   Commencer S1 FMPC
                 </Link>
               </motion.div>
