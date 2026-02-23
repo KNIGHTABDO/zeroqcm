@@ -10,11 +10,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ZeroQCM — La révision médicale, réinventée",
   description: "Plateforme de QCM médicaux pour les étudiants en médecine marocains. S1 à S9, IA intégrée, révision ciblée.",
-  metadataBase: new URL("https://zero-qcm.com"),
+  metadataBase: new URL("https://zeroqcm.me"),
   openGraph: {
     title: "ZeroQCM",
     description: "La révision médicale, réinventée.",
-    url: "https://zero-qcm.com",
+    url: "https://zeroqcm.me",
     siteName: "ZeroQCM",
     images: [{ url: "/logo.jpg", width: 2048, height: 2048, alt: "ZeroQCM" }],
     locale: "fr_MA",
