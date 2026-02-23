@@ -45,7 +45,7 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 border-r z-50 transition-colors overflow-y-auto"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+      style={{ background: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
       {/* ── Brand header ── */}
       <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-2.5">
@@ -66,9 +66,8 @@ export function Sidebar() {
           const active = path === item.href;
           return (
             <Link key={item.href} href={item.href}
-              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}
-              style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{ background: active ? "var(--nav-item-active)" : "transparent", color: active ? "var(--nav-text-active)" : "var(--nav-text)" }}>
               <item.icon className="w-4 h-4 flex-shrink-0" />
               {item.label}
             </Link>
@@ -95,9 +94,8 @@ export function Sidebar() {
                     const active = path === href || path.startsWith(href + "/");
                     return (
                       <Link key={sem.semestre_id} href={href}
-                        className={cn("flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all",
-                          active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}
-                        style={{ color: active ? "var(--text)" : "var(--text-secondary)" }}>
+                        className="flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all"
+                        style={{ background: active ? "var(--nav-item-active)" : "transparent", color: active ? "var(--nav-text-active)" : "var(--nav-text)" }}>
                         <div className="flex items-center gap-2 min-w-0">
                           <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
                           <span className="truncate">{sem.nom}</span>
@@ -116,14 +114,14 @@ export function Sidebar() {
       {/* User + theme toggle */}
       <div className="px-3 py-3 border-t space-y-1 flex-shrink-0" style={{ borderColor: "var(--border)" }}>
         <button onClick={toggle}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
           style={{ color: "var(--text-secondary)" }}>
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           {theme === "dark" ? "Mode clair" : "Mode sombre"}
         </button>
         {user && (
           <Link href="/profil"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-white/[0.04]"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
             style={{ color: "var(--text-secondary)" }}>
             <div className="w-6 h-6 rounded-lg bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0">
               <span className="text-xs font-bold" style={{ color: "var(--text)" }}>
