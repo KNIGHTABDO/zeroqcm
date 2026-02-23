@@ -12,21 +12,7 @@ function parseSNum(id: string): number {
   return m ? parseInt(m[1]) : 0;
 }
 
-const FACULTY_COLORS: Record<string, string> = {
-  FMPC:  "blue",
-  FMPR:  "violet",
-  FMPM:  "emerald",
-  UM6SS: "amber",
-  FMPDF: "rose",
-};
-
-const COLOR: Record<string, { pill: string; icon: string }> = {
-  blue:    { pill: "bg-blue-500/10 border-blue-500/20 text-blue-400",    icon: "text-blue-400"    },
-  violet:  { pill: "bg-violet-500/10 border-violet-500/20 text-violet-400", icon: "text-violet-400" },
-  emerald: { pill: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400", icon: "text-emerald-400" },
-  amber:   { pill: "bg-amber-500/10 border-amber-500/20 text-amber-400",  icon: "text-amber-400"  },
-  rose:    { pill: "bg-rose-500/10 border-rose-500/20 text-rose-400",     icon: "text-rose-400"   },
-};
+// Faculty icon uses CSS vars — no hardcoded colors, works in dark+light mode
 
 const SEMESTER_LABELS: Record<number, string> = {
   1: "S1", 3: "S3", 5: "S5", 7: "S7", 9: "S9",
@@ -49,11 +35,11 @@ export default function SemestresPage() {
   // Load user profile to get their semester
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("semestre").eq("id", user.id).maybeSingle().then(({ data }) => {
-      if (data?.semestre) {
-        const n = parseSNum(data.semestre);
+    supabase.from("profiles").select("annee_etude").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data?.annee_etude) {
+        const YEAR_TO_SNUM: Record<number, number> = {1:1, 2:3, 3:5, 4:7, 5:9};
+        const n = YEAR_TO_SNUM[data.annee_etude as number] ?? 0;
         setUserSNum(n);
-        // Don't auto-select filter — default shows all semesters (better for iPad/new users)
       }
     });
   }, [user]);
@@ -144,16 +130,17 @@ export default function SemestresPage() {
             variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
             className="space-y-2">
             {filtered.map((s) => {
-              const color = FACULTY_COLORS[s.faculty] ?? "blue";
-              const { pill, icon } = COLOR[color] ?? COLOR.blue;
               return (
                 <motion.div key={s.semestre_id}
                   variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
                   <Link href={`/semestres/${s.semestre_id}`}>
-                    <div className="rounded-2xl border px-5 py-4 flex items-center gap-4 transition-all hover:bg-white/[0.06] cursor-pointer"
-                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 ${pill}`}>
-                        <BookOpen className={`w-4 h-4 ${icon}`} />
+                    <div className="rounded-2xl border px-5 py-4 flex items-center gap-4 transition-all cursor-pointer"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface-hover)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+                        <BookOpen className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{s.nom}</p>
