@@ -1,25 +1,50 @@
-"use client";
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { AppShell } from "@/components/layout/AppShell";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "ZeroQCM — La révision médicale, réinventée",
+  description: "Plateforme de QCM médicaux pour les étudiants en médecine marocains. S1 à S9, IA intégrée, révision ciblée.",
+  metadataBase: new URL("https://zero-qcm.com"),
+  openGraph: {
+    title: "ZeroQCM",
+    description: "La révision médicale, réinventée.",
+    url: "https://zero-qcm.com",
+    siteName: "ZeroQCM",
+    images: [{ url: "/logo.jpg", width: 2048, height: 2048, alt: "ZeroQCM" }],
+    locale: "fr_MA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "ZeroQCM",
+    description: "La révision médicale, réinventée.",
+    images: ["/logo.jpg"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+  },
+  manifest: "/site.webmanifest",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head>
-        <title>ZeroQCM — La révision médicale, réinventée</title>
-        <meta name="description" content="ZeroQCM — La plateforme de révision premium pour les étudiants en médecine du Maroc. 180 000+ questions, IA, révision ciblée, stats." />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#000000" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet" />
-      </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <head />
+      <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>
             <AppShell>{children}</AppShell>
