@@ -38,8 +38,8 @@ function renderInline(text: string): React.ReactNode[] {
   let key = 0;
 
   const patterns: [RegExp, (m: RegExpMatchArray) => React.ReactNode][] = [
-    [/\*\*(.+?)\*\*/s,  (m) => <strong key={key++} className="font-semibold" style={{ color: "var(--text)" }}>{m[1]}</strong>],
-    [/\*(.+?)\*/s,       (m) => <em key={key++} style={{ color: "var(--text)" }}>{m[1]}</em>],
+    [/\*\*(.+?)\*\*/ms,  (m) => <strong key={key++} className="font-semibold" style={{ color: "var(--text)" }}>{m[1]}</strong>],
+    [/\*(.+?)\*,       (m) => <em key={key++} style={{ color: "var(--text)" }}>{m[1]}</em>],
     [/`([^`]+)`/,          (m) => <code key={key++} className="px-1 py-0.5 rounded text-[0.8em] font-mono" style={{ background: "var(--surface-active)", color: "var(--accent)" }}>{m[1]}</code>],
     [/\^([^\s^]+)/,       (m) => <sup key={key++} className="text-[0.7em]">{m[1]}</sup>],
     [/_([^_]+)_/,          (m) => <sub key={key++} className="text-[0.7em]">{m[1]}</sub>],
