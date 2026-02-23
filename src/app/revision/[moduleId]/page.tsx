@@ -442,10 +442,11 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
                 </span>
                 {aiLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--text-muted)" }} />}
               </div>
-              {!aiLoading && (aiParsed || aiText) && (
+              {!aiLoading && (
                 <button onClick={() => doFetchAI(true)}
-                  className="flex items-center gap-1 text-[10px] transition-colors"
-                  style={{ color: "var(--text-muted)" }}
+                  title="Régénérer et écraser l'explication sauvegardée"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all"
+                  style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                   onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"}
                   onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"}>
                   <RefreshCw className="w-3 h-3" /> Régénérer

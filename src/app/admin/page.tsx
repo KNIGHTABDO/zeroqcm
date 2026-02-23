@@ -75,7 +75,7 @@ function RegenSection() {
   const [regenStats, setRegenStats] = useState<RegenStats | null>(null);
   const [progress, setProgress]     = useState({ done: 0, total: 0, errors: 0 });
   const [model, setModel]           = useState("gpt-4o-mini");
-  const [forceAll, setForceAll]     = useState(false);
+
   const abortRef                    = useRef(false);
 
   const VALID_MODELS = ["gpt-4o-mini", "gpt-4o", "Meta-Llama-3.3-70B-Instruct", "DeepSeek-R1", "DeepSeek-V3", "Mistral-Large-2"];
@@ -90,10 +90,10 @@ function RegenSection() {
 
   useEffect(() => { fetchStats(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function startRegen() {
+  async function startRegen(forceParam: boolean) {
     if (!regenStats) return;
     abortRef.current = false;
-    const target = forceAll ? regenStats.total_questions : regenStats.missing;
+    const target = forceParam ? regenStats.total_questions : regenStats.missing;
     setProgress({ done: 0, total: target, errors: 0 });
     setPhase("running");
 
@@ -106,7 +106,7 @@ function RegenSection() {
       const res = await fetch("/api/admin/regen-explanations", {
         method: "POST",
         headers,
-        body: JSON.stringify({ batch: REGEN_BATCH, offset, force: forceAll, model }),
+        body: JSON.stringify({ batch: REGEN_BATCH, offset, force: forceParam, model }),
       });
       if (!res.ok) { setPhase("error"); break; }
       const data = await res.json() as {
@@ -202,33 +202,17 @@ function RegenSection() {
           </div>
         )}
 
-        {/* Config row — model picker + force toggle */}
+        {/* Config row — model picker */}
         {phase === "idle" && (
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex-1 min-w-36">
-              <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-                Modèle
-              </label>
-              <select value={model} onChange={e => setModel(e.target.value)}
-                className="w-full rounded-lg px-3 py-2 text-xs font-medium appearance-none outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}>
-                {VALID_MODELS.map(m => <option key={m} value={m} style={{ background: "#111" }}>{m}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 mt-4">
-              <button
-                onClick={() => setForceAll(f => !f)}
-                className="w-9 h-5 rounded-full relative transition-colors flex-shrink-0"
-                style={{ background: forceAll ? "#a78bfa" : "rgba(255,255,255,0.1)" }}>
-                <motion.div className="absolute top-0.5 w-4 h-4 rounded-full"
-                  animate={{ left: forceAll ? "calc(100% - 18px)" : "2px" }}
-                  transition={{ type: "spring", damping: 25, stiffness: 400 }}
-                  style={{ background: "white" }} />
-              </button>
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                Tout régénérer (écraser existantes)
-              </span>
-            </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              Modèle
+            </label>
+            <select value={model} onChange={e => setModel(e.target.value)}
+              className="rounded-lg px-3 py-2 text-xs font-medium appearance-none outline-none"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", minWidth: "220px" }}>
+              {VALID_MODELS.map(m => <option key={m} value={m} style={{ background: "#111" }}>{m}</option>)}
+            </select>
           </div>
         )}
 
@@ -288,24 +272,34 @@ function RegenSection() {
           )}
         </AnimatePresence>
 
-        {/* Action button */}
-        <div className="flex gap-3">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
           {phase === "idle" || phase === "done" || phase === "error" || phase === "checking" ? (
-            <button
-              onClick={startRegen}
-              disabled={phase === "checking" || !regenStats || (regenStats.missing === 0 && !forceAll)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-              style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}>
-              {phase === "checking" ? (
-                <><div className="w-3.5 h-3.5 rounded-full border border-current border-t-transparent animate-spin" />Chargement...</>
-              ) : (
-                <><Zap className="w-3.5 h-3.5" />
-                  {regenStats && regenStats.missing === 0 && !forceAll ? "Tout est à jour ✓" :
-                   forceAll ? `Tout régénérer (${regenStats?.total_questions.toLocaleString()})` :
-                   `Régénérer les manquantes (${regenStats?.missing.toLocaleString()})`}
-                </>
-              )}
-            </button>
+            <>
+              {/* Button A: fill missing only */}
+              <button
+                onClick={() => startRegen(false)}
+                disabled={phase === "checking" || !regenStats || regenStats.missing === 0}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>
+                {phase === "checking" ? (
+                  <div className="w-3.5 h-3.5 rounded-full border border-current border-t-transparent animate-spin" />
+                ) : (
+                  <Zap className="w-3.5 h-3.5" />
+                )}
+                {regenStats?.missing === 0 ? "Tout est à jour ✓" : `Compléter manquantes (${regenStats?.missing.toLocaleString() ?? "…"})`}
+              </button>
+
+              {/* Button B: regenerate ALL (overwrite) */}
+              <button
+                onClick={() => startRegen(true)}
+                disabled={phase === "checking" || !regenStats}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" }}>
+                <RefreshCw className="w-3.5 h-3.5" />
+                Tout régénérer ({regenStats?.total_questions.toLocaleString() ?? "…"})
+              </button>
+            </>
           ) : (
             <button
               onClick={stopRegen}

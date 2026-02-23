@@ -575,9 +575,13 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                 <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
               )}
             </div>
-            {!aiLoading && (aiParsed || aiText) && (
-              <button onClick={() => doFetchAI(true)} className="flex items-center gap-1 text-[10px] hover:text-zinc-300 transition-colors" style={{ color: "var(--text-muted)" }}>
-                <RefreshCw size={10} /> Régénérer
+            {!aiLoading && rev && (
+              <button
+                onClick={() => doFetchAI(true)}
+                title="Régénérer et écraser l'explication sauvegardée"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:text-zinc-200"
+                style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <RefreshCw size={9} /> Régénérer
               </button>
             )}
           </div>
