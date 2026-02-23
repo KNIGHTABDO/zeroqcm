@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle, Clock, Lock, ArrowRight, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Lock, ArrowRight, RefreshCw, LogOut, Send } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
@@ -11,15 +11,17 @@ type ActivationStatus = "loading" | "inactive" | "pending" | "approved" | "denie
 interface ActivationData {
   status: ActivationStatus;
   requested_at: string | null;
-  approved_at: string | null;
+  approved_at:  string | null;
 }
 
 export default function ActivatePage() {
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<ActivationData>({ status: "loading", requested_at: null, approved_at: null });
+  const [data, setData]           = useState<ActivationData>({ status: "loading", requested_at: null, approved_at: null });
   const [requesting, setRequesting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0); // seconds remaining
 
   const fetchStatus = useCallback(async () => {
     if (!user) return;
@@ -47,7 +49,7 @@ export default function ActivatePage() {
     return () => clearInterval(interval);
   }, [data.status, fetchStatus]);
 
-  // Auto-redirect if approved and coming fresh
+  // Auto-redirect if approved
   useEffect(() => {
     if (data.status === "approved") {
       const timer = setTimeout(() => router.push("/semestres"), 3000);
@@ -55,18 +57,28 @@ export default function ActivatePage() {
     }
   }, [data.status, router]);
 
+  // Cooldown countdown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown(s => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
   async function handleRequest() {
     setRequesting(true);
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/activate/request", {
-        method: "POST",
+        method:  "POST",
         headers: { "Authorization": `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error || "Erreur inconnue"); }
-      else { setData(prev => ({ ...prev, status: "pending", requested_at: new Date().toISOString() })); }
+      if (!res.ok) {
+        setError(json.error || "Erreur inconnue");
+      } else {
+        setData(prev => ({ ...prev, status: "pending", requested_at: new Date().toISOString() }));
+      }
     } catch {
       setError("Erreur réseau. Réessayez.");
     } finally {
@@ -74,15 +86,38 @@ export default function ActivatePage() {
     }
   }
 
-  const avatar = (profile?.full_name || profile?.username || user?.email || "?")[0].toUpperCase();
+  async function handleResend() {
+    if (resendCooldown > 0 || requesting) return;
+    setRequesting(true);
+    setError(null);
+    try {
+      // Reset row so the request route treats it as a fresh request
+      await supabase.from("activation_keys").delete().eq("user_id", user!.id);
+      setData(prev => ({ ...prev, status: "inactive" }));
+      // Re-submit
+      await handleRequest();
+      setResendCooldown(60);
+    } catch {
+      setError("Erreur lors du renvoi. Réessayez.");
+      setRequesting(false);
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    await supabase.auth.signOut();
+    router.push("/auth");
+  }
+
+  const avatar      = (profile?.full_name || profile?.username || user?.email || "?")[0].toUpperCase();
   const displayName = profile?.full_name || profile?.username || user?.email?.split("@")[0] || "Utilisateur";
 
   const statusConfig = {
-    loading:  { color: "rgba(255,255,255,0.2)", label: "Chargement…",            Icon: Clock, pulse: false },
-    inactive: { color: "rgba(255,255,255,0.15)", label: "Non activé",            Icon: Lock,        pulse: false },
-    pending:  { color: "rgba(251,191,36,0.9)",  label: "En attente",             Icon: Clock,       pulse: true  },
-    approved: { color: "rgba(34,197,94,0.9)",   label: "Activé",                 Icon: CheckCircle, pulse: false },
-    denied:   { color: "rgba(239,68,68,0.9)",   label: "Refusé",                 Icon: XCircle,     pulse: false },
+    loading:  { color: "rgba(255,255,255,0.2)",  label: "Chargement…", Icon: Clock,        pulse: false },
+    inactive: { color: "rgba(255,255,255,0.15)", label: "Non activé",  Icon: Lock,         pulse: false },
+    pending:  { color: "rgba(251,191,36,0.9)",   label: "En attente",  Icon: Clock,        pulse: true  },
+    approved: { color: "rgba(34,197,94,0.9)",    label: "Activé",      Icon: CheckCircle,  pulse: false },
+    denied:   { color: "rgba(239,68,68,0.9)",    label: "Refusé",      Icon: XCircle,      pulse: false },
   };
   const cfg = statusConfig[data.status] || statusConfig.inactive;
 
@@ -145,7 +180,7 @@ export default function ActivatePage() {
               {/* Status badge */}
               <div className="ml-auto flex-shrink-0">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold relative ${cfg.pulse ? "overflow-visible" : ""}`}
-                  style={{ background: `${cfg.color}18`, color: cfg.color.replace("0.9", "1").replace("0.15","rgba(255,255,255,0.6)").replace("0.2","rgba(255,255,255,0.4)") }}>
+                  style={{ background: `${cfg.color}18`, color: cfg.color.replace("0.9","1").replace("0.15","rgba(255,255,255,0.6)").replace("0.2","rgba(255,255,255,0.4)") }}>
                   {cfg.pulse && (
                     <span className="absolute inset-0 rounded-xl animate-ping opacity-30"
                       style={{ background: cfg.color }} />
@@ -216,6 +251,26 @@ export default function ActivatePage() {
                   <p className="text-xs" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
                     Cette page se met à jour automatiquement…
                   </p>
+                  {error && (
+                    <p className="text-xs py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.1)", color: "#f87171" }}>
+                      {error}
+                    </p>
+                  )}
+                  {/* Resend button */}
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleResend}
+                    disabled={requesting || resendCooldown > 0}
+                    className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+                    style={{ background: "rgba(251,191,36,0.08)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
+                    {requesting ? (
+                      <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Renvoi en cours…</>
+                    ) : resendCooldown > 0 ? (
+                      <><Clock className="w-3.5 h-3.5" />Renvoyer ({resendCooldown}s)</>
+                    ) : (
+                      <><Send className="w-3.5 h-3.5" />Renvoyer la demande</>
+                    )}
+                  </motion.button>
                 </motion.div>
               )}
 
@@ -256,7 +311,7 @@ export default function ActivatePage() {
                   <div className="space-y-1.5">
                     <p className="text-base font-semibold" style={{ color: "var(--text)" }}>Demande refusée</p>
                     <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                      Votre demande d&apos;activation a été refusée. Contactez le support pour plus d&apos;informations.
+                      Votre demande d&apos;activation a été refusée. Contactez l&apos;administrateur.
                     </p>
                   </div>
                   {error && (
@@ -273,6 +328,19 @@ export default function ActivatePage() {
               )}
             </AnimatePresence>
           </div>
+        </motion.div>
+
+        {/* Logout button — always visible */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-full py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+            style={{ color: "var(--text-muted)", border: "1px solid var(--border)", background: "transparent" }}>
+            <LogOut className="w-3.5 h-3.5" />
+            {loggingOut ? "Déconnexion…" : "Se déconnecter"}
+          </motion.button>
         </motion.div>
 
         {/* Footer note */}
