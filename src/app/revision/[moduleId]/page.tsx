@@ -12,7 +12,9 @@ type Choice = {
   est_correct: boolean; pourcentage: number; explication: string | null;
 };
 type Question = {
-  id: string; texte: string; image_url: string | null; choices: Choice[];
+  id: string; texte: string; image_url: string | null;
+  source_question: string | null; correction: string | null;
+  choices: Choice[];
 };
 type Phase = "quiz" | "revealed" | "result";
 type OptionExplanation = { letter: string; contenu: string; est_correct: boolean; why: string };
