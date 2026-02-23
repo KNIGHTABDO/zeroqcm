@@ -79,8 +79,8 @@ export default function SemestresPage() {
               onClick={() => setSelectedFilter(null)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
               style={{
-                background: !selectedFilter ? "var(--surface-active)" : "var(--surface-alt)",
-                borderColor: !selectedFilter ? "var(--border-strong)" : "rgba(255,255,255,0.08)",
+                background: !selectedFilter ? "var(--surface-active)" : "var(--surface)",
+                borderColor: !selectedFilter ? "var(--border-strong)" : "var(--border)",
                 color: !selectedFilter ? "var(--text)" : "var(--text-muted)",
               }}>
               Tous
@@ -94,12 +94,12 @@ export default function SemestresPage() {
                   onClick={() => setSelectedFilter(n)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
                   style={{
-                    background: isActive ? "var(--surface-active)" : "rgba(255,255,255,0.03)",
-                    borderColor: isActive ? "var(--border-strong)" : "rgba(255,255,255,0.08)",
-                    color: isActive ? "var(--text)" : "var(--text-muted)",
+                    background: isActive ? "var(--accent-subtle)" : "var(--surface)",
+                    borderColor: isActive ? "var(--accent-border)" : "var(--border)",
+                    color: isActive ? "var(--accent)" : "var(--text-muted)",
                   }}>
                   {SEMESTER_LABELS[n] ?? `S${n}`}
-                  {isUser && <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--text)" }} />}
+                  {isUser && <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />}
                 </button>
               );
             })}
@@ -110,7 +110,7 @@ export default function SemestresPage() {
         {userSNum && selectedFilter && selectedFilter !== userSNum && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
-            style={{ background: "rgba(251,191,36,0.06)", borderColor: "rgba(251,191,36,0.2)", color: "var(--text)" }}>
+            style={{ background: "var(--warning-subtle)", borderColor: "var(--warning-border)", color: "var(--warning)" }}>
             <Lock className="w-3.5 h-3.5 flex-shrink-0" />
             Pour changer votre semestre principal, allez dans{" "}
             <Link href="/profil" className="underline">Profil</Link>.
@@ -122,7 +122,7 @@ export default function SemestresPage() {
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="rounded-2xl border h-[72px] animate-pulse"
-                style={{ background: "var(--surface-alt)", borderColor: "var(--border)" }} />
+                style={{ background: "rgba(255,255,255,0.04)", borderColor: "var(--border)" }} />
             ))}
           </div>
         ) : (
