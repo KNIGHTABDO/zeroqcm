@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { CookieOptions } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/", "/auth", "/activate", "/api", "/_next", "/favicon", "/icon", "/apple", "/site", "/images", "/logo"];
+const ADMIN_EMAIL   = "aabidaabdessamad@gmail.com";
+const PUBLIC_PATHS  = ["/", "/auth", "/activate", "/api", "/_next", "/favicon", "/icon", "/apple", "/site", "/images", "/logo"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -13,21 +14,16 @@ function isPublic(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
   if (isPublic(pathname)) return NextResponse.next();
 
-  const response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+  const response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
@@ -46,11 +42,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Admin routes: only ADMIN_EMAIL — everyone else sees 404
+  if (pathname.startsWith("/admin")) {
+    if (user.email !== ADMIN_EMAIL) {
+      return NextResponse.rewrite(new URL("/not-found", request.url));
+    }
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"],
 };

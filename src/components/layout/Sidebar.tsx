@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy } from "lucide-react";
+import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
+
+const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
 
 type Semester = { semestre_id: string; nom: string; faculty: string; total_questions: number };
 
@@ -27,6 +29,8 @@ export function Sidebar() {
   const [semOpen, setSemOpen] = useState(true);
   const [semesters, setSemesters] = useState<Semester[]>([]);
 
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   useEffect(() => {
     supabase
       .from("semesters")
@@ -35,7 +39,6 @@ export function Sidebar() {
       .then(({ data }) => setSemesters(data ?? []));
   }, []);
 
-  // Filter semesters by user's annee_etude
   const YEAR_TO_SEM: Record<number, string> = { 1: "S1", 2: "S3", 3: "S5", 4: "S7", 5: "S9" };
   const userSemKey = profile?.annee_etude ? (YEAR_TO_SEM[profile.annee_etude] ?? null) : null;
   const visibleSemesters = userSemKey
@@ -49,10 +52,9 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 border-r z-50 transition-colors overflow-y-auto"
       style={{ background: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
-      {/* ── Brand header ── */}
+      {/* Brand header */}
       <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-2.5">
-          {/* Logo: ZeroQCM wordmark — no stethoscope, no "FMPC S1-S7" */}
           <div className="w-7 h-7 rounded-md overflow-hidden flex-shrink-0"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,6 +79,20 @@ export function Sidebar() {
           );
         })}
 
+        {/* Admin link — only visible to aabidaabdessamad@gmail.com */}
+        {isAdmin && (
+          <Link href="/admin"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-1"
+            style={{
+              background: path.startsWith("/admin") ? "rgba(255,255,255,0.08)" : "transparent",
+              color: path.startsWith("/admin") ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}>
+            <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+            Admin
+          </Link>
+        )}
+
         {/* Semesters section */}
         <div className="pt-2">
           <button onClick={() => setSemOpen(!semOpen)}
@@ -88,14 +104,10 @@ export function Sidebar() {
 
           <AnimatePresence initial={false}>
           {semOpen && (
-            <motion.div
-              key="sem-list"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+            <motion.div key="sem-list"
+              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden"
-            >
+              className="overflow-hidden">
             <div className="mt-1 space-y-0.5">
               {semesters.length === 0
                 ? [1,2,3,4,5].map(i => (

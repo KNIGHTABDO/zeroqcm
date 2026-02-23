@@ -9,10 +9,10 @@ import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
 // Pages with no sidebar/nav (full viewport layout)
-const FULLSCREEN_PATHS = ["/quiz/", "/auth"];
+const FULLSCREEN_PATHS = ["/quiz/", "/auth", "/admin"];
 
 // Pages that are fully public — no activation check needed
-const PUBLIC_PATHS = ["/", "/auth", "/activate"];
+const PUBLIC_PATHS = ["/", "/auth", "/activate", "/admin"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path   = usePathname();
@@ -33,12 +33,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     if (authLoading) return;
-    if (!user) return; // middleware handles the redirect
-
-    // Check once per user session — no need to re-check on every page navigation
+    if (!user) return;
     if (lastCheckedUser.current === user.id) return;
 
-    setActivated(null); // show spinner while querying
+    setActivated(null);
     lastCheckedUser.current = user.id;
 
     supabase
@@ -47,42 +45,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
-        if (lastCheckedUser.current !== user.id) return; // stale
+        if (lastCheckedUser.current !== user.id) return;
         if (error) { setActivated(false); return; }
         setActivated(data?.status === "approved");
       });
   }, [user?.id, authLoading, needsLockCheck]);
 
-  // Reset when user logs out
   useEffect(() => {
-    if (!user) {
-      setActivated(null);
-      lastCheckedUser.current = null;
-    }
+    if (!user) { setActivated(null); lastCheckedUser.current = null; }
   }, [user?.id]);
 
   const isChecking = needsLockCheck && !authLoading && !!user && activated === null;
   const isLocked   = needsLockCheck && !authLoading && !!user && activated === false;
   const hideContent = isChecking || isLocked;
 
-  // Fullscreen pages (quiz, auth): render without sidebar/nav but STILL show overlay if locked
   if (isFullscreen) {
     return (
       <>
         {children}
         <AnimatePresence>
           {isChecking && (
-            <motion.div
-              key="fs-checking"
+            <motion.div key="fs-checking"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="fixed inset-0 z-[200] flex items-center justify-center"
-              style={{ background: "var(--bg)" }}
-            >
-              <div
-                className="w-7 h-7 rounded-full border-2 animate-spin"
-                style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }}
-              />
+              style={{ background: "var(--bg)" }}>
+              <div className="w-7 h-7 rounded-full border-2 animate-spin"
+                style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }} />
             </motion.div>
           )}
           {isLocked && <LockOverlay onActivate={() => router.push("/activate")} />}
@@ -91,7 +80,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Normal pages: render with sidebar + nav
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <Sidebar />
@@ -101,20 +89,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <BottomNav />
       </div>
-
       <AnimatePresence>
         {isChecking && (
-          <motion.div
-            key="checking"
+          <motion.div key="checking"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             className="fixed inset-0 z-[100] flex items-center justify-center"
-            style={{ background: "var(--bg)" }}
-          >
-            <div
-              className="w-7 h-7 rounded-full border-2 animate-spin"
-              style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }}
-            />
+            style={{ background: "var(--bg)" }}>
+            <div className="w-7 h-7 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }} />
           </motion.div>
         )}
         {isLocked && <LockOverlay onActivate={() => router.push("/activate")} />}
@@ -125,25 +108,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function LockOverlay({ onActivate }: { onActivate: () => void }) {
   return (
-    <motion.div
-      key="lock-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <motion.div key="lock-overlay"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center px-6 text-center"
-      style={{
-        background: "rgba(0,0,0,0.92)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-      }}
-    >
+      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
       <motion.div
-        initial={{ scale: 0.9, y: 20, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
+        initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ delay: 0.05, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-6 max-w-xs"
-      >
+        className="space-y-6 max-w-xs">
         <div className="flex justify-center">
           <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12">
             <rect width="48" height="48" rx="14" fill="white" />
@@ -152,10 +125,8 @@ function LockOverlay({ onActivate }: { onActivate: () => void }) {
           </svg>
         </div>
         <div className="flex justify-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <Lock className="w-7 h-7 text-white/60" />
           </div>
         </div>
@@ -165,12 +136,9 @@ function LockOverlay({ onActivate }: { onActivate: () => void }) {
             Votre compte doit être activé pour accéder à ZeroQCM.
           </p>
         </div>
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={onActivate}
+        <motion.button whileTap={{ scale: 0.97 }} onClick={onActivate}
           className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-          style={{ background: "white", color: "black" }}
-        >
+          style={{ background: "white", color: "black" }}>
           Activer mon compte
           <ArrowRight className="w-4 h-4" />
         </motion.button>
