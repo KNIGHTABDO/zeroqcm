@@ -39,7 +39,7 @@ export function Marquee({ className, speed = 28, children }: MarqueeProps) {
           style={{ animation: `marquee ${speed}s linear infinite`, width: "max-content" }}>
           {[...defaultItems, ...defaultItems].map((name, i) => (
             <span key={i}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border flex-shrink-0 whitespace-nowrap"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 borderColor: "rgba(255,255,255,0.08)",

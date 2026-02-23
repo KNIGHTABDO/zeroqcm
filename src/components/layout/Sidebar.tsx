@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "../auth/AuthProvider";
@@ -85,7 +86,16 @@ export function Sidebar() {
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", semOpen ? "" : "-rotate-90")} />
           </button>
 
+          <AnimatePresence initial={false}>
           {semOpen && (
+            <motion.div
+              key="sem-list"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
             <div className="mt-1 space-y-0.5">
               {semesters.length === 0
                 ? [1,2,3,4,5].map(i => (
@@ -109,7 +119,9 @@ export function Sidebar() {
                     );
                   })}
             </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </nav>
 

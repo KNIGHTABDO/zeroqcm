@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flame, BookOpen, ChevronRight, LogIn, BarChart2, Target, Loader2 } from "lucide-react";
+import { Flame, BookOpen, ChevronRight, LogIn, BarChart2, Target, Loader2, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -299,7 +299,8 @@ export default function RevisionPage() {
                 <Link href="/semestres"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
                   style={{ background: "var(--text)", color: "var(--bg)" }}>
-                  Commencer les QCM
+                  Commencer un QCM
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </motion.div>
             )}

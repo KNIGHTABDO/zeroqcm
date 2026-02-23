@@ -111,14 +111,26 @@ export default function BookmarksPage() {
           </div>
         ) : filtered.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 space-y-3">
-            <Bookmark size={40} style={{ color: "var(--border-strong)", margin: "0 auto" }} />
-            <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              {search ? "Aucun résultat" : "Aucun favori"}
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {search ? "Essayez un autre terme" : "Appuyez sur 🔖 pendant un quiz pour sauvegarder une question"}
-            </p>
+            className="text-center py-16 space-y-4">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <Bookmark size={28} style={{ color: "var(--text-muted)", opacity: 0.5 }} />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                {search ? "Aucun résultat" : "Aucun favori"}
+              </p>
+              <p className="text-xs max-w-xs mx-auto" style={{ color: "var(--text-muted)" }}>
+                {search ? "Essayez un autre terme de recherche" : "Appuyez sur 🔖 pendant un quiz pour sauvegarder une question"}
+              </p>
+            </div>
+            {!search && (
+              <button onClick={() => router.push("/semestres")}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: "var(--text)", color: "var(--bg)" }}>
+                Commencer un QCM
+              </button>
+            )}
           </motion.div>
         ) : (
           <div className="space-y-3">
