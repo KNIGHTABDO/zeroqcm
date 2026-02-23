@@ -151,7 +151,7 @@ export default function ProfilPage() {
         <p className="text-base font-bold" style={{ color: "var(--text)" }}>Connectez-vous</p>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Pour suivre votre progression</p>
         <Link href="/auth"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-black text-sm font-semibold hover:bg-zinc-100 transition-all">
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold transition-all" style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
           <LogIn className="w-4 h-4" /> Se connecter
         </Link>
       </div>
@@ -179,8 +179,8 @@ export default function ProfilPage() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border p-6 text-center space-y-4"
           style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
-            <span className="text-2xl font-bold" style={{ color: "var(--text)" }}>{initials}</span>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
+            <span className="text-2xl font-bold" style={{ color: "var(--accent)" }}>{initials}</span>
           </div>
 
           {editing ? (
@@ -219,7 +219,7 @@ export default function ProfilPage() {
                   className="flex-1 py-2.5 rounded-xl text-sm border transition-all hover:bg-white/[0.04]"
                   style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>Annuler</button>
                 <button onClick={save} disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 disabled:opacity-50 transition-all">
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all" style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
                   {saving ? "..." : "Enregistrer"}
                 </button>
               </div>
@@ -231,7 +231,7 @@ export default function ProfilPage() {
               </p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>{user.email}</p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
-                <span className="text-[10px] px-2 py-1 rounded-lg" style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                <span className="text-[10px] px-2 py-1 rounded-lg" style={{ color: "var(--accent)", background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
                   {curFac}
                 </span>
                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
@@ -252,13 +252,13 @@ export default function ProfilPage() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="grid grid-cols-3 gap-3">
             {[
-              { label: "Repondues", value: stats.total,      icon: BookOpen, color: "text-inherit"     },
-              { label: "Reussite",  value: `${stats.rate}%`, icon: Target,   color: "text-emerald-400" },
-              { label: "Serie",     value: `${stats.streak}j`, icon: Brain,  color: "text-orange-400"  },
+              { label: "Repondues", value: stats.total,      icon: BookOpen, color: "var(--accent)"   },
+              { label: "Reussite",  value: `${stats.rate}%`, icon: Target,   color: "var(--success)"  },
+              { label: "Serie",     value: `${stats.streak}j`, icon: Brain,  color: "var(--warning)"  },
             ].map(s => (
               <div key={s.label} className="rounded-2xl border px-3 py-3 text-center"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                <p className={"text-lg font-bold " + s.color}>{s.value.toLocaleString()}</p>
+                <p className="text-lg font-bold" style={{ color: s.color }}>{s.value.toLocaleString()}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{s.label}</p>
               </div>
             ))}
@@ -272,7 +272,7 @@ export default function ProfilPage() {
             className="flex items-center justify-between w-full px-5 py-4 rounded-2xl border transition-all hover:bg-white/[0.04]"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3">
-              <BookOpen className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+              <BookOpen className="w-4 h-4" style={{ color: "var(--accent)" }} />
               <div>
                 <span className="text-sm font-medium block" style={{ color: "var(--text)" }}>Mes QCM</span>
                 <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{activeSemLabel}</span>
