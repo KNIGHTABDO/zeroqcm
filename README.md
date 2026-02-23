@@ -86,6 +86,24 @@ ZeroQCM is a free, open-source medical revision platform built specifically for 
 | **Per-module error badges** | Visual indicator of error count per module |
 | **Reset stats** | One-tap reset with confirmation sheet — wipes all `user_answers` for the account |
 
+
+### 📚 Student Community
+
+| Feature | Details |
+|---|---|
+| **Bookmarks** | Save any question during quiz with one tap — review later from `/bookmarks` |
+| **Comments** | Per-question discussion thread — share tips, corrections, and mnemonics with peers |
+| **Leaderboard** | Anonymous ranking by total correct answers and daily streak — podium top 3 + full list |
+
+### 📊 Rich Content Rendering
+
+| Feature | Details |
+|---|---|
+| **Markdown tables** | Questions with `\|` pipe tables render as formatted HTML tables |
+| **Inline formatting** | `**bold**`, `*italic*`, `` `code` ``, `^superscript`, `_subscript` |
+| **Bullet & numbered lists** | Lists in question text render as styled list items |
+| **Multiline blocks** | Double-newline paragraph breaks preserved in questions and choices |
+
 ### 🎨 Design System
 
 | Feature | Details |
@@ -341,16 +359,29 @@ Push to main → Vercel build → Deploy to zeroqcm.me
 
 ## Roadmap
 
-- [ ] **MonQCM scraper** — add 10 years of past exam questions (2014–2024)
-- [ ] **Bookmarks** — save specific questions for later review
-- [ ] **Comments** — per-question student discussion (schema already in DB)
-- [ ] **Leaderboard** — anonymous rank by streak and score
-- [ ] **Offline mode** — PWA with service worker for exam-day use
-- [ ] **Push notifications** — daily revision reminders
-- [ ] **Faculty filter** — filter questions by source faculty
-- [ ] **Export** — download weak questions as PDF
+#### ✅ Shipped (Feb 2026)
+- [x] Full QCM engine — multi-select, keyboard/swipe, instant feedback
+- [x] AI per-option explanations (GitHub Models, server-side PAT, cached)
+- [x] Spaced repetition — weak question targeting, `/revision` page
+- [x] Stats — SVG rings, streaks, per-module breakdown, reset-all
+- [x] Auth, profiles, year-selector, settings, model picker
+- [x] 180 000+ questions — S1 through S9 (all odd semesters, 5 faculties)
+- [x] Dark/light mode, Apple-style design, responsive mobile
+- [x] Custom domain `zeroqcm.me`, PWA favicons + webmanifest
+- [x] **Bookmarks** — save questions, view at `/bookmarks`
+- [x] **Leaderboard** — podium + ranked list at `/leaderboard`
+- [x] **Comments** — per-question discussion threads
+- [x] **Rich content** — markdown tables, bold, italic, lists in questions
+- [x] Creative 404 EKG-monitor page
+- [x] Reset stats with confirmation bottom-sheet
 
----
+#### 🔜 Upcoming
+- [ ] MonQCM past-exam questions (30k+)
+- [ ] Push notifications for streak reminders
+- [ ] Offline mode (PWA service worker)
+- [ ] PDF export of bookmarked questions
+- [ ] Faculty-specific question filters
+
 
 ## Contributing
 
