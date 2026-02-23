@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const BOT_TOKEN   = process.env.TELEGRAM_BOT_TOKEN!;
-const ADMIN_ID    = process.env.TELEGRAM_ADMIN_ID!;
+const BOT_TOKEN         = process.env.TELEGRAM_BOT_TOKEN!;
+const ADMIN_ID          = process.env.TELEGRAM_ADMIN_ID!;
 const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const SERVICE_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 export async function POST(req: NextRequest) {
   // ── Auth: get user from Bearer token ──────────────────────────────────────
@@ -17,7 +21,6 @@ export async function POST(req: NextRequest) {
   }
   const token = auth.slice(7);
 
-  // User-scoped client to validate session
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // ── Check current status (don't re-send if already pending/approved) ──────
+  // ── Check current status ──────────────────────────────────────────────────
   const { data: existing } = await admin
     .from("activation_keys")
     .select("status")
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: "approved" });
   }
 
-  // ── Fetch user profile for Telegram message ────────────────────────────────
+  // ── Fetch user profile ─────────────────────────────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
     .select("username, full_name, annee_etude, faculty")
@@ -51,9 +54,12 @@ export async function POST(req: NextRequest) {
 
   const displayName = profile?.full_name || profile?.username || user.email?.split("@")[0] || "Inconnu";
   const semester    = profile?.annee_etude ? `S${(profile.annee_etude * 2) - 1}` : "N/A";
-  const now         = new Date().toLocaleString("fr-FR", { timeZone: "Africa/Casablanca", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const now         = new Date().toLocaleString("fr-FR", {
+    timeZone: "Africa/Casablanca", day: "2-digit", month: "short",
+    year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 
-  // ── Upsert activation_keys row ─────────────────────────────────────────────
+  // ── Upsert activation_keys ─────────────────────────────────────────────────
   const { error: upsertErr } = await admin
     .from("activation_keys")
     .upsert({
@@ -68,22 +74,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erreur base de données" }, { status: 500 });
   }
 
-  // ── Send Telegram message to admin ────────────────────────────────────────
+  // ── Send Telegram message (HTML, not MarkdownV2) ───────────────────────────
   const text = [
-    "🔔 *Nouvelle demande d\'activation ZeroQCM*",
+    "🔔 <b>Nouvelle demande d'activation ZeroQCM</b>",
     "",
-    `👤 *Nom:* ${displayName.replace(/[_*[\]()~`>#+=|{}.!-]/g, "\$&")}`,
-    `📧 *Email:* ${user.email}`,
-    `📚 *Semestre:* ${semester}`,
-    `🏫 *Faculté:* ${profile?.faculty || "FMPC"}`,
-    `🕐 *Date:* ${now}`,
-    `🆔 \`${user.id}\``,
+    `👤 <b>Nom:</b> ${escapeHtml(displayName)}`,
+    `📧 <b>Email:</b> ${escapeHtml(user.email ?? "")}`,
+    `📚 <b>Semestre:</b> ${semester}`,
+    `🏫 <b>Faculté:</b> ${escapeHtml(profile?.faculty || "FMPC")}`,
+    `🕐 <b>Date:</b> ${escapeHtml(now)}`,
+    `🆔 <code>${user.id}</code>`,
   ].join("\n");
 
   const tgBody = {
     chat_id:      ADMIN_ID,
     text,
-    parse_mode:   "MarkdownV2",
+    parse_mode:   "HTML",
     reply_markup: {
       inline_keyboard: [[
         { text: "✅ Approuver", callback_data: `approve_${user.id}` },
@@ -102,22 +108,15 @@ export async function POST(req: NextRequest) {
     const tgJson = await tgRes.json();
     if (tgJson.ok) {
       telegramMsgId = tgJson.result.message_id;
-      // Store message ID for later editing
-      await admin.from("activation_keys").update({ telegram_message_id: telegramMsgId })
+      await admin.from("activation_keys")
+        .update({ telegram_message_id: telegramMsgId })
         .eq("user_id", user.id);
     } else {
-      console.error("Telegram error:", tgJson);
+      console.error("Telegram sendMessage error:", JSON.stringify(tgJson));
     }
   } catch (e) {
     console.error("Telegram fetch error:", e);
   }
-
-  // ── Register webhook (idempotent — Telegram ignores if already set) ────────
-  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ url: "https://zeroqcm.me/api/telegram-webhook" }),
-  }).catch(() => {});
 
   return NextResponse.json({ status: "pending" });
 }
