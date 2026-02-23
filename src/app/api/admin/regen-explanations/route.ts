@@ -67,21 +67,36 @@ export async function POST(req: NextRequest) {
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
-  // Fetch questions that either have no explanation (or force=true means all)
-  let query = db
-    .from("questions")
-    .select("id, texte, correction, source_question, choices(id, id_choix, contenu, est_correct)")
-    .range(offset, offset + batch - 1)
-    .order("id");
+  // force=true → regenerate already-explained questions (via join with ai_explanations)
+  // force=false → only missing questions (no existing explanation)
+  let questions;
+  let fetchError;
 
-  if (!force) {
-    // Only questions without existing explanations
+  if (force) {
+    // Fetch questions that ALREADY have an explanation — regenerate those
+    const { data, error } = await db
+      .from("ai_explanations")
+      .select("question_id, questions!inner(id, texte, correction, source_question, choices(id, id_choix, contenu, est_correct))")
+      .range(offset, offset + batch - 1)
+      .order("question_id");
+    fetchError = error;
+    questions = (data ?? []).map((row: Record<string, unknown>) => (row.questions as Record<string, unknown>));
+  } else {
+    // Only questions WITHOUT existing explanations
     const { data: existingIds } = await db.from("ai_explanations").select("question_id");
-    const ids = (existingIds ?? []).map((e) => e.question_id);
+    const ids = (existingIds ?? []).map((e: Record<string, unknown>) => e.question_id as string);
+    let query = db
+      .from("questions")
+      .select("id, texte, correction, source_question, choices(id, id_choix, contenu, est_correct)")
+      .range(offset, offset + batch - 1)
+      .order("id");
     if (ids.length > 0) query = query.not("id", "in", `(${ids.slice(0, 1000).join(",")})`);
+    const { data, error } = await query;
+    fetchError = error;
+    questions = data;
   }
 
-  const { data: questions, error } = await query;
+  const error = fetchError;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!questions?.length) return NextResponse.json({ done: true, regenerated: 0 });
 
