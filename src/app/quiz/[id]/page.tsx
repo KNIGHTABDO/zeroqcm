@@ -71,6 +71,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  // history[index] = Set of choice ids the user selected at that question
+  const [history, setHistory] = useState<Map<number, Set<string>>>(new Map());
   const [comments, setComments] = useState<QuizComment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentAnon, setCommentAnon] = useState(false);
@@ -178,6 +180,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   }
 
   function lockAndScore() {
+    // Save selection to history so user can review prev questions
+    setHistory(prev => { const n = new Map(prev); n.set(current, new Set(selected)); return n; });
     if (!q || selected.size === 0) return;
     const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
     const ok = selected.size === correctIds.size && [...selected].every((cid) => correctIds.has(cid));
@@ -233,6 +237,16 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
   }
 
+  function handlePrev() {
+    if (current === 0) return;
+    const prevIdx = current - 1;
+    const prevSel = history.get(prevIdx);
+    setSelected(prevSel ? new Set(prevSel) : new Set());
+    setCurrent(prevIdx);
+    setPhase("revealed");
+    setAiText(""); setAiParsed(null); setCommentsOpen(false);
+  }
+
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (!q) return;
     if (phase === "quiz") {
@@ -244,6 +258,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       if ((e.key === "Enter" || e.key === "ArrowRight") && selected.size > 0) handleNext();
     }
     if (phase === "revealed" && (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ")) handleNext();
+      if (phase === "revealed" && e.key === "ArrowLeft" && current > 0) handlePrev();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selected, q]);
 
@@ -549,10 +564,19 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               </motion.button>
             </>
           ) : (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext}
-              className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
-              {isLast ? "Voir les résultats" : "Suivant →"}
-            </motion.button>
+            <>
+              {current > 0 && (
+                <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrev}
+                  className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                  ← Préc.
+                </motion.button>
+              )}
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext}
+                className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
+                {isLast ? "Voir les résultats" : "Suivant →"}
+              </motion.button>
+            </>
           )}
         </div>
         <p className="text-center text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
