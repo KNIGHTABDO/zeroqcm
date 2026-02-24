@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Clock, CheckCircle, XCircle, BookOpen, Activity, ChevronRight, Brain, RefreshCw, Zap } from "lucide-react";
+import { Users, Clock, CheckCircle, XCircle, BookOpen, Activity, ChevronRight, Brain, RefreshCw, Zap, Database } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -330,6 +330,189 @@ function RegenSection() {
   );
 }
 
+
+// ── Seed Section ─────────────────────────────────────────────────────────────
+type SeedPhase = "idle" | "running" | "done" | "error";
+interface SeedStats { semesters: number; modules: number; activities: number; questions: number; choices: number; errors: number }
+
+function SeedSection() {
+  const [phase, setPhase]       = useState<SeedPhase>("idle");
+  const [activeYear, setActiveYear] = useState<number | null>(null);
+  const [result, setResult]     = useState<SeedStats | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+
+  const YEARS = [
+    { year: 1, label: "Année 1", sems: "S1 + S2", color: "#60a5fa" },
+    { year: 2, label: "Année 2", sems: "S1–S4",   color: "#34d399" },
+    { year: 3, label: "Année 3", sems: "S1–S6",   color: "#a78bfa" },
+    { year: 4, label: "Année 4", sems: "S1–S8",   color: "#f472b6" },
+    { year: 5, label: "Année 5", sems: "S1–S9",   color: "#fbbf24" },
+    { year: 6, label: "Année 6", sems: "S1–S10",  color: "#fb923c" },
+  ];
+
+  async function seed(year: number) {
+    setPhase("running");
+    setActiveYear(year);
+    setResult(null);
+    setErrorMsg("");
+    try {
+      const headers = { ...(await authHeader()), "Content-Type": "application/json" };
+      const res = await fetch("/api/scrape-expand", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ year }),
+      });
+      const data = await res.json() as { ok?: boolean; stats?: SeedStats; error?: string; errors?: string[] };
+      if (!res.ok || !data.ok) {
+        setErrorMsg(data.error ?? `HTTP ${res.status}`);
+        setPhase("error");
+      } else {
+        setResult(data.stats ?? null);
+        setPhase("done");
+      }
+    } catch (e) {
+      setErrorMsg(String(e));
+      setPhase("error");
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+      className="rounded-2xl border overflow-hidden mb-8"
+      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+
+      {/* Header */}
+      <div className="px-5 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
+            <Database className="w-4 h-4" style={{ color: "#60a5fa" }} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+              Seed DariQCM
+            </p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+              Importer les semestres accessibles par année d&apos;étude
+            </p>
+          </div>
+        </div>
+        {(phase === "done" || phase === "error") && (
+          <button onClick={() => { setPhase("idle"); setActiveYear(null); }}
+            className="p-2 rounded-lg transition-opacity hover:opacity-70"
+            style={{ color: "rgba(255,255,255,0.3)" }}>
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="p-5 space-y-4">
+
+        {/* Year buttons */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          {YEARS.map(({ year, label, sems, color }) => {
+            const isActive = activeYear === year && phase === "running";
+            return (
+              <button
+                key={year}
+                onClick={() => seed(year)}
+                disabled={phase === "running"}
+                className="rounded-xl p-3 text-center transition-all disabled:opacity-40 hover:opacity-90"
+                style={{
+                  background: `${color}0d`,
+                  border: `1px solid ${color}${isActive ? "55" : "22"}`,
+                  outline: isActive ? `1px solid ${color}44` : "none",
+                }}>
+                {isActive ? (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin mx-auto mb-1"
+                    style={{ borderColor: color, borderTopColor: "transparent" }} />
+                ) : (
+                  <p className="text-base font-bold" style={{ color }}>{year}</p>
+                )}
+                <p className="text-[9px] font-semibold uppercase tracking-wide mt-0.5" style={{ color }}>{label}</p>
+                <p className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>{sems}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Running state */}
+        <AnimatePresence>
+          {phase === "running" && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3"
+              style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)" }}>
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
+                style={{ borderColor: "#60a5fa", borderTopColor: "transparent" }} />
+              <p className="text-sm" style={{ color: "#60a5fa" }}>
+                Scraping Année {activeYear} — ceci peut prendre 2–5 minutes…
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Done state */}
+        <AnimatePresence>
+          {phase === "done" && result && (
+            <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              className="rounded-xl p-4 space-y-3"
+              style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
+                <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Import terminé — Année {activeYear}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Semestres", val: result.semesters },
+                  { label: "Modules",   val: result.modules },
+                  { label: "Activités", val: result.activities },
+                  { label: "Questions", val: result.questions },
+                  { label: "Choix",     val: result.choices },
+                  { label: "Erreurs",   val: result.errors },
+                ].map(({ label, val }) => (
+                  <div key={label} className="rounded-lg p-2 text-center"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <p className="text-sm font-bold tabular-nums" style={{ color: "rgba(255,255,255,0.8)" }}>
+                      {val.toLocaleString()}
+                    </p>
+                    <p className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+              {result.errors > 0 && (
+                <p className="text-[10px]" style={{ color: "rgba(251,191,36,0.6)" }}>
+                  {result.errors} activité(s) échouées — données partielles possibles
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error state */}
+        <AnimatePresence>
+          {phase === "error" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3"
+              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+              <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#ef4444" }} />
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "#ef4444" }}>Erreur de seed</p>
+                <p className="text-xs" style={{ color: "rgba(239,68,68,0.6)" }}>{errorMsg}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>
+          DariQCM gate les semestres par année d&apos;étude · Correction automatique des réponses manquantes incluse
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [stats, setStats]   = useState<Stats | null>(null);
@@ -388,6 +571,9 @@ export default function AdminPage() {
 
       {/* AI Regen section */}
       <RegenSection />
+
+      {/* Seed section */}
+      <SeedSection />
 
       {/* Recent pending activations */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
