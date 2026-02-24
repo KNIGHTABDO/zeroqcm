@@ -2,7 +2,8 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 /**
  * ZeroQCM — GitHub Models provider via AI SDK
- * Uses the OpenAI-compatible endpoint at models.inference.ai.azure.com
+ * Endpoint: https://models.inference.ai.azure.com
+ * Model IDs must NOT include the publisher prefix (e.g. "gpt-5-mini" not "openai/gpt-5-mini")
  * GITHUB_MODELS_TOKEN (or GITHUB_TOKEN) must be set in Vercel env.
  */
 export const githubModels = createOpenAICompatible({
@@ -13,8 +14,13 @@ export const githubModels = createOpenAICompatible({
   },
 });
 
+/** Strip publisher prefix so the Azure endpoint receives a clean model name */
+export function resolveModelId(id: string): string {
+  return id.includes("/") ? id.split("/").pop()! : id;
+}
+
 export const ALLOWED_MODELS = [
-  "openai/gpt-5-mini",
+  "gpt-5-mini",
   "gpt-4o",
   "gpt-4o-mini",
   "Meta-Llama-3.1-70B-Instruct",
@@ -24,4 +30,4 @@ export const ALLOWED_MODELS = [
   "DeepSeek-V3-0324",
 ];
 
-export const DEFAULT_MODEL = "openai/gpt-5-mini";
+export const DEFAULT_MODEL = "gpt-5-mini";
