@@ -5,11 +5,11 @@ import { Home, BookOpen, Bookmark, Trophy, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/", icon: Home, label: "Accueil" },
-  { href: "/semestres", icon: BookOpen, label: "Semestres" },
-  { href: "/chatwithai", icon: Sparkles, label: "AI Chat", accent: true },
-  { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
-  { href: "/profil", icon: User, label: "Profil" },
+  { href: "/", icon: Home, label: "Accueil", tourId: "dashboard" },
+  { href: "/semestres", icon: BookOpen, label: "Semestres", tourId: "semestres" },
+  { href: "/chatwithai", icon: Sparkles, label: "AI Chat", accent: true, tourId: "chatwithai" },
+  { href: "/bookmarks", icon: Bookmark, label: "Favoris", tourId: "bookmarks" },
+  { href: "/profil", icon: User, label: "Profil", tourId: "profil" },
 ];
 
 export function BottomNav() {
@@ -21,7 +21,7 @@ export function BottomNav() {
         {NAV.map((item) => {
           const active = path === item.href || (item.href !== "/" && path.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href}
+            <Link key={item.href} href={item.href} data-tour={(item as { tourId?: string }).tourId}
               className={cn(
                 "flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[52px] min-h-[48px] justify-center relative",
                 active ? "opacity-100" : "opacity-50 hover:opacity-75"
