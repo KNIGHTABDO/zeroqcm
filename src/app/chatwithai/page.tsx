@@ -200,12 +200,12 @@ const SUGGESTIONS = [
   "Quiz: hémostase primaire",
 ];
 
-function ToolCallBadge() {
+function ToolCallBadge({ query }: { query?: string }) {
   return (
     <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs w-fit mb-2"
       style={{ background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.18)", color: "var(--accent)" }}>
       <Search className="w-3 h-3 flex-shrink-0" />
-      <span>Recherche dans la base ZeroQCM…</span>
+      <span>Recherche ZeroQCM{query ? <> — <em style={{fontStyle:"normal",opacity:0.8}}>{query}</em></> : "…"}</span>
     </div>
   );
 }
@@ -533,16 +533,23 @@ export default function ChatWithAI() {
                 </div>
 
                 <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[78%]">
-                  {msg.role === "assistant" && (msg as Message & { toolInvocations?: {toolName: string}[] }).toolInvocations?.some(t => t.toolName === "searchQCM") && (
-                    <ToolCallBadge />
-                  )}
+                  {msg.role === "assistant" && (() => {
+                    const inv = (msg as Message & { toolInvocations?: {toolName: string; args?: {query?: string}}[] }).toolInvocations;
+                    const qcmCall = inv?.find(t => t.toolName === "searchQCM");
+                    if (!qcmCall) return null;
+                    return <ToolCallBadge query={qcmCall.args?.query} />;
+                  })()}
 
                   <div className={cn("px-3.5 py-2.5 rounded-2xl text-sm", msg.role === "user" ? "rounded-tr-md" : "rounded-tl-md")}
                     style={msg.role === "user"
                       ? { background: "var(--surface-active)", border: "1px solid var(--border-strong)", color: "var(--text)" }
                       : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
                     {msg.role === "assistant"
-                      ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(msg.content)}</div>
+                      ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(
+                          // Strip any leading JSON tool-call artifact that some models leak into content
+                          msg.content.replace(/^\s*\{[\s\S]*?"query"\s*:[\s\S]*?\}\s*
+?/, "").trimStart()
+                        )}</div>
                       : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
                   </div>
                 </div>
