@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
+import { OnboardingTour } from "./OnboardingTour";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
@@ -85,6 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex-1 min-w-0 overflow-x-hidden lg:ml-64 pb-20 lg:pb-0">
         <div style={{ visibility: hideContent ? "hidden" : "visible" }}>
+          {!hideContent && <OnboardingTour />}
           {children}
         </div>
         <BottomNav />
