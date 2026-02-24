@@ -14,13 +14,13 @@ const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
 type Semester = { semestre_id: string; nom: string; faculty: string; total_questions: number };
 
 const NAV = [
-  { href: "/", icon: Home, label: "Tableau de bord" },
-  { href: "/stats", icon: BarChart2, label: "Statistiques" },
-  { href: "/chatwithai", icon: Sparkles, label: "Chat IA" },
-  { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
-  { href: "/leaderboard", icon: Trophy, label: "Classement" },
-  { href: "/profil", icon: User, label: "Profil" },
-  { href: "/settings", icon: Settings, label: "Paramètres" },
+  { href: "/", icon: Home, label: "Tableau de bord", tourId: "dashboard" },
+  { href: "/stats", icon: BarChart2, label: "Statistiques", tourId: "stats" },
+  { href: "/chatwithai", icon: Sparkles, label: "Chat IA", tourId: "chatwithai" },
+  { href: "/bookmarks", icon: Bookmark, label: "Favoris", tourId: "bookmarks" },
+  { href: "/leaderboard", icon: Trophy, label: "Classement", tourId: "leaderboard" },
+  { href: "/profil", icon: User, label: "Profil", tourId: "profil" },
+  { href: "/settings", icon: Settings, label: "Paramètres", tourId: "settings" },
 ];
 
 export function Sidebar() {
@@ -71,7 +71,7 @@ export function Sidebar() {
         {NAV.map((item) => {
           const active = path === item.href;
           return (
-            <Link key={item.href} href={item.href}
+            <Link key={item.href} href={item.href} data-tour={(item as { tourId?: string }).tourId}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
               style={{ background: active ? "var(--nav-item-active)" : "transparent", color: active ? "var(--nav-text-active)" : "var(--nav-text)" }}>
               <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -116,9 +116,10 @@ export function Sidebar() {
                   ))
                 : visibleSemesters.map((sem) => {
                     const href = `/semestres/${encodeURIComponent(sem.semestre_id)}`;
+    const dataTour = sem === semesters[0] ? "semestres" : undefined;
                     const active = path === href || path.startsWith(href + "/");
                     return (
-                      <Link key={sem.semestre_id} href={href}
+                      <Link key={sem.semestre_id} href={href} data-tour={dataTour}
                         className="flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all"
                         style={{ background: active ? "var(--nav-item-active)" : "transparent", color: active ? "var(--nav-text-active)" : "var(--nav-text)" }}>
                         <div className="flex items-center gap-2 min-w-0">
