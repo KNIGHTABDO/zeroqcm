@@ -310,7 +310,7 @@ export default function ChatWithAI() {
         tool_invocations: (m as Message & { toolInvocations?: unknown }).toolInvocations ?? null,
       })),
       { onConflict: "id" }
-    ).catch(() => { /* non-blocking */ });
+    ).then(() => {}).catch(() => {});
   }, [messages, hydrated, user, messagesLoaded]);
 
   // ── Sync model change to API body on re-render ─────────────────
@@ -354,8 +354,8 @@ export default function ChatWithAI() {
     setMessages([]);           // instant UI update — no refresh needed
     savedMsgIds.current.clear();
     if (user) {
-      supabase.from("chat_messages").delete().eq("user_id", user.id)
-        .catch(() => { /* non-blocking */ });
+      void supabase.from("chat_messages").delete().eq("user_id", user.id)
+        .then(() => {}).catch(() => {});
     }
   }, [setMessages, user]);
 
@@ -365,8 +365,8 @@ export default function ChatWithAI() {
     // Persist to profiles.preferences in DB
     if (user && profile) {
       const prefs = { ...(profile.preferences ?? {}), ai_model: m };
-      supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id)
-        .catch(() => { /* non-blocking */ });
+      void supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id)
+        .then(() => {}).catch(() => {});
     }
   };
 
