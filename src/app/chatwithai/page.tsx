@@ -1,12 +1,17 @@
 "use client";
 
 import { useChat } from "ai/react";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, User, Loader2, Trash2, ChevronDown, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ALLOWED_MODELS, DEFAULT_MODEL } from "@/lib/github-models";
+import { useAuth } from "@/components/auth/AuthProvider";
 import Image from "next/image";
+import type { Message } from "ai/react";
+
+const STORAGE_KEY = "zeroqcm-chat-messages";
+const MODEL_KEY   = "fmpc-ai-model";
 
 // ── Markdown renderer with full table support ────────────────────────────────
 function renderMarkdown(text: string): React.ReactNode[] {
@@ -17,10 +22,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Blank line
     if (line.trim() === "") { result.push(<div key={i} className="h-2" />); i++; continue; }
 
-    // Headings
     if (line.startsWith("### ")) {
       result.push(<p key={i} className="font-semibold text-xs mt-3 mb-1 uppercase tracking-wide" style={{ color: "var(--accent)" }}>{inlineFormat(line.slice(4))}</p>);
       i++; continue;
@@ -34,59 +37,50 @@ function renderMarkdown(text: string): React.ReactNode[] {
       i++; continue;
     }
 
-    // Table detection: line starts with |
     if (line.trim().startsWith("|")) {
       const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("|")) {
-        tableLines.push(lines[i]);
-        i++;
-      }
+      while (i < lines.length && lines[i].trim().startsWith("|")) { tableLines.push(lines[i]); i++; }
       result.push(renderTable(tableLines, result.length));
       continue;
     }
 
-    // Bullet list
     if (line.match(/^[-*•] /)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*•] /)) {
         items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].slice(2))}</li>);
         i++;
       }
-      result.push(<ul key={`ul-${i}`} className="list-disc list-inside space-y-0.5 my-1.5 text-sm">{items}</ul>);
+      result.push(<ul key={"ul-" + i} className="list-disc list-inside space-y-0.5 my-1.5 text-sm">{items}</ul>);
       continue;
     }
 
-    // Numbered list
     if (line.match(/^\d+\. /)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^\d+\. /)) {
         items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].replace(/^\d+\. /, ""))}</li>);
         i++;
       }
-      result.push(<ol key={`ol-${i}`} className="list-decimal list-inside space-y-0.5 my-1.5 text-sm">{items}</ol>);
+      result.push(<ol key={"ol-" + i} className="list-decimal list-inside space-y-0.5 my-1.5 text-sm">{items}</ol>);
       continue;
     }
 
-    // Code block
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith("```")) { codeLines.push(lines[i]); i++; }
       result.push(
-        <pre key={`code-${i}`} className="rounded-lg px-3 py-2 my-2 text-xs overflow-x-auto" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text)", border: "1px solid var(--border)" }}>
+        <pre key={"code-" + i} className="rounded-lg px-3 py-2 my-2 text-xs overflow-x-auto" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text)", border: "1px solid var(--border)" }}>
           <code>{codeLines.join("\n")}</code>
         </pre>
       );
       i++; continue;
     }
 
-    // Horizontal rule
     if (line.match(/^---+$/) || line.match(/^\*\*\*+$/)) {
       result.push(<hr key={i} className="my-2 border-0 border-t" style={{ borderColor: "var(--border)" }} />);
       i++; continue;
     }
 
-    // Normal paragraph
     result.push(<p key={i} className="text-sm leading-relaxed">{inlineFormat(line)}</p>);
     i++;
   }
@@ -94,16 +88,13 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 
 function renderTable(lines: string[], keyBase: number): React.ReactNode {
-  // Parse rows, filter separator rows (---)
   const rows = lines
     .map(l => l.split("|").slice(1, -1).map(cell => cell.trim()))
     .filter(cells => !cells.every(c => /^[-:]+$/.test(c)));
-
   if (rows.length === 0) return null;
   const [header, ...body] = rows;
-
   return (
-    <div key={`table-${keyBase}`} className="my-2 overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border)" }}>
+    <div key={"table-" + keyBase} className="my-2 overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border)" }}>
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr style={{ background: "rgba(99,179,237,0.08)" }}>
@@ -149,26 +140,17 @@ function inlineFormat(text: string): React.ReactNode {
   );
 }
 
-// ── AI Avatar component ───────────────────────────────────────────────────────
 function AIAvatar({ size = 7 }: { size?: number }) {
   const px = size * 4;
   return (
-    <div
-      className={`w-${size} h-${size} rounded-full flex-shrink-0 overflow-hidden`}
+    <div className={"w-" + size + " h-" + size + " rounded-full flex-shrink-0 overflow-hidden"}
       style={{ border: "1px solid rgba(99,179,237,0.3)", boxShadow: "0 0 8px rgba(99,179,237,0.15)" }}>
-      <Image
-        src="/ai-avatar.jpg"
-        alt="ZeroQCM AI"
-        width={px}
-        height={px}
-        className="w-full h-full object-cover"
-        unoptimized
-      />
+      <Image src="/ai-avatar.jpg" alt="ZeroQCM AI" width={px} height={px}
+        className="w-full h-full object-cover" unoptimized />
     </div>
   );
 }
 
-// ── Model labels ──────────────────────────────────────────────────────────────
 const MODEL_LABELS: Record<string, string> = {
   "gpt-4o": "GPT-4o",
   "gpt-4o-mini": "GPT-4o mini",
@@ -183,13 +165,12 @@ const SUGGESTIONS = [
   "Mécanisme d'action des IEC",
   "Donne-moi 3 QCM sur l'HTA",
   "Formule de Cockcroft-Gault",
-  "QCM sur l'insuffisance rénale",
+  "QCM sur les muscles squelettiques",
   "Résistance aux antibiotiques",
   "Quiz: hémostase primaire",
 ];
 
-// ── Tool call display ─────────────────────────────────────────────────────────
-function ToolCallBadge({ toolName }: { toolName: string }) {
+function ToolCallBadge() {
   return (
     <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs w-fit mb-2"
       style={{ background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.18)", color: "var(--accent)" }}>
@@ -199,16 +180,70 @@ function ToolCallBadge({ toolName }: { toolName: string }) {
   );
 }
 
+// ── Resolve initial model from localStorage / profile ───────────────────────
+function resolveInitialModel(): string {
+  if (typeof window === "undefined") return DEFAULT_MODEL;
+  const stored = localStorage.getItem(MODEL_KEY);
+  if (stored && ALLOWED_MODELS.includes(stored)) return stored;
+  return DEFAULT_MODEL;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ChatWithAI() {
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const { profile } = useAuth();
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // ── Load model from localStorage or profile (once hydrated) ──
+  useEffect(() => {
+    const fromProfile = (profile?.preferences as Record<string, string> | undefined)?.ai_model;
+    const fromStorage = localStorage.getItem(MODEL_KEY);
+    const resolved = (fromProfile && ALLOWED_MODELS.includes(fromProfile))
+      ? fromProfile
+      : (fromStorage && ALLOWED_MODELS.includes(fromStorage))
+        ? fromStorage
+        : DEFAULT_MODEL;
+    setSelectedModel(resolved);
+    setHydrated(true);
+  }, [profile]);
+
+  // ── Load persisted messages from localStorage ──────────────────
+  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) setInitialMessages(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
-    useChat({ api: "/api/chat", body: { model: selectedModel } });
+    useChat({
+      api: "/api/chat",
+      body: { model: selectedModel },
+      initialMessages,
+    });
+
+  // ── Persist messages to localStorage on every change ──────────
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      // Only save non-empty conversations; cap at last 40 messages to avoid bloat
+      if (messages.length > 0) {
+        const toSave = messages.slice(-40);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      }
+    } catch { /* storage full */ }
+  }, [messages, hydrated]);
+
+  // ── Sync model change to API body on re-render ─────────────────
+  // (useChat body is passed dynamically, so selectedModel changes take effect on next send)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -244,13 +279,24 @@ export default function ChatWithAI() {
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  const handleClear = useCallback(() => {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
+  }, [setMessages]);
+
+  const handleModelChange = (m: string) => {
+    setSelectedModel(m);
+    localStorage.setItem(MODEL_KEY, m);
+    setModelMenuOpen(false);
+  };
+
   const isEmpty = messages.length === 0;
 
   return (
     <div className="flex flex-col w-full" style={{ height: "calc(100dvh - 4rem)" }}>
       <style>{`@media (min-width: 1024px) { .chat-root { height: 100dvh !important; } }`}</style>
 
-      {/* ─ Header ─────────────────────────────────────────────────────────── */}
+      {/* ─ Header ──────────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-2.5 border-b"
         style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
         <div className="flex items-center gap-2.5">
@@ -281,7 +327,7 @@ export default function ChatWithAI() {
                   className="absolute right-0 top-full mt-1.5 w-52 rounded-xl overflow-hidden z-50"
                   style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-strong)", boxShadow: "var(--shadow)" }}>
                   {ALLOWED_MODELS.map((m) => (
-                    <button key={m} onClick={() => { setSelectedModel(m); setModelMenuOpen(false); }}
+                    <button key={m} onClick={() => handleModelChange(m)}
                       className="w-full text-left px-3.5 py-2.5 text-xs transition-colors"
                       style={{
                         color: selectedModel === m ? "var(--accent)" : "var(--text-secondary)",
@@ -297,7 +343,7 @@ export default function ChatWithAI() {
           </div>
 
           {!isEmpty && (
-            <button onClick={() => setMessages([])}
+            <button onClick={handleClear}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
               style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
               <Trash2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
@@ -306,11 +352,10 @@ export default function ChatWithAI() {
         </div>
       </div>
 
-      {/* ─ Messages ───────────────────────────────────────────────────────── */}
+      {/* ─ Messages ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto" style={{ background: "var(--bg)" }}>
         <div className="max-w-3xl mx-auto px-3 md:px-6 py-3 space-y-3">
 
-          {/* Empty state — compact, no excessive padding */}
           <AnimatePresence>
             {isEmpty && (
               <motion.div
@@ -347,7 +392,6 @@ export default function ChatWithAI() {
             )}
           </AnimatePresence>
 
-          {/* Messages */}
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
               <motion.div key={msg.id}
@@ -355,7 +399,6 @@ export default function ChatWithAI() {
                 transition={{ duration: 0.18 }}
                 className={cn("flex gap-2", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
 
-                {/* Avatar */}
                 <div className="flex-shrink-0 mt-0.5">
                   {msg.role === "user"
                     ? <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)" }}>
@@ -364,17 +407,12 @@ export default function ChatWithAI() {
                     : <AIAvatar size={7} />}
                 </div>
 
-                {/* Bubble */}
                 <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[78%]">
-                  {/* Tool call indicator */}
-                  {msg.role === "assistant" && (msg as any).toolInvocations?.some((t: any) => t.toolName === "searchQCM") && (
-                    <ToolCallBadge toolName="searchQCM" />
+                  {msg.role === "assistant" && (msg as Message & { toolInvocations?: {toolName: string}[] }).toolInvocations?.some(t => t.toolName === "searchQCM") && (
+                    <ToolCallBadge />
                   )}
 
-                  <div className={cn(
-                      "px-3.5 py-2.5 rounded-2xl text-sm",
-                      msg.role === "user" ? "rounded-tr-md" : "rounded-tl-md"
-                    )}
+                  <div className={cn("px-3.5 py-2.5 rounded-2xl text-sm", msg.role === "user" ? "rounded-tr-md" : "rounded-tl-md")}
                     style={msg.role === "user"
                       ? { background: "var(--surface-active)", border: "1px solid var(--border-strong)", color: "var(--text)" }
                       : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
@@ -387,7 +425,6 @@ export default function ChatWithAI() {
             ))}
           </AnimatePresence>
 
-          {/* Typing indicator */}
           <AnimatePresence>
             {isLoading && (
               <motion.div key="typing"
@@ -407,7 +444,6 @@ export default function ChatWithAI() {
             )}
           </AnimatePresence>
 
-          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -423,7 +459,7 @@ export default function ChatWithAI() {
         </div>
       </div>
 
-      {/* ─ Input bar ──────────────────────────────────────────────────────── */}
+      {/* ─ Input bar ───────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-t" style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
         <div className="max-w-3xl mx-auto px-3 md:px-6 py-2.5">
           <form onSubmit={e => {
