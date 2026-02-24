@@ -7,11 +7,11 @@ import { Send, User, Loader2, Trash2, ChevronDown, AlertCircle, Search } from "l
 import { cn } from "@/lib/utils";
 import { DEFAULT_MODEL } from "@/lib/github-models";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import type { Message } from "ai/react";
 
-const STORAGE_KEY = "zeroqcm-chat-messages";
-const MODEL_KEY   = "fmpc-ai-model";
+// Model list cache only (ephemeral catalog data, not user data)
 
 // ── Markdown renderer with full table support ────────────────────────────────
 function renderMarkdown(text: string): React.ReactNode[] {
@@ -210,11 +210,7 @@ function ToolCallBadge() {
   );
 }
 
-// ── Resolve initial model from localStorage / profile ───────────────────────
-function resolveInitialModel(): string {
-  if (typeof window === "undefined") return DEFAULT_MODEL;
-  return localStorage.getItem(MODEL_KEY) ?? DEFAULT_MODEL;
-}
+
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ChatWithAI() {
@@ -258,45 +254,64 @@ export default function ChatWithAI() {
       .finally(() => setLoadingModels(false));
   }, []);
 
-  // ── Load model from localStorage or profile (once hydrated) ──
+  // ── Load model from profile (DB only) ──
   useEffect(() => {
     const fromProfile = (profile?.preferences as Record<string, string> | undefined)?.ai_model;
-    const fromStorage = localStorage.getItem(MODEL_KEY);
-    const resolved = fromProfile ?? fromStorage ?? DEFAULT_MODEL;
-    setSelectedModel(resolved);
+    setSelectedModel(fromProfile ?? DEFAULT_MODEL);
     setHydrated(true);
   }, [profile]);
 
-  // ── Load persisted messages from localStorage ──────────────────
+  // ── Load messages from Supabase on mount ──────────────────────
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Message[];
-        if (Array.isArray(parsed) && parsed.length > 0) setInitialMessages(parsed);
-      }
-    } catch { /* ignore */ }
-  }, []);
+    if (!user) { setMessagesLoaded(true); return; }
+    supabase
+      .from("chat_messages")
+      .select("id, role, content, tool_invocations, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(80)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setInitialMessages(data.map(r => ({
+            id: r.id,
+            role: r.role as Message["role"],
+            content: r.content,
+            toolInvocations: r.tool_invocations ?? undefined,
+          })));
+        }
+        setMessagesLoaded(true);
+      })
+      .catch(() => setMessagesLoaded(true));
+  }, [user]);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
     useChat({
       api: "/api/chat",
       body: { model: selectedModel },
-      initialMessages,
+      initialMessages: messagesLoaded ? initialMessages : [],
+      key: messagesLoaded ? "loaded" : "loading",
     });
 
-  // ── Persist messages to localStorage on every change ──────────
+  // ── Persist new messages to Supabase ──────────────────────────
+  const savedMsgIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      // Only save non-empty conversations; cap at last 40 messages to avoid bloat
-      if (messages.length > 0) {
-        const toSave = messages.slice(-40);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      }
-    } catch { /* storage full */ }
-  }, [messages, hydrated]);
+    if (!hydrated || !user || !messagesLoaded) return;
+    const unsaved = messages.filter(m => !savedMsgIds.current.has(m.id) && m.content);
+    if (unsaved.length === 0) return;
+    unsaved.forEach(m => savedMsgIds.current.add(m.id));
+    supabase.from("chat_messages").upsert(
+      unsaved.map(m => ({
+        id: m.id,
+        user_id: user.id,
+        role: m.role,
+        content: m.content,
+        tool_invocations: (m as Message & { toolInvocations?: unknown }).toolInvocations ?? null,
+      })),
+      { onConflict: "id" }
+    ).catch(() => { /* non-blocking */ });
+  }, [messages, hydrated, user, messagesLoaded]);
 
   // ── Sync model change to API body on re-render ─────────────────
   // (useChat body is passed dynamically, so selectedModel changes take effect on next send)
@@ -336,14 +351,23 @@ export default function ChatWithAI() {
   };
 
   const handleClear = useCallback(() => {
-    setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
-  }, [setMessages]);
+    setMessages([]);           // instant UI update — no refresh needed
+    savedMsgIds.current.clear();
+    if (user) {
+      supabase.from("chat_messages").delete().eq("user_id", user.id)
+        .catch(() => { /* non-blocking */ });
+    }
+  }, [setMessages, user]);
 
   const handleModelChange = (m: string) => {
     setSelectedModel(m);
-    localStorage.setItem(MODEL_KEY, m);
     setModelMenuOpen(false);
+    // Persist to profiles.preferences in DB
+    if (user && profile) {
+      const prefs = { ...(profile.preferences ?? {}), ai_model: m };
+      supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id)
+        .catch(() => { /* non-blocking */ });
+    }
   };
 
   const isEmpty = messages.length === 0;
