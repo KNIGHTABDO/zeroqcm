@@ -5,7 +5,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, User, Loader2, Trash2, ChevronDown, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ALLOWED_MODELS, DEFAULT_MODEL } from "@/lib/github-models";
+import { DEFAULT_MODEL } from "@/lib/github-models";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Image from "next/image";
 import type { Message } from "ai/react";
@@ -151,15 +151,11 @@ function AIAvatar({ size = 7 }: { size?: number }) {
   );
 }
 
-const MODEL_LABELS: Record<string, string> = {
-  "gpt-4o": "GPT-4o",
-  "gpt-4o-mini": "GPT-4o mini",
-  "Meta-Llama-3.1-70B-Instruct": "Llama 3.1 70B",
-  "Meta-Llama-3.3-70B-Instruct": "Llama 3.3 70B",
-  "Mistral-large-2411": "Mistral Large",
-  "Mistral-small-3.1-24B-Instruct-2503": "Mistral Small",
-  "DeepSeek-V3-0324": "DeepSeek V3",
-};
+interface FetchedModel { id: string; name: string; publisher: string; supports_tools?: boolean; supports_vision?: boolean; }
+
+function labelFor(m: FetchedModel | undefined, id: string): string {
+  return m?.name ?? id;
+}
 
 const SUGGESTIONS = [
   "Mécanisme d'action des IEC",
@@ -183,9 +179,7 @@ function ToolCallBadge() {
 // ── Resolve initial model from localStorage / profile ───────────────────────
 function resolveInitialModel(): string {
   if (typeof window === "undefined") return DEFAULT_MODEL;
-  const stored = localStorage.getItem(MODEL_KEY);
-  if (stored && ALLOWED_MODELS.includes(stored)) return stored;
-  return DEFAULT_MODEL;
+  return localStorage.getItem(MODEL_KEY) ?? DEFAULT_MODEL;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -193,20 +187,48 @@ export default function ChatWithAI() {
   const { profile } = useAuth();
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
+  const [fetchedModels, setFetchedModels] = useState<FetchedModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
 
+  // ── Fetch models from /api/gh-models (with 1h localStorage cache) ──
+  useEffect(() => {
+    const CACHE_KEY = "zqcm-models-cache";
+    const CACHE_TTL = 60 * 60 * 1000;
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const cache = JSON.parse(raw) as { ts: number; models: FetchedModel[] };
+        if (Date.now() - cache.ts < CACHE_TTL && cache.models.length > 0) {
+          setFetchedModels(cache.models);
+          setLoadingModels(false);
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+    fetch("/api/gh-models")
+      .then(r => r.json())
+      .then((data: FetchedModel[]) => {
+        setFetchedModels(data);
+        try { localStorage.setItem("zqcm-models-cache", JSON.stringify({ ts: Date.now(), models: data })); } catch { /* ignore */ }
+      })
+      .catch(() => setFetchedModels([
+        { id: "gpt-4o", name: "GPT-4o", publisher: "OpenAI" },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini", publisher: "OpenAI" },
+        { id: "Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B", publisher: "Meta" },
+      ]))
+      .finally(() => setLoadingModels(false));
+  }, []);
+
   // ── Load model from localStorage or profile (once hydrated) ──
   useEffect(() => {
     const fromProfile = (profile?.preferences as Record<string, string> | undefined)?.ai_model;
     const fromStorage = localStorage.getItem(MODEL_KEY);
-    const resolved = (fromProfile && ALLOWED_MODELS.includes(fromProfile))
-      ? fromProfile
-      : (fromStorage && ALLOWED_MODELS.includes(fromStorage))
-        ? fromStorage
-        : DEFAULT_MODEL;
+    const resolved = fromProfile ?? fromStorage ?? DEFAULT_MODEL;
     setSelectedModel(resolved);
     setHydrated(true);
   }, [profile]);
@@ -312,7 +334,7 @@ export default function ChatWithAI() {
             <button onClick={() => setModelMenuOpen(v => !v)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-              <span className="hidden sm:inline max-w-[120px] truncate">{MODEL_LABELS[selectedModel] ?? selectedModel}</span>
+              <span className="hidden sm:inline max-w-[140px] truncate">{labelFor(fetchedModels.find(m => m.id === selectedModel), selectedModel)}</span>
               <span className="sm:hidden">Modèle</span>
               <ChevronDown className={cn("w-3 h-3 flex-shrink-0 transition-transform duration-150", modelMenuOpen && "rotate-180")} />
             </button>
@@ -326,17 +348,45 @@ export default function ChatWithAI() {
                   transition={{ duration: 0.12 }}
                   className="absolute right-0 top-full mt-1.5 w-52 rounded-xl overflow-hidden z-50"
                   style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-strong)", boxShadow: "var(--shadow)" }}>
-                  {ALLOWED_MODELS.map((m) => (
-                    <button key={m} onClick={() => handleModelChange(m)}
-                      className="w-full text-left px-3.5 py-2.5 text-xs transition-colors"
-                      style={{
-                        color: selectedModel === m ? "var(--accent)" : "var(--text-secondary)",
-                        background: selectedModel === m ? "var(--accent-subtle)" : "transparent",
-                        fontWeight: selectedModel === m ? 600 : 400,
-                      }}>
-                      {MODEL_LABELS[m] ?? m}
-                    </button>
-                  ))}
+                  {/* Search */}
+                  <div className="px-2 pt-2 pb-1.5">
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Rechercher…"
+                      value={modelSearch}
+                      onChange={e => setModelSearch(e.target.value)}
+                      className="w-full text-xs px-2.5 py-1.5 rounded-lg outline-none"
+                      style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text)", caretColor: "var(--accent)" }}
+                    />
+                  </div>
+                  {/* Model list */}
+                  <div style={{ overflowY: "auto", maxHeight: "220px" }}>
+                    {loadingModels
+                      ? <div className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>Chargement…</div>
+                      : fetchedModels
+                          .filter(m => {
+                            if (!modelSearch) return true;
+                            const q = modelSearch.toLowerCase();
+                            return m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || m.publisher.toLowerCase().includes(q);
+                          })
+                          .map((m) => (
+                            <button key={m.id} onClick={() => { handleModelChange(m.id); setModelSearch(""); }}
+                              className="w-full text-left px-3.5 py-2 transition-colors"
+                              style={{
+                                color: selectedModel === m.id ? "var(--accent)" : "var(--text-secondary)",
+                                background: selectedModel === m.id ? "var(--accent-subtle)" : "transparent",
+                              }}>
+                              <div className="text-xs font-medium">{m.name}</div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {m.publisher && <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{m.publisher}</span>}
+                                {m.supports_tools && <span className="text-[9px] px-1 rounded" style={{ background: "rgba(99,179,237,0.12)", color: "var(--accent)" }}>tools</span>}
+                                {m.supports_vision && <span className="text-[9px] px-1 rounded" style={{ background: "rgba(168,85,247,0.12)", color: "#a855f7" }}>vision</span>}
+                              </div>
+                            </button>
+                          ))
+                    }
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
