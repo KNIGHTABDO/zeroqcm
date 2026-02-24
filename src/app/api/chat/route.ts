@@ -135,19 +135,9 @@ export async function POST(req: NextRequest) {
 
     return result.toDataStreamResponse();
   } catch (err) {
-    // DEBUG: surface real upstream error
-    const msg = err instanceof Error ? err.message : String(err);
-    const detail = (err as Record<string, unknown>);
-    const body = JSON.stringify({
-      error: msg,
-      cause: detail?.cause,
-      responseBody: detail?.responseBody,
-      statusCode: detail?.statusCode,
-      url: detail?.url,
-    });
-    console.error("[/api/chat] upstream error:", body);
-    return new Response(body, {
-      status: 502,
+    console.error("[/api/chat] error:", err);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
