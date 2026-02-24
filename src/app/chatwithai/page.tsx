@@ -319,9 +319,7 @@ export default function ChatWithAI() {
   // (useChat body is passed dynamically, so selectedModel changes take effect on next send)
 
   useEffect(() => {
-    if (messages.length > 0 || isLoading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   useEffect(() => {
@@ -467,15 +465,15 @@ export default function ChatWithAI() {
       </div>
 
       {/* ─ Messages ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto" style={{ background: "var(--bg)" }}>
-        <div className={cn("max-w-3xl mx-auto px-3 md:px-6 py-3", isEmpty ? "h-full flex flex-col items-center justify-center" : "space-y-3")}>
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: "var(--bg)" }}>
+        <div className="max-w-3xl mx-auto px-3 md:px-6 py-3 space-y-3">
 
           <AnimatePresence>
             {isEmpty && (
               <motion.div
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="flex flex-col items-center pb-2 gap-4 w-full">
+                className="flex flex-col items-center pt-6 pb-2 gap-4">
                 <div className="flex flex-col items-center gap-2.5 text-center">
                   <AIAvatar size={14} />
                   <div>
