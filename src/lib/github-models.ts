@@ -14,6 +14,7 @@ export const githubModels = createOpenAICompatible({
 });
 
 export const ALLOWED_MODELS = [
+  "openai/gpt-5-mini",
   "gpt-4o",
   "gpt-4o-mini",
   "Meta-Llama-3.1-70B-Instruct",
@@ -23,4 +24,4 @@ export const ALLOWED_MODELS = [
   "DeepSeek-V3-0324",
 ];
 
-export const DEFAULT_MODEL = "gpt-4o-mini";
+export const DEFAULT_MODEL = "openai/gpt-5-mini";
