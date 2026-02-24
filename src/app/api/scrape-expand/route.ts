@@ -101,6 +101,104 @@ async function scrapeActivity(act: Activity, jwt: string, key: Buffer, moduleId:
   for (let i = 0; i < choiceRows.length; i += 500) {
     await supabase.from("choices").upsert(choiceRows.slice(i, i + 500) as unknown as Record<string, unknown>[], { onConflict: "id_choix" });
   }
+  // ── Post-insert correctness fix ──────────────────────────────────────
+  // Fix 1: for questions with no est_correct=true, set est_correct=true
+  //         on every choice with pourcentage >= 50 (majority-selection proxy).
+  if (idQuestions.length > 0) {
+    const { data: qRowsFix } = await supabase
+      .from("questions")
+      .select("id")
+      .in("id_question", idQuestions);
+    const qUids = (qRowsFix ?? []).map((r: { id: string }) => r.id);
+
+    if (qUids.length > 0) {
+      // IDs of questions that still have no correct choice after upsert
+      const { data: noCorrectRows } = await supabase
+        .from("questions")
+        .select("id")
+        .in("id", qUids)
+        .not("source_type", "in", '("open","no_answer")');
+
+      const allIds = (noCorrectRows ?? []).map((r: { id: string }) => r.id);
+
+      // Among those, find which ones actually lack a correct choice
+      const chunkSize = 200;
+      const needFixIds: string[] = [];
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        const chunk = allIds.slice(i, i + chunkSize);
+        const { data: withCorrect } = await supabase
+          .from("choices")
+          .select("question_id")
+          .in("question_id", chunk)
+          .eq("est_correct", true);
+        const hasCorrectSet = new Set((withCorrect ?? []).map((r: { question_id: string }) => r.question_id));
+        chunk.filter(id => !hasCorrectSet.has(id)).forEach(id => needFixIds.push(id));
+      }
+
+      if (needFixIds.length > 0) {
+        // Fix 1: set est_correct=true for choices with pourcentage >= 50
+        for (let i = 0; i < needFixIds.length; i += chunkSize) {
+          const chunk = needFixIds.slice(i, i + chunkSize);
+          await supabase
+            .from("choices")
+            .update({ est_correct: true })
+            .in("question_id", chunk)
+            .gte("pourcentage", 50);
+        }
+
+        // Fix 2: still broken? mark highest-pct choice as correct (for pct 1-49)
+        const stillBroken: string[] = [];
+        for (let i = 0; i < needFixIds.length; i += chunkSize) {
+          const chunk = needFixIds.slice(i, i + chunkSize);
+          const { data: withCorrect2 } = await supabase
+            .from("choices")
+            .select("question_id")
+            .in("question_id", chunk)
+            .eq("est_correct", true);
+          const hasCorrect2 = new Set((withCorrect2 ?? []).map((r: { question_id: string }) => r.question_id));
+          chunk.filter(id => !hasCorrect2.has(id)).forEach(id => stillBroken.push(id));
+        }
+
+        if (stillBroken.length > 0) {
+          // Fix 2: for each still-broken question, pick the highest-pourcentage choice
+          for (let i = 0; i < stillBroken.length; i += chunkSize) {
+            const chunk = stillBroken.slice(i, i + chunkSize);
+            const { data: allChoices } = await supabase
+              .from("choices")
+              .select("id, question_id, pourcentage")
+              .in("question_id", chunk)
+              .gt("pourcentage", 0)
+              .order("pourcentage", { ascending: false });
+
+            const bestChoice: Record<string, string> = {};
+            for (const c of (allChoices ?? [])) {
+              if (!bestChoice[c.question_id]) bestChoice[c.question_id] = c.id;
+            }
+            const bestIds = Object.values(bestChoice);
+            if (bestIds.length > 0) {
+              await supabase.from("choices").update({ est_correct: true }).in("id", bestIds);
+            }
+          }
+
+          // Fix 3: fully-zero pct questions → tag as no_answer (exclude from scored quiz)
+          const zeroIds: string[] = [];
+          for (let i = 0; i < stillBroken.length; i += chunkSize) {
+            const chunk = stillBroken.slice(i, i + chunkSize);
+            const { data: withCorrect3 } = await supabase
+              .from("choices").select("question_id").in("question_id", chunk).eq("est_correct", true);
+            const hasCorrect3 = new Set((withCorrect3 ?? []).map((r: { question_id: string }) => r.question_id));
+            chunk.filter(id => !hasCorrect3.has(id)).forEach(id => zeroIds.push(id));
+          }
+          if (zeroIds.length > 0) {
+            for (let i = 0; i < zeroIds.length; i += chunkSize) {
+              await supabase.from("questions").update({ source_type: "no_answer" }).in("id", zeroIds.slice(i, i + chunkSize));
+            }
+          }
+        }
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────
   return { q: questions.length, c: choiceRows.length };
 }
 
