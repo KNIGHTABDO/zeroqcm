@@ -155,7 +155,9 @@ function SpotlightOverlay({ rect, padding = 10 }: { rect: DOMRect | null; paddin
   );
 }
 
-/* ─── Tooltip positioning (pure CSS, no JS transform conflict) ──────── */
+/* ─── Tooltip positioning — ZERO transforms (Framer-safe) ──────────── */
+// Rule: NEVER use CSS transform here — Framer Motion owns the transform prop.
+// Centering uses left+right, not left:50%+translateX(-50%).
 function getTooltipStyle(
   rect: DOMRect | null,
   placement: Step["placement"],
@@ -163,7 +165,7 @@ function getTooltipStyle(
   const PAD = 16;
   const CARD_W = 310;
 
-  // No target → perfectly centred using CSS only (no transform in style prop)
+  // No target: centred modal via inset+auto margin, no transform
   if (!rect) {
     return {
       position: "fixed",
@@ -171,86 +173,42 @@ function getTooltipStyle(
       margin: "auto",
       width: `min(${CARD_W}px, calc(100vw - ${PAD * 2}px))`,
       height: "fit-content",
-      maxWidth: `calc(100vw - ${PAD * 2}px)`,
     };
   }
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 375;
   const vh = typeof window !== "undefined" ? window.innerHeight : 812;
   const isMobile = vw < 640;
-  const cardW = Math.min(CARD_W, vw - PAD * 2);
 
-  // On mobile: always render card above the bottom nav (above target)
+  // Mobile: full-width card (left+right pinned), no transform at all
   if (isMobile) {
-    // Place above the target with enough room, or below if near top
-    const spaceAbove = rect.top;
-    const spaceBelow = vh - rect.bottom;
-    const useAbove = spaceAbove > spaceBelow || spaceBelow < 200;
-
-    if (useAbove) {
-      return {
-        position: "fixed",
-        bottom: `${vh - rect.top + PAD}px`,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: `${cardW}px`,
-        maxWidth: `calc(100vw - ${PAD * 2}px)`,
-      };
-    } else {
-      return {
-        position: "fixed",
-        top: `${rect.bottom + PAD}px`,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: `${cardW}px`,
-        maxWidth: `calc(100vw - ${PAD * 2}px)`,
-      };
-    }
+    const useAbove = rect.top > (vh - rect.bottom) + 40;
+    const hStyle = { left: `${PAD}px`, right: `${PAD}px`, width: "auto" as const };
+    return useAbove
+      ? { position: "fixed", bottom: `${vh - rect.top + PAD}px`, ...hStyle }
+      : { position: "fixed", top: `${rect.bottom + PAD}px`, ...hStyle };
   }
 
-  // Desktop: position by placement
-  const midY = Math.round(rect.top + rect.height / 2);
+  // Desktop: float beside target, no transform
+  const cardW = Math.min(CARD_W, vw - PAD * 2);
+  const midY  = Math.round(rect.top + rect.height / 2);
 
   switch (placement) {
     case "right": {
-      const leftPos = rect.right + PAD;
-      // Would overflow right? put it to the left instead
-      const finalLeft = leftPos + cardW > vw - PAD
-        ? rect.left - cardW - PAD
-        : leftPos;
-      return {
-        position: "fixed",
-        top: `${Math.max(PAD, Math.min(midY - 110, vh - 280))}px`,
-        left: `${Math.max(PAD, finalLeft)}px`,
-        width: `${cardW}px`,
-      };
+      let lp = rect.right + PAD;
+      if (lp + cardW > vw - PAD) lp = Math.max(PAD, rect.left - cardW - PAD);
+      return { position: "fixed", top: `${Math.max(PAD, Math.min(midY - 110, vh - 280))}px`, left: `${lp}px`, width: `${cardW}px` };
     }
     case "left": {
-      const leftPos = rect.left - cardW - PAD;
-      return {
-        position: "fixed",
-        top: `${Math.max(PAD, Math.min(midY - 110, vh - 280))}px`,
-        left: `${Math.max(PAD, leftPos)}px`,
-        width: `${cardW}px`,
-      };
+      const lp = Math.max(PAD, rect.left - cardW - PAD);
+      return { position: "fixed", top: `${Math.max(PAD, Math.min(midY - 110, vh - 280))}px`, left: `${lp}px`, width: `${cardW}px` };
     }
-    case "top": {
-      return {
-        position: "fixed",
-        bottom: `${vh - rect.top + PAD}px`,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: `${cardW}px`,
-      };
-    }
-    case "bottom":
     default: {
+      const isTop = placement === "top";
       return {
         position: "fixed",
-        top: `${Math.min(rect.bottom + PAD, vh - 280)}px`,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: `${cardW}px`,
+        ...(isTop ? { bottom: `${vh - rect.top + PAD}px` } : { top: `${Math.min(rect.bottom + PAD, vh - 280)}px` }),
+        left: `${PAD}px`, right: `${PAD}px`, width: "auto",
       };
     }
   }
