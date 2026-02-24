@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy, ShieldCheck } from "lucide-react";
+import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ type Semester = { semestre_id: string; nom: string; faculty: string; total_quest
 const NAV = [
   { href: "/", icon: Home, label: "Tableau de bord" },
   { href: "/stats", icon: BarChart2, label: "Statistiques" },
+  { href: "/chatwithai", icon: Sparkles, label: "Chat IA" },
   { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
   { href: "/leaderboard", icon: Trophy, label: "Classement" },
   { href: "/profil", icon: User, label: "Profil" },
