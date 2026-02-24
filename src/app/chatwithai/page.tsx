@@ -214,7 +214,7 @@ function ToolCallBadge() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ChatWithAI() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
