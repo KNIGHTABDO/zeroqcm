@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       tools: {
         searchQCM: tool({
           description:
-            "Search the ZeroQCM database of 180,000+ medical QCM questions. Use for any request for questions, quizzes, or examples on a medical topic.",
+            "Search ZeroQCM database (180,000+ questions). ALWAYS call this when user asks for QCM, questions, quiz, or révision on any medical topic. Returns real questions with answer choices.",
           parameters: z.object({
             query: z.string().describe("Medical topic or keyword to search (in French or Latin)"),
             limit: z.number().default(5).describe("Number of questions to return (1-8)"),
@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
               const pattern = "%" + query + "%";
               const { data } = await supabase
                 .from("questions")
-                .select("id, question_text, choices(id, choice_text, is_correct), activities(name, modules(name, semesters(name)))")
-                .ilike("question_text", pattern)
+                .select("id, texte, choices(id, contenu, est_correct), activities(name, modules(name, semesters(name)))")
+                .ilike("texte", pattern)
                 .limit(safeLimit);
 
               if (data && data.length > 0) return { found: data.length, questions: data };
@@ -86,8 +86,8 @@ export async function POST(req: NextRequest) {
               const keywords = query.split(" ").slice(0, 3).join(" | ");
               const { data: data2 } = await supabase
                 .from("questions")
-                .select("id, question_text, choices(id, choice_text, is_correct), activities(name, modules(name, semesters(name)))")
-                .textSearch("question_text", keywords)
+                .select("id, texte, choices(id, contenu, est_correct), activities(name, modules(name, semesters(name)))")
+                .ilike("texte", "%" + keywords.split(" | ").join("%") + "%")
                 .limit(safeLimit);
 
               return { found: (data2 ?? []).length, questions: data2 ?? [] };
