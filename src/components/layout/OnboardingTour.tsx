@@ -325,7 +325,7 @@ function TooltipCard({
 
 /* ─── Main export ────────────────────────────────────────────────────── */
 export function OnboardingTour() {
-  const { user, profile }   = useAuth();
+  const { user, profile, profileLoaded } = useAuth();
   const [visible,  setVisible]  = useState(false);
   const [step,     setStep]     = useState(0);
   const [mounted,  setMounted]  = useState(false);
@@ -334,18 +334,16 @@ export function OnboardingTour() {
     setMounted(true);
   }, []);
 
-  // Show tour only after profile is loaded and onboarding not done
+  // Show tour only after profile is FULLY loaded (profileLoaded=true) and onboarding not done
   useEffect(() => {
-    if (!mounted) return;
-    // If profile loaded and onboarding_done is explicitly true, skip
-    if (profile !== undefined) {
-      const done = (profile?.preferences as Record<string, unknown> | null)?.onboarding_done;
-      if (!done) {
-        const t = setTimeout(() => setVisible(true), 800);
-        return () => clearTimeout(t);
-      }
+    if (!mounted || !profileLoaded) return;
+    // profileLoaded=true means the DB fetch is done (or user is not logged in)
+    const done = (profile?.preferences as Record<string, unknown> | null)?.onboarding_done;
+    if (!done) {
+      const t = setTimeout(() => setVisible(true), 800);
+      return () => clearTimeout(t);
     }
-  }, [mounted, profile]);
+  }, [mounted, profileLoaded, profile]);
 
   const finish = useCallback(async () => {
     setVisible(false);
