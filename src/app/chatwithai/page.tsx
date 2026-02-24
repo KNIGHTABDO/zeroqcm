@@ -283,7 +283,7 @@ export default function ChatWithAI() {
         }
         setMessagesLoaded(true);
       })
-      .catch(() => setMessagesLoaded(true));
+      .then(null, () => setMessagesLoaded(true));
   }, [user]);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
@@ -301,16 +301,18 @@ export default function ChatWithAI() {
     const unsaved = messages.filter(m => !savedMsgIds.current.has(m.id) && m.content);
     if (unsaved.length === 0) return;
     unsaved.forEach(m => savedMsgIds.current.add(m.id));
-    supabase.from("chat_messages").upsert(
-      unsaved.map(m => ({
-        id: m.id,
-        user_id: user.id,
-        role: m.role,
-        content: m.content,
-        tool_invocations: (m as Message & { toolInvocations?: unknown }).toolInvocations ?? null,
-      })),
-      { onConflict: "id" }
-    ).then(() => {}).catch(() => {});
+    Promise.resolve(
+      supabase.from("chat_messages").upsert(
+        unsaved.map(m => ({
+          id: m.id,
+          user_id: user.id,
+          role: m.role,
+          content: m.content,
+          tool_invocations: (m as Message & { toolInvocations?: unknown }).toolInvocations ?? null,
+        })),
+        { onConflict: "id" }
+      )
+    ).catch(() => { /* non-blocking */ });
   }, [messages, hydrated, user, messagesLoaded]);
 
   // ── Sync model change to API body on re-render ─────────────────
@@ -354,8 +356,9 @@ export default function ChatWithAI() {
     setMessages([]);           // instant UI update — no refresh needed
     savedMsgIds.current.clear();
     if (user) {
-      void supabase.from("chat_messages").delete().eq("user_id", user.id)
-        .then(() => {}).catch(() => {});
+      Promise.resolve(
+        supabase.from("chat_messages").delete().eq("user_id", user.id)
+      ).catch(() => { /* non-blocking */ });
     }
   }, [setMessages, user]);
 
@@ -365,8 +368,9 @@ export default function ChatWithAI() {
     // Persist to profiles.preferences in DB
     if (user && profile) {
       const prefs = { ...(profile.preferences ?? {}), ai_model: m };
-      void supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id)
-        .then(() => {}).catch(() => {});
+      Promise.resolve(
+        supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id)
+      ).catch(() => { /* non-blocking */ });
     }
   };
 
