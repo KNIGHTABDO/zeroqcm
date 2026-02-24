@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
-const STORAGE_KEY = "zeroqcm-onboarding-done";
+
 
 /* ─── Step definitions ──────────────────────────────────────────────── */
 type Step = {
@@ -325,27 +325,34 @@ function TooltipCard({
 
 /* ─── Main export ────────────────────────────────────────────────────── */
 export function OnboardingTour() {
-  const { user }   = useAuth();
+  const { user, profile }   = useAuth();
   const [visible,  setVisible]  = useState(false);
   const [step,     setStep]     = useState(0);
   const [mounted,  setMounted]  = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window === "undefined") return;
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      const t = setTimeout(() => setVisible(true), 800);
-      return () => clearTimeout(t);
-    }
   }, []);
+
+  // Show tour only after profile is loaded and onboarding not done
+  useEffect(() => {
+    if (!mounted) return;
+    // If profile loaded and onboarding_done is explicitly true, skip
+    if (profile !== undefined) {
+      const done = (profile?.preferences as Record<string, unknown> | null)?.onboarding_done;
+      if (!done) {
+        const t = setTimeout(() => setVisible(true), 800);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [mounted, profile]);
 
   const finish = useCallback(async () => {
     setVisible(false);
-    localStorage.setItem(STORAGE_KEY, "1");
     if (user) {
       try {
         const { data: p } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
-        const prefs = p?.preferences ?? {};
+        const prefs = (p?.preferences as Record<string, unknown>) ?? {};
         await supabase.from("profiles").update({ preferences: { ...prefs, onboarding_done: true } }).eq("id", user.id);
       } catch { /* non-blocking */ }
     }
