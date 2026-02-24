@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { streamText, tool } from "ai";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
-import { githubModels, ALLOWED_MODELS, DEFAULT_MODEL } from "@/lib/github-models";
+import { githubModels, ALLOWED_MODELS, DEFAULT_MODEL, resolveModelId } from "@/lib/github-models";
 
 export const maxDuration = 60;
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const supabase = makeSupabase();
 
     const result = await streamText({
-      model: githubModels(model),
+      model: githubModels(resolveModelId(model)),
       system: SYSTEM_PROMPT,
       messages,
       maxTokens: 1400,
