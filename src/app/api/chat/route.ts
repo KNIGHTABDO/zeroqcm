@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { streamText, tool } from "ai";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `Tu es ZeroQCM AI, un tuteur médical expert spécialisé 
 
 ## FORMAT DE RÉPONSE
 - Réponds en **Français** (termes latins/grecs acceptés).
-- Utilise du Markdown : **gras**, *italique*, listes à puces, tableaux GFM.
+- Utilise du Markdown : **gras**, *italique*, listes, tableaux GFM.
 - Pour les formules : présente-les clairement avec les étapes de calcul.
 - Signale les **pièges classiques** avec ⚠️ et les **mnémotechniques** avec 💡.
 - Réponses concises mais complètes (150–400 mots sauf demande contraire).
@@ -68,18 +68,19 @@ export async function POST(req: NextRequest) {
             "Search the ZeroQCM database of 180,000+ medical QCM questions. Use for any request for questions, quizzes, or examples on a medical topic.",
           parameters: z.object({
             query: z.string().describe("Medical topic or keyword to search (in French or Latin)"),
-            limit: z.number().default(5).describe("Number of questions to return (1–8)"),
+            limit: z.number().default(5).describe("Number of questions to return (1-8)"),
           }),
           execute: async ({ query, limit = 5 }) => {
             try {
               const safeLimit = Math.min(limit, 8);
+              const pattern = "%" + query + "%";
               const { data } = await supabase
                 .from("questions")
                 .select("id, question_text, choices(id, choice_text, is_correct), activities(name, modules(name, semesters(name)))")
-                .ilike("question_text", \`%\${query}%\`)
+                .ilike("question_text", pattern)
                 .limit(safeLimit);
 
-              if (data?.length) return { found: data.length, questions: data };
+              if (data && data.length > 0) return { found: data.length, questions: data };
 
               // Broader fallback
               const keywords = query.split(" ").slice(0, 3).join(" | ");
