@@ -27,6 +27,13 @@ Quand l'utilisateur demande des QCM, questions de révision, exemples, ou quiz s
 - Présente les questions trouvées de façon pédagogique avec les réponses et corrections.
 - Si aucune question trouvée, réponds normalement sans l'outil.
 
+## LIENS SOURCES (OBLIGATOIRE)
+Chaque fois que tu présentes des questions issues de searchQCM, tu DOIS inclure un lien source :
+- Pour chaque activité trouvée, ajoute un lien cliquable à la fin de la section : [📚 Faire ce QCM dans ZeroQCM → **{nom de l'activité}**](/quiz/{activity_id})
+- Si plusieurs activités différentes, liste un lien par activité.
+- Format exact : [📚 Faire ce QCM → **NomActivité**](/quiz/123)
+- Ces liens permettent à l'utilisateur de faire le vrai QCM directement.
+
 ## DOMAINES COUVERTS
 Anatomie · Histologie · Embryologie · Physiologie · Biochimie · Pharmacologie · Pathologie · Sémiologie · Immunologie · Microbiologie · Génétique · Biostatistiques · Santé publique · Toutes spécialités cliniques.
 
@@ -50,7 +57,7 @@ function makeSupabase() {
   );
 }
 
-const QCM_SELECT = "id, texte, choices(id, contenu, est_correct), activities(nom, modules(nom, semesters(nom)))";
+const QCM_SELECT = "id, texte, activity_id, choices(id, contenu, est_correct), activities(id, nom, modules(nom, semesters(nom)))";
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,7 +91,7 @@ export async function POST(req: NextRequest) {
                 .ilike("texte", "%" + query + "%")
                 .limit(safeLimit);
 
-              if (d1 && d1.length >= 2) return { found: d1.length, questions: d1 };
+              if (d1 && d1.length >= 2) return { found: d1.length, questions: d1, hint: "Include [📚 Faire ce QCM](/quiz/{activity_id}) links in your response using the activity_id field from each question." };
 
               // Strategy 2: search by each keyword independently, merge results
               const keywords = query
@@ -114,7 +121,7 @@ export async function POST(req: NextRequest) {
                 if (merged.length >= safeLimit) break;
               }
 
-              if (merged.length > 0) return { found: merged.length, questions: merged.slice(0, safeLimit) };
+              if (merged.length > 0) return { found: merged.length, questions: merged.slice(0, safeLimit), hint: "Include [📚 Faire ce QCM](/quiz/{activity_id}) links in your response using the activity_id field from each question." };
 
               return { found: 0, questions: [], note: "Aucune question trouvée pour ce sujet dans la base." };
             } catch (err) {
