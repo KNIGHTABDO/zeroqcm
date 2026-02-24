@@ -224,6 +224,7 @@ export default function ChatWithAI() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
+  const loadedMsgCountRef = useRef<number | null>(null); // tracks initial DB load count
 
   // ── Fetch models from /api/gh-models (with 1h localStorage cache) ──
   useEffect(() => {
@@ -318,8 +319,19 @@ export default function ChatWithAI() {
   // ── Sync model change to API body on re-render ─────────────────
   // (useChat body is passed dynamically, so selectedModel changes take effect on next send)
 
+  // Record initial message count after DB load — skip scroll for initial load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesLoaded && loadedMsgCountRef.current === null) {
+      loadedMsgCountRef.current = messages.length;
+    }
+  }, [messagesLoaded, messages.length]);
+
+  // Only scroll to bottom for NEW messages/AI responses, never on initial load
+  useEffect(() => {
+    if (loadedMsgCountRef.current === null) return; // Not initialized yet
+    if (messages.length > loadedMsgCountRef.current || isLoading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isLoading]);
 
   useEffect(() => {
@@ -355,6 +367,7 @@ export default function ChatWithAI() {
   const handleClear = useCallback(() => {
     setMessages([]);           // instant UI update — no refresh needed
     savedMsgIds.current.clear();
+    loadedMsgCountRef.current = 0; // Reset scroll tracker after clear
     if (user) {
       Promise.resolve(
         supabase.from("chat_messages").delete().eq("user_id", user.id)
