@@ -141,12 +141,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   // AbortController ref — cancels in-flight AI fetches when user navigates
   const aiAbortRef = useRef<AbortController | null>(null);
 
-  // Fire AI fetch whenever phase becomes "revealed" for a given question.
-  // useEffect directly on phase+q?.id — no intermediate flag state needed.
-  useEffect(() => {
-    if (phase !== "revealed" || !q) return;
-    doFetchAI(false);
-  }, [phase, q?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // AI explanation is now triggered manually via the "Expliquer avec l'IA" button.
+  // No auto-fetch on phase change. // eslint-disable-line react-hooks/exhaustive-deps
 
   async function doFetchAI(forceNew: boolean) {
     if (!q) return;
@@ -566,23 +562,43 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
         {rev && (
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5">
-              <Brain size={12} style={{ color: "var(--accent)" }} />
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                {aiLoading ? "Explication IA en cours…" : "Explication IA"}
-              </span>
-              {aiCached && !aiLoading && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
-              )}
-            </div>
-            {!aiLoading && rev && (
+            {/* Not yet triggered → primary CTA button */}
+            {!aiLoading && !aiText && (
               <button
-                onClick={() => doFetchAI(true)}
-                title="Régénérer et écraser l'explication sauvegardée"
-                className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:text-zinc-200"
-                style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <RefreshCw size={9} /> Régénérer
+                onClick={() => doFetchAI(false)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all w-full justify-center"
+                style={{ background: "rgba(99,179,237,0.1)", border: "1px solid rgba(99,179,237,0.2)", color: "var(--accent)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,179,237,0.18)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,179,237,0.1)"; }}>
+                <Brain size={13} />
+                Expliquer avec l&apos;IA
               </button>
+            )}
+            {/* Loading state */}
+            {aiLoading && (
+              <div className="flex items-center gap-1.5">
+                <Loader2 size={11} className="animate-spin" style={{ color: "var(--accent)" }} />
+                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Explication IA en cours…</span>
+              </div>
+            )}
+            {/* Done: label + cached badge + regenerate */}
+            {!aiLoading && aiText && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <Brain size={12} style={{ color: "var(--accent)" }} />
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Explication IA</span>
+                  {aiCached && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => doFetchAI(true)}
+                  title="Régénérer et écraser l'explication sauvegardée"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:text-zinc-200"
+                  style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <RefreshCw size={9} /> Régénérer
+                </button>
+              </>
             )}
           </div>
         )}
