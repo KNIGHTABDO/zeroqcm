@@ -8,6 +8,8 @@ type AuthCtxType = {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  /** true once the initial profile fetch (or confirmed no-session) is complete */
+  profileLoaded: boolean;
   loading: boolean;
   signUp: (email: string, password: string, name: string, faculty?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -18,24 +20,37 @@ type AuthCtxType = {
 const AuthCtx = createContext<AuthCtxType>({} as AuthCtxType);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user,          setUser]          = useState<User | null>(null);
+  const [session,       setSession]       = useState<Session | null>(null);
+  const [profile,       setProfile]       = useState<Profile | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
-      setLoading(false);
+      if (session?.user) {
+        loadProfile(session.user.id).finally(() => {
+          setProfileLoaded(true);
+          setLoading(false);
+        });
+      } else {
+        setProfileLoaded(true);
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        setProfileLoaded(false); // mark as loading while we fetch
+        loadProfile(session.user.id).finally(() => setProfileLoaded(true));
+      } else {
+        setProfile(null);
+        setProfileLoaded(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -49,7 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signUp(email: string, password: string, name: string, faculty: string = "FMPC") {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
-    // Trigger creates the profile — but also upsert here in case trigger is slow
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -72,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileLoaded(true);
   }
 
   async function refreshProfile() {
@@ -79,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthCtx.Provider value={{ user, session, profile, profileLoaded, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthCtx.Provider>
   );
