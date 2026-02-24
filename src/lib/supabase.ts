@@ -99,11 +99,11 @@ export async function getActivityWithQuestions(activityId: number) {
   ]);
   const questions = (allQuestions ?? []).filter(
     (q: { source_type: string; choices: unknown[] }) =>
-      q.source_type !== "open" && Array.isArray(q.choices) && q.choices.length > 0
+      q.source_type !== "open" && q.source_type !== "no_answer" && Array.isArray(q.choices) && q.choices.length > 0
   );
   const openQuestions = (allQuestions ?? []).filter(
     (q: { source_type: string; choices: unknown[] }) =>
-      q.source_type === "open" || !Array.isArray(q.choices) || q.choices.length === 0
+      q.source_type === "open" || q.source_type === "no_answer" || !Array.isArray(q.choices) || q.choices.length === 0
   );
   return { activity, questions, openQuestions };
 }
