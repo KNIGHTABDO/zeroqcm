@@ -14,6 +14,10 @@ import type { Message } from "ai/react";
 // Model list cache only (ephemeral catalog data, not user data)
 
 // ── Markdown renderer with full table support ────────────────────────────────
+function stripToolCallJson(text: string): string {
+  return text.replace(/^\s*\{[^}]*"query"[^}]*\}\s*\n?/, "").trimStart();
+}
+
 function renderMarkdown(text: string): React.ReactNode[] {
   const lines = text.split("\n");
   const result: React.ReactNode[] = [];
@@ -545,11 +549,8 @@ export default function ChatWithAI() {
                       ? { background: "var(--surface-active)", border: "1px solid var(--border-strong)", color: "var(--text)" }
                       : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
                     {msg.role === "assistant"
-                      ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(
-                          // Strip any leading JSON tool-call artifact that some models leak into content
-                          msg.content.replace(/^\s*\{[\s\S]*?"query"\s*:[\s\S]*?\}\s*
-?/, "").trimStart()
-                        )}</div>
+                      ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(stripToolCallJson(msg.content))}</div>
+                      : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
                       : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
                   </div>
                 </div>
