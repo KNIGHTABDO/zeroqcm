@@ -291,24 +291,16 @@ export default function ChatWithAI() {
       .then(null, () => setMessagesLoaded(true));
   }, [user]);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
-    useChat({
-      api: "/api/chat",
-      body: { model: selectedModel },
-      initialMessages: messagesLoaded ? initialMessages : [],
-      key: messagesLoaded ? "loaded" : "loading",
-    });
-
-  // ── Persist new messages to Supabase ──────────────────────────
+  // ── Persist a batch of messages to Supabase ──────────────────
   const savedMsgIds = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!hydrated || !user || !messagesLoaded) return;
-    const unsaved = messages.filter(m => !savedMsgIds.current.has(m.id) && m.content);
-    if (unsaved.length === 0) return;
-    unsaved.forEach(m => savedMsgIds.current.add(m.id));
+  const persistMessages = useCallback((msgs: Message[]) => {
+    if (!user) return;
+    const toSave = msgs.filter(m => m.content && !savedMsgIds.current.has(m.id));
+    if (toSave.length === 0) return;
+    toSave.forEach(m => savedMsgIds.current.add(m.id));
     Promise.resolve(
       supabase.from("chat_messages").upsert(
-        unsaved.map(m => ({
+        toSave.map(m => ({
           id: m.id,
           user_id: user.id,
           role: m.role,
@@ -318,7 +310,27 @@ export default function ChatWithAI() {
         { onConflict: "id" }
       )
     ).catch(() => { /* non-blocking */ });
-  }, [messages, hydrated, user, messagesLoaded]);
+  }, [user, supabase]);
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
+    useChat({
+      api: "/api/chat",
+      body: { model: selectedModel },
+      initialMessages: messagesLoaded ? initialMessages : [],
+      key: messagesLoaded ? "loaded" : "loading",
+      onFinish: (message) => {
+        // Save the completed assistant message (streaming done)
+        persistMessages([message]);
+      },
+    });
+
+  // Save user messages immediately (non-streaming, appear instantly)
+  useEffect(() => {
+    if (!hydrated || !user || !messagesLoaded) return;
+    const userMsgs = messages.filter(m => m.role === "user" && m.content && !savedMsgIds.current.has(m.id));
+    if (userMsgs.length === 0) return;
+    persistMessages(userMsgs);
+  }, [messages, hydrated, user, messagesLoaded, persistMessages]);
 
   // ── Sync model change to API body on re-render ─────────────────
   // (useChat body is passed dynamically, so selectedModel changes take effect on next send)
