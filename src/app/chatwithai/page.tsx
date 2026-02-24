@@ -3,19 +3,12 @@
 import { useChat } from "ai/react";
 import { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Send,
-  Sparkles,
-  User,
-  Loader2,
-  Trash2,
-  ChevronDown,
-  AlertCircle,
-} from "lucide-react";
+import { Send, User, Loader2, Trash2, ChevronDown, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ALLOWED_MODELS, DEFAULT_MODEL } from "@/lib/github-models";
+import Image from "next/image";
 
-// ── Inline Markdown renderer (no extra deps) ─────────────────────────────────
+// ── Markdown renderer with full table support ────────────────────────────────
 function renderMarkdown(text: string): React.ReactNode[] {
   const lines = text.split("\n");
   const result: React.ReactNode[] = [];
@@ -23,37 +16,58 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
   while (i < lines.length) {
     const line = lines[i];
-    if (line.trim() === "") { result.push(<br key={i} />); i++; continue; }
+
+    // Blank line
+    if (line.trim() === "") { result.push(<div key={i} className="h-2" />); i++; continue; }
+
+    // Headings
     if (line.startsWith("### ")) {
-      result.push(<p key={i} className="font-bold text-sm mt-3 mb-1" style={{ color: "var(--accent)" }}>{inlineFormat(line.slice(4))}</p>);
+      result.push(<p key={i} className="font-semibold text-xs mt-3 mb-1 uppercase tracking-wide" style={{ color: "var(--accent)" }}>{inlineFormat(line.slice(4))}</p>);
       i++; continue;
     }
     if (line.startsWith("## ")) {
-      result.push(<p key={i} className="font-semibold text-sm mt-3 mb-1" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(3))}</p>);
+      result.push(<p key={i} className="font-bold text-sm mt-3 mb-1" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(3))}</p>);
       i++; continue;
     }
     if (line.startsWith("# ")) {
-      result.push(<p key={i} className="font-bold text-base mt-3 mb-1" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(2))}</p>);
+      result.push(<p key={i} className="font-bold text-base mt-3 mb-1.5" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(2))}</p>);
       i++; continue;
     }
+
+    // Table detection: line starts with |
+    if (line.trim().startsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      result.push(renderTable(tableLines, result.length));
+      continue;
+    }
+
+    // Bullet list
     if (line.match(/^[-*•] /)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*•] /)) {
-        items.push(<li key={i} className="ml-2">{inlineFormat(lines[i].slice(2))}</li>);
+        items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].slice(2))}</li>);
         i++;
       }
       result.push(<ul key={`ul-${i}`} className="list-disc list-inside space-y-0.5 my-1.5 text-sm">{items}</ul>);
       continue;
     }
+
+    // Numbered list
     if (line.match(/^\d+\. /)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^\d+\. /)) {
-        items.push(<li key={i} className="ml-2">{inlineFormat(lines[i].replace(/^\d+\. /, ""))}</li>);
+        items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].replace(/^\d+\. /, ""))}</li>);
         i++;
       }
       result.push(<ol key={`ol-${i}`} className="list-decimal list-inside space-y-0.5 my-1.5 text-sm">{items}</ol>);
       continue;
     }
+
+    // Code block
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
       i++;
@@ -65,14 +79,59 @@ function renderMarkdown(text: string): React.ReactNode[] {
       );
       i++; continue;
     }
-    result.push(<p key={i} className="text-sm leading-relaxed my-0.5">{inlineFormat(line)}</p>);
+
+    // Horizontal rule
+    if (line.match(/^---+$/) || line.match(/^\*\*\*+$/)) {
+      result.push(<hr key={i} className="my-2 border-0 border-t" style={{ borderColor: "var(--border)" }} />);
+      i++; continue;
+    }
+
+    // Normal paragraph
+    result.push(<p key={i} className="text-sm leading-relaxed">{inlineFormat(line)}</p>);
     i++;
   }
   return result;
 }
 
+function renderTable(lines: string[], keyBase: number): React.ReactNode {
+  // Parse rows, filter separator rows (---)
+  const rows = lines
+    .map(l => l.split("|").slice(1, -1).map(cell => cell.trim()))
+    .filter(cells => !cells.every(c => /^[-:]+$/.test(c)));
+
+  if (rows.length === 0) return null;
+  const [header, ...body] = rows;
+
+  return (
+    <div key={`table-${keyBase}`} className="my-2 overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border)" }}>
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr style={{ background: "rgba(99,179,237,0.08)" }}>
+            {header.map((cell, j) => (
+              <th key={j} className="px-3 py-2 text-left font-semibold border-b whitespace-nowrap" style={{ borderColor: "var(--border)", color: "var(--text)" }}>
+                {inlineFormat(cell)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+              {row.map((cell, ci) => (
+                <td key={ci} className="px-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.05)", color: "var(--text-secondary)" }}>
+                  {inlineFormat(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function inlineFormat(text: string): React.ReactNode {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g);
   return (
     <>
       {parts.map((part, j) => {
@@ -80,11 +139,32 @@ function inlineFormat(text: string): React.ReactNode {
           return <strong key={j} className="font-semibold" style={{ color: "var(--text)" }}>{part.slice(2, -2)}</strong>;
         if (part.startsWith("*") && part.endsWith("*"))
           return <em key={j}>{part.slice(1, -1)}</em>;
+        if (part.startsWith("~~") && part.endsWith("~~"))
+          return <s key={j}>{part.slice(2, -2)}</s>;
         if (part.startsWith("`") && part.endsWith("`"))
           return <code key={j} className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ background: "rgba(255,255,255,0.08)", color: "var(--accent)" }}>{part.slice(1, -1)}</code>;
         return <span key={j}>{part}</span>;
       })}
     </>
+  );
+}
+
+// ── AI Avatar component ───────────────────────────────────────────────────────
+function AIAvatar({ size = 7 }: { size?: number }) {
+  const px = size * 4;
+  return (
+    <div
+      className={`w-${size} h-${size} rounded-full flex-shrink-0 overflow-hidden`}
+      style={{ border: "1px solid rgba(99,179,237,0.3)", boxShadow: "0 0 8px rgba(99,179,237,0.15)" }}>
+      <Image
+        src="/ai-avatar.jpg"
+        alt="ZeroQCM AI"
+        width={px}
+        height={px}
+        className="w-full h-full object-cover"
+        unoptimized
+      />
+    </div>
   );
 }
 
@@ -99,17 +179,27 @@ const MODEL_LABELS: Record<string, string> = {
   "DeepSeek-V3-0324": "DeepSeek V3",
 };
 
-// ── Suggestions ───────────────────────────────────────────────────────────────
 const SUGGESTIONS = [
   "Mécanisme d'action des IEC",
-  "Causes d'hypercalcémie",
+  "Donne-moi 3 QCM sur l'HTA",
   "Formule de Cockcroft-Gault",
-  "Angor stable vs instable",
+  "QCM sur l'insuffisance rénale",
   "Résistance aux antibiotiques",
-  "Hémostase primaire",
+  "Quiz: hémostase primaire",
 ];
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Tool call display ─────────────────────────────────────────────────────────
+function ToolCallBadge({ toolName }: { toolName: string }) {
+  return (
+    <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs w-fit mb-2"
+      style={{ background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.18)", color: "var(--accent)" }}>
+      <Search className="w-3 h-3 flex-shrink-0" />
+      <span>Recherche dans la base ZeroQCM…</span>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function ChatWithAI() {
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -120,12 +210,10 @@ export default function ChatWithAI() {
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages } =
     useChat({ api: "/api/chat", body: { model: selectedModel } });
 
-  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Close model menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node))
@@ -160,17 +248,13 @@ export default function ChatWithAI() {
 
   return (
     <div className="flex flex-col w-full" style={{ height: "calc(100dvh - 4rem)" }}>
-      {/* on lg: full viewport height since BottomNav is hidden */}
       <style>{`@media (min-width: 1024px) { .chat-root { height: 100dvh !important; } }`}</style>
 
       {/* ─ Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-3 border-b"
+      <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-2.5 border-b"
         style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(99,179,237,0.10)", border: "1px solid rgba(99,179,237,0.22)" }}>
-            <Sparkles className="w-4 h-4" style={{ color: "var(--accent)" }} />
-          </div>
+          <AIAvatar size={8} />
           <div>
             <h1 className="text-sm font-semibold leading-tight" style={{ color: "var(--text)" }}>Chat with AI</h1>
             <p className="text-[11px] leading-tight" style={{ color: "var(--text-muted)" }}>Tuteur médical · ZeroQCM</p>
@@ -178,7 +262,6 @@ export default function ChatWithAI() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Model selector */}
           <div className="relative" ref={modelMenuRef}>
             <button onClick={() => setModelMenuOpen(v => !v)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -198,8 +281,7 @@ export default function ChatWithAI() {
                   className="absolute right-0 top-full mt-1.5 w-52 rounded-xl overflow-hidden z-50"
                   style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-strong)", boxShadow: "var(--shadow)" }}>
                   {ALLOWED_MODELS.map((m) => (
-                    <button key={m}
-                      onClick={() => { setSelectedModel(m); setModelMenuOpen(false); }}
+                    <button key={m} onClick={() => { setSelectedModel(m); setModelMenuOpen(false); }}
                       className="w-full text-left px-3.5 py-2.5 text-xs transition-colors"
                       style={{
                         color: selectedModel === m ? "var(--accent)" : "var(--text-secondary)",
@@ -214,12 +296,10 @@ export default function ChatWithAI() {
             </AnimatePresence>
           </div>
 
-          {/* Clear */}
           {!isEmpty && (
             <button onClick={() => setMessages([])}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
-              title="Effacer">
+              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
               <Trash2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
             </button>
           )}
@@ -228,36 +308,32 @@ export default function ChatWithAI() {
 
       {/* ─ Messages ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto" style={{ background: "var(--bg)" }}>
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-4">
+        <div className="max-w-3xl mx-auto px-3 md:px-6 py-3 space-y-3">
 
-          {/* Empty state */}
+          {/* Empty state — compact, no excessive padding */}
           <AnimatePresence>
             {isEmpty && (
               <motion.div
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center pt-8 md:pt-16 pb-4 gap-6">
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                    style={{ background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.18)" }}>
-                    <Sparkles className="w-8 h-8" style={{ color: "var(--accent)" }} />
-                  </div>
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex flex-col items-center pt-6 pb-2 gap-4">
+                <div className="flex flex-col items-center gap-2.5 text-center">
+                  <AIAvatar size={14} />
                   <div>
-                    <h2 className="text-lg font-semibold mb-1.5" style={{ color: "var(--text)" }}>
+                    <h2 className="text-base font-semibold mb-1" style={{ color: "var(--text)" }}>
                       Comment puis-je t&apos;aider ?
                     </h2>
-                    <p className="text-sm max-w-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                      Pose-moi n&apos;importe quelle question médicale — mécanismes, calculs, pièges, révision.
+                    <p className="text-xs max-w-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      Mécanismes · QCM · Calculs · Pièges · Révision
                     </p>
                   </div>
                 </div>
 
-                {/* Suggestion chips */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full max-w-lg">
-                  {SUGGESTIONS.map((s, i) => (
-                    <motion.button key={i}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.04 * i, duration: 0.2 }}
+                  {SUGGESTIONS.map((s, idx) => (
+                    <motion.button key={idx}
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.04 * idx, duration: 0.18 }}
                       onClick={() => handleSuggestion(s)}
                       className="text-left px-3 py-2.5 rounded-xl text-xs leading-snug transition-all"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
@@ -271,35 +347,41 @@ export default function ChatWithAI() {
             )}
           </AnimatePresence>
 
-          {/* Message bubbles */}
+          {/* Messages */}
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
               <motion.div key={msg.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className={cn("flex gap-2.5", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className={cn("flex gap-2", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
 
                 {/* Avatar */}
-                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={msg.role === "user"
-                    ? { background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)" }
-                    : { background: "rgba(99,179,237,0.12)", border: "1px solid rgba(99,179,237,0.22)" }}>
+                <div className="flex-shrink-0 mt-0.5">
                   {msg.role === "user"
-                    ? <User className="w-3.5 h-3.5" style={{ color: "var(--text-secondary)" }} />
-                    : <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />}
+                    ? <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)" }}>
+                        <User className="w-3.5 h-3.5" style={{ color: "var(--text-secondary)" }} />
+                      </div>
+                    : <AIAvatar size={7} />}
                 </div>
 
                 {/* Bubble */}
-                <div className={cn(
-                    "max-w-[85%] md:max-w-[78%] px-4 py-3 rounded-2xl text-sm",
-                    msg.role === "user" ? "rounded-tr-md" : "rounded-tl-md"
+                <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[78%]">
+                  {/* Tool call indicator */}
+                  {msg.role === "assistant" && (msg as any).toolInvocations?.some((t: any) => t.toolName === "searchQCM") && (
+                    <ToolCallBadge toolName="searchQCM" />
                   )}
-                  style={msg.role === "user"
-                    ? { background: "var(--surface-active)", border: "1px solid var(--border-strong)", color: "var(--text)" }
-                    : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
-                  {msg.role === "assistant"
-                    ? <div className="space-y-0.5">{renderMarkdown(msg.content)}</div>
-                    : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
+
+                  <div className={cn(
+                      "px-3.5 py-2.5 rounded-2xl text-sm",
+                      msg.role === "user" ? "rounded-tr-md" : "rounded-tl-md"
+                    )}
+                    style={msg.role === "user"
+                      ? { background: "var(--surface-active)", border: "1px solid var(--border-strong)", color: "var(--text)" }
+                      : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                    {msg.role === "assistant"
+                      ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(msg.content)}</div>
+                      : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -311,16 +393,12 @@ export default function ChatWithAI() {
               <motion.div key="typing"
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="flex gap-2.5 items-center">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(99,179,237,0.12)", border: "1px solid rgba(99,179,237,0.22)" }}>
-                  <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-                </div>
-                <div className="px-4 py-3 rounded-2xl rounded-tl-md flex items-center gap-1.5"
+                className="flex gap-2 items-center">
+                <AIAvatar size={7} />
+                <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-md flex items-center gap-1.5"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  {[0, 1, 2].map((k) => (
-                    <motion.div key={k} className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: "var(--text-muted)" }}
+                  {[0, 1, 2].map(k => (
+                    <motion.div key={k} className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--text-muted)" }}
                       animate={{ opacity: [0.3, 1, 0.3] }}
                       transition={{ duration: 1.2, repeat: Infinity, delay: k * 0.2 }} />
                   ))}
@@ -329,11 +407,11 @@ export default function ChatWithAI() {
             )}
           </AnimatePresence>
 
-          {/* Error banner */}
+          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm"
                 style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)", color: "var(--error)" }}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 Erreur de connexion. Réessaie dans un moment.
@@ -346,9 +424,8 @@ export default function ChatWithAI() {
       </div>
 
       {/* ─ Input bar ──────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-t"
-        style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-3">
+      <div className="flex-shrink-0 border-t" style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
+        <div className="max-w-3xl mx-auto px-3 md:px-6 py-2.5">
           <form onSubmit={e => {
             handleSubmit(e);
             setTimeout(() => { if (inputRef.current) inputRef.current.style.height = "auto"; }, 0);
@@ -358,23 +435,23 @@ export default function ChatWithAI() {
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="Pose ta question médicale… (Entrée pour envoyer)"
+              placeholder="Pose ta question médicale…"
               rows={1}
               disabled={isLoading}
-              className="flex-1 resize-none rounded-2xl px-4 py-3 text-sm outline-none transition-colors"
+              className="flex-1 resize-none rounded-2xl px-3.5 py-3 text-sm outline-none transition-colors"
               style={{
                 background: "var(--input-bg)",
                 border: "1px solid var(--input-border)",
                 color: "var(--input-text)",
                 caretColor: "var(--accent)",
-                minHeight: "48px",
+                minHeight: "44px",
                 maxHeight: "160px",
               }}
               onFocus={e => e.currentTarget.style.borderColor = "var(--input-focus)"}
               onBlur={e => e.currentTarget.style.borderColor = "var(--input-border)"}
             />
             <button type="submit" disabled={!input.trim() || isLoading}
-              className="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-colors"
+              className="flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-colors"
               style={{
                 background: input.trim() && !isLoading ? "var(--btn-primary-bg)" : "var(--surface-alt)",
                 color: input.trim() && !isLoading ? "var(--btn-primary-text)" : "var(--text-muted)",
@@ -383,8 +460,8 @@ export default function ChatWithAI() {
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </form>
-          <p className="text-center text-[11px] mt-2" style={{ color: "var(--text-disabled)" }}>
-            Shift+Entrée pour saut de ligne · Vérifier les réponses avec les cours officiels
+          <p className="text-center text-[10px] mt-1.5" style={{ color: "var(--text-disabled)" }}>
+            Enter pour envoyer · Shift+Enter saut de ligne · Vérifier avec les cours officiels
           </p>
         </div>
       </div>
