@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { QuizImage } from "@/components/ui/QuizImage";
 import { RichText } from "@/components/ui/RichText";
 import { supabase, getActivityWithQuestions, submitAnswer, getComments, addComment, toggleBookmark, isBookmarked } from "@/lib/supabase";
+import { DuaaModal } from "@/components/ui/DuaaModal";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type QuizComment = {
@@ -449,6 +450,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   const rev = phase === "revealed";
 
   return (
+    <>
+    <DuaaModal activityId={activityId} />
     <div className="min-h-screen flex flex-col pb-32" style={{ background: "var(--bg)" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
       <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
@@ -697,5 +700,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         </p>
       </div>
     </div>
+    </>
   );
 }
