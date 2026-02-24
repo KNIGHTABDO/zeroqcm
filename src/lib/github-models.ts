@@ -14,13 +14,16 @@ export const githubModels = createOpenAICompatible({
 });
 
 export const ALLOWED_MODELS = [
-  "gpt-4o-mini",
-  "gpt-4o",
-  "Meta-Llama-3.3-70B-Instruct",
-  "Meta-Llama-3.1-70B-Instruct",
-  "Mistral-large-2411",
-  "Mistral-small-3.1-24B-Instruct-2503",
-  "DeepSeek-V3-0324",
+  "openai/gpt-5-mini",
+  "openai/gpt-5-nano",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4o",
+  "openai/gpt-4.1-mini",
+  "openai/gpt-4.1",
+  "meta/llama-4-scout-17b-16e-instruct",
+  "meta/llama-3.3-70b-instruct",
+  "deepseek/deepseek-v3-0324",
+  "mistral-ai/mistral-small-2503",
 ];
 
-export const DEFAULT_MODEL = "gpt-4o-mini";
+export const DEFAULT_MODEL = "openai/gpt-5-mini";
