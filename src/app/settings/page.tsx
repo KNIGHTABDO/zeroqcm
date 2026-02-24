@@ -122,6 +122,7 @@ export default function SettingsPage() {
   const [models, setModels] = useState<GhModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(true);
   const [modelOpen, setModelOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
   const [saved, setSaved] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -142,19 +143,20 @@ export default function SettingsPage() {
     fetch("/api/gh-models")
       .then(r => r.json())
       .then((data: GhModel[]) => {
-        const chat = data.filter(isTextModel);
-        chat.sort((a, b) => {
+        // New endpoint returns pre-filtered models; sort preferred first
+        const sorted = [...data].sort((a, b) => {
           const ai = PREFERRED_ORDER.indexOf(a.id), bi = PREFERRED_ORDER.indexOf(b.id);
           if (ai !== -1 && bi !== -1) return ai - bi;
           if (ai !== -1) return -1; if (bi !== -1) return 1;
           return a.id.localeCompare(b.id);
         });
-        setModels(chat);
+        setModels(sorted);
       })
       .catch(() => setModels([
         { id: "gpt-4o-mini", name: "GPT-4o Mini" }, { id: "gpt-4o", name: "GPT-4o" },
-        { id: "o3-mini", name: "o3-mini" }, { id: "Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B" },
-        { id: "Phi-4", name: "Phi-4" },
+        { id: "Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B" },
+        { id: "Mistral-large-2411", name: "Mistral Large", publisher: "Mistral" },
+        { id: "DeepSeek-V3-0324", name: "DeepSeek V3", publisher: "DeepSeek" },
       ] as GhModel[]))
       .finally(() => setLoadingModels(false));
   }, []);
@@ -257,21 +259,55 @@ export default function SettingsPage() {
                 </span>
                 <ChevronDown size={14} style={{ color: "var(--text-muted)", transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
               </button>
-              {modelOpen && models.length > 0 && (
-                <div ref={dropdownRef} style={{ ...dropdownStyle, background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: "12px", overflow: "hidden", overflowY: "auto", maxHeight: "260px", boxShadow: "var(--shadow)" }}>
-                  {models.map(m => (
-                    <button key={m.id} onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors"
-                      style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text)", background: selectedModel === m.id ? "var(--surface-active)" : "transparent" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-hover)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}>
-                      <div>
-                        <div className="font-medium">{m.name || modelLabel(m.id)}</div>
-                        {m.publisher && <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{m.publisher}</div>}
+              {modelOpen && (
+                <div ref={dropdownRef} style={{ ...dropdownStyle, background: "var(--bg)", border: "1px solid var(--border-strong)", borderRadius: "12px", overflow: "hidden", boxShadow: "var(--shadow)" }}>
+                  {/* Search input */}
+                  <div className="px-3 py-2 border-b" style={{ borderColor: "var(--border)" }}>
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Rechercher un modèle…"
+                      value={modelSearch}
+                      onChange={e => setModelSearch(e.target.value)}
+                      className="w-full text-xs px-2.5 py-1.5 rounded-lg outline-none"
+                      style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text)", caretColor: "var(--accent)" }}
+                    />
+                  </div>
+                  {/* Model list */}
+                  <div style={{ overflowY: "auto", maxHeight: "220px" }}>
+                    {models
+                      .filter(m => {
+                        if (!modelSearch) return true;
+                        const q = modelSearch.toLowerCase();
+                        return (m.name || m.id).toLowerCase().includes(q) || (m.publisher ?? "").toLowerCase().includes(q);
+                      })
+                      .map(m => (
+                        <button key={m.id} onClick={() => { setSelectedModel(m.id); setModelOpen(false); setModelSearch(""); }}
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors"
+                          style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text)", background: selectedModel === m.id ? "var(--surface-active)" : "transparent" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-hover)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}>
+                          <div>
+                            <div className="font-medium">{m.name || modelLabel(m.id)}</div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {m.publisher && <span className="text-xs" style={{ color: "var(--text-muted)" }}>{m.publisher}</span>}
+                              {(m as GhModel & { supports_tools?: boolean }).supports_tools && <span className="text-[10px] px-1 rounded" style={{ background: "rgba(99,179,237,0.1)", color: "var(--accent)" }}>tools</span>}
+                              {(m as GhModel & { supports_vision?: boolean }).supports_vision && <span className="text-[10px] px-1 rounded" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7" }}>vision</span>}
+                            </div>
+                          </div>
+                          {selectedModel === m.id && <Check size={13} style={{ color: "var(--accent)" }} />}
+                        </button>
+                      ))}
+                    {models.filter(m => {
+                      if (!modelSearch) return true;
+                      const q = modelSearch.toLowerCase();
+                      return (m.name || m.id).toLowerCase().includes(q) || (m.publisher ?? "").toLowerCase().includes(q);
+                    }).length === 0 && (
+                      <div className="px-4 py-4 text-xs text-center" style={{ color: "var(--text-muted)" }}>
+                        Aucun modèle trouvé
                       </div>
-                      {selectedModel === m.id && <Check size={13} style={{ color: "var(--accent)" }} />}
-                    </button>
-                  ))}
+                    )}
+                  </div>
                 </div>
               )}
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
