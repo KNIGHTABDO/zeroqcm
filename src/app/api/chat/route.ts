@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { streamText, tool } from "ai";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
-import { githubModels, ALLOWED_MODELS, DEFAULT_MODEL, resolveModelId } from "@/lib/github-models";
+import { githubModels, DEFAULT_MODEL, resolveModelId, isAllowedModel } from "@/lib/github-models";
 
 export const maxDuration = 60;
 
@@ -64,7 +64,7 @@ const QCM_SELECT = "id, texte, activity_id, choices(id, contenu, est_correct), a
 export async function POST(req: NextRequest) {
   try {
     const { messages, model: requestedModel } = await req.json();
-    const model = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : DEFAULT_MODEL;
+    const model = (requestedModel && isAllowedModel(requestedModel)) ? requestedModel : DEFAULT_MODEL;
     const supabase = makeSupabase();
 
     const result = await streamText({
