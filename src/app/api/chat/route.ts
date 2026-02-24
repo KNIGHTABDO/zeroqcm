@@ -43,7 +43,7 @@ function makeSupabase() {
     {
       cookies: {
         getAll: () => Object.entries(cookieStore).map(([name, value]) => ({ name, value })),
-        setAll: (cookies) => cookies.forEach(({ name, value }) => { cookieStore[name] = value; }),
+        setAll: (cookies: { name: string; value: string }[]) => cookies.forEach(({ name, value }) => { cookieStore[name] = value; }),
       },
     }
   );
