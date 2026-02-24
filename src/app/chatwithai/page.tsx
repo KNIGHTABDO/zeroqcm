@@ -122,7 +122,8 @@ function renderTable(lines: string[], keyBase: number): React.ReactNode {
 }
 
 function inlineFormat(text: string): React.ReactNode {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g);
+  // Split on bold, italic, strikethrough, inline code, AND markdown links [text](url)
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|\[[^\]]+\]\([^)]+\))/g);
   return (
     <>
       {parts.map((part, j) => {
@@ -134,6 +135,23 @@ function inlineFormat(text: string): React.ReactNode {
           return <s key={j}>{part.slice(2, -2)}</s>;
         if (part.startsWith("`") && part.endsWith("`"))
           return <code key={j} className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ background: "rgba(255,255,255,0.08)", color: "var(--accent)" }}>{part.slice(1, -1)}</code>;
+        // Markdown link: [label](href)
+        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (linkMatch) {
+          const [, label, href] = linkMatch;
+          const isInternal = href.startsWith("/");
+          return (
+            <a key={j} href={href}
+              target={isInternal ? "_self" : "_blank"}
+              rel={isInternal ? undefined : "noopener noreferrer"}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold transition-colors"
+              style={{ background: "rgba(99,179,237,0.12)", color: "var(--accent)", border: "1px solid rgba(99,179,237,0.25)", textDecoration: "none" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.22)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.12)"; }}>
+              {label}
+            </a>
+          );
+        }
         return <span key={j}>{part}</span>;
       })}
     </>
