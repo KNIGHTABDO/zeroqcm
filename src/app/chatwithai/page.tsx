@@ -563,7 +563,6 @@ export default function ChatWithAI() {
                     {msg.role === "assistant"
                       ? <div className="space-y-0.5 overflow-x-auto">{renderMarkdown(stripToolCallJson(msg.content))}</div>
                       : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
-                      : <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
                   </div>
                 </div>
               </motion.div>
