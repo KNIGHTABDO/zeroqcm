@@ -9,16 +9,14 @@ const DARI_H = { "Content-Type": "application/json", "Origin": "https://dariqcm.
 
 async function register(year: number) {
   const ts = Date.now() + Math.random() * 1000;
-  const email = `zqdiag_${year}_${ts}@noreply.fmpc`;
+  const email = `zqd${year}_${Math.floor(ts)}@gmail.com`;
   const res = await fetch(`${DARI_API}/auth/register`, {
     method: "POST", headers: DARI_H,
-    body: JSON.stringify({ nom: "Diag", prenom: `Y${year}`, email, phone: "0612345678",
-      annee_etude: String(year), mot_de_passe: "Diag2026!" }),
+    body: JSON.stringify({ nom: "ZeroQCM", prenom: `S${year}`, email, phone: "0612345678",
+      annee_etude: String(year), mot_de_passe: "ZeroQCM2026!" }),
   });
-  const data = await res.json() as { token?: string; message?: string; retryAfter?: number };
-  if (!data.token) return { error: data.message ?? "no token", retryAfter: data.retryAfter };
-  const key = crypto.createHash("sha256").update(data.token).digest();
-  return { token: data.token, key };
+  const raw = await res.json();
+  return { status: res.status, raw, email };
 }
 
 function decrypt(enc: { enc: string; iv: string; data: string }, key: Buffer): unknown {
@@ -49,16 +47,23 @@ export async function GET(req: NextRequest) {
   const results: Record<string, unknown> = {};
 
   for (let year = 1; year <= 6; year++) {
-    await new Promise(r => setTimeout(r, 2000)); // 2s between registrations
-    const auth = await register(year);
-    if ("error" in auth) {
-      results[`year_${year}`] = { error: auth.error, retryAfter: auth.retryAfter };
+    await new Promise(r => setTimeout(r, 3000));
+    const { status, raw, email } = await register(year);
+    const token = (raw as { token?: string }).token;
+
+    if (!token) {
+      results[`year_${year}`] = { registerStatus: status, raw, email };
       continue;
     }
-    const { sems, error } = await getSemesters(auth.token!, auth.key!);
-    if (error) { results[`year_${year}`] = { error }; continue; }
-    results[`year_${year}`] = (sems as Array<{ semestre_id: string; nom: string; total_questions: number }>)
-      .map(s => ({ id: s.semestre_id, nom: s.nom, q: s.total_questions }));
+
+    const key = crypto.createHash("sha256").update(token).digest();
+    const { sems, error } = await getSemesters(token, key);
+    if (error) { results[`year_${year}`] = { error, email }; continue; }
+    results[`year_${year}`] = {
+      email,
+      semesters: (sems as Array<{ semestre_id: string; nom: string; total_questions: number }>)
+        .map(s => ({ id: s.semestre_id, nom: s.nom, q: s.total_questions }))
+    };
   }
 
   return NextResponse.json({ ok: true, results });
