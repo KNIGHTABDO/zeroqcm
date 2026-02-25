@@ -220,23 +220,33 @@ export default function FlashcardsPage() {
     setSessionStats({ correct: 0, wrong: 0, skipped: 0 });
   }
 
-  async function saveCardResult(card: Flashcard, quality: 0 | 3 | 5) {
-    if (!user) return;
+  async function saveCardResult(card: Flashcard, quality: 0 | 3 | 5): Promise<{ status: Flashcard["status"]; interval: number }> {
     const { interval, ease, status } = sm2(card, quality);
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + interval);
 
-    await supabase.from("flashcard_sessions").upsert({
-      user_id: user.id,
-      module_id: selectedModule!.id,
-      question_id: card.question_id,
-      status,
-      next_review: nextReview.toISOString(),
-      interval_days: interval,
-      ease_factor: ease,
-      reviews: card.reviews + 1,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,question_id" });
+    if (user && selectedModule) {
+      await supabase.from("flashcard_sessions").upsert({
+        user_id: user.id,
+        module_id: selectedModule.id,
+        question_id: card.question_id,
+        status,
+        next_review: nextReview.toISOString(),
+        interval_days: interval,
+        ease_factor: ease,
+        reviews: card.reviews + 1,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,question_id" });
+    }
+
+    // Update card in local state so StatsBar reflects real DB-persisted values
+    setCards((prev) => prev.map((c) =>
+      c.question_id === card.question_id
+        ? { ...c, status, interval_days: interval, reviews: c.reviews + 1 }
+        : c
+    ));
+
+    return { status, interval };
   }
 
   async function handleSwipe(dir: "left" | "right" | "up") {
