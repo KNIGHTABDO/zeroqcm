@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy, ShieldCheck, Sparkles } from "lucide-react";
+import { Home, BookOpen, BarChart2, User, Settings, Sun, Moon, ChevronDown, Bookmark, Trophy, ShieldCheck, Sparkles, Users2, Layers, Mic, Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,10 @@ const NAV = [
   { href: "/leaderboard", icon: Trophy, label: "Classement", tourId: "leaderboard" },
   { href: "/profil", icon: User, label: "Profil", tourId: "profil" },
   { href: "/settings", icon: Settings, label: "Paramètres", tourId: "settings" },
+  { href: "/study-rooms", icon: Users2, label: "Salles d'étude", tourId: "study-rooms" },
+  { href: "/flashcards", icon: Layers, label: "Flashcards", tourId: "flashcards" },
+  { href: "/voice", icon: Mic, label: "Mode vocal", tourId: "voice" },
+  { href: "/certificates", icon: Award, label: "Certificats", tourId: "certificates" },
 ];
 
 export function Sidebar() {
