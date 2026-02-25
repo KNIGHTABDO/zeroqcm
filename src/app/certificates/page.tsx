@@ -153,6 +153,7 @@ function ShareModal({ cert, userName, onClose }: { cert: Certificate; userName: 
   const [downloading, setDownloading] = useState(false);
   const m = TIER_META[cert.tier] ?? TIER_META.bronze;
   const imageUrl = `/api/og/certificate?module=${encodeURIComponent(cert.module_name)}&score=${cert.score_pct}&name=${encodeURIComponent(userName)}&date=${encodeURIComponent(new Date(cert.earned_at).toLocaleDateString("fr-FR"))}&tier=${cert.tier}`;
+  const hdImageUrl = `${imageUrl}&hd=1`;
 
   async function handleCopyLink() {
     setCopying(true);
@@ -162,7 +163,7 @@ function ShareModal({ cert, userName, onClose }: { cert: Certificate; userName: 
 
   async function handleDownload() {
     setDownloading(true);
-    const res = await fetch(imageUrl);
+    const res = await fetch(hdImageUrl);
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
