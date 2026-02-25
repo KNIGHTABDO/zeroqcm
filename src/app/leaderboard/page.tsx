@@ -11,7 +11,7 @@ interface LeaderEntry {
   total: number;
   correct: number;
   rate: number;
-  streak: number;
+  active_days: number;
   rank: number;
 }
 
@@ -26,61 +26,14 @@ export default function LeaderboardPage() {
 
   async function loadLeaderboard() {
     setLoading(true);
-    // Fetch all user_answers grouped by user (Supabase doesn't have GROUP BY, use RPC or raw aggregation)
-    const { data: answers } = await supabase
-      .from("user_answers")
-      .select("user_id, is_correct, answered_at");
+    // Uses SECURITY DEFINER RPC — bypasses RLS so all users are visible
+    const { data, error } = await supabase.rpc("get_leaderboard");
 
-    if (!answers?.length) { setLoading(false); return; }
+    if (error || !data?.length) { setLoading(false); return; }
 
-    // Aggregate client-side
-    const byUser = new Map<string, { total: number; correct: number; dates: string[] }>();
-    for (const a of answers) {
-      const entry = byUser.get(a.user_id) ?? { total: 0, correct: 0, dates: [] };
-      entry.total++;
-      if (a.is_correct) entry.correct++;
-      const day = a.answered_at?.split("T")[0];
-      if (day && !entry.dates.includes(day)) entry.dates.push(day);
-      byUser.set(a.user_id, entry);
-    }
-
-    // Compute streaks
-    function computeStreak(dates: string[]): number {
-      const sorted = [...new Set(dates)].sort().reverse();
-      let streak = 0;
-      for (let i = 0; i < sorted.length; i++) {
-        const expected = new Date(Date.now() - i * 86400000).toISOString().split("T")[0];
-        if (sorted[i] === expected) streak++;
-        else break;
-      }
-      return streak;
-    }
-
-    // Fetch display names from profiles
-    const userIds = Array.from(byUser.keys());
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, username")
-      .in("id", userIds);
-
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? []);
-
-    const list: Omit<LeaderEntry, "rank">[] = Array.from(byUser.entries()).map(([uid, stats]) => {
-      const p = profileMap.get(uid);
-      return {
-        user_id: uid,
-        display_name: p?.full_name ?? p?.username ?? "Anonyme",
-        total: stats.total,
-        correct: stats.correct,
-        rate: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-        streak: computeStreak(stats.dates),
-      };
-    });
-
-    // Sort by score (correct answers) for ranking
-    const ranked: LeaderEntry[] = list
-      .sort((a, b) => b.correct - a.correct)
-      .map((e, i) => ({ ...e, rank: i + 1 }));
+    const ranked: LeaderEntry[] = (data as Omit<LeaderEntry, "rank">[]).map(
+      (e, i) => ({ ...e, rank: i + 1 })
+    );
 
     setEntries(ranked);
     if (user) {
@@ -91,7 +44,7 @@ export default function LeaderboardPage() {
   }
 
   const sorted = [...entries].sort((a, b) =>
-    tab === "streak" ? b.streak - a.streak || b.correct - a.correct : b.correct - a.correct
+    tab === "streak" ? b.active_days - a.active_days || b.correct - a.correct : b.correct - a.correct
   );
 
   const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
@@ -105,7 +58,7 @@ export default function LeaderboardPage() {
           <div>
             <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Classement</h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {loading ? "Chargement…" : `${entries.length} étudiant${entries.length !== 1 ? "s" : ""}`}
+              {loading ? "Chargement…" : `${entries.length} Étudiant${entries.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -125,7 +78,7 @@ export default function LeaderboardPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 p-1 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          {([["score", "Réponses correctes", CheckCircle], ["streak", "Série de jours", Flame]] as const).map(([key, label, Icon]) => (
+          {([["score", "Réponses correctes", CheckCircle], ["streak", "Jours actifs", Flame]] as const).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-all"
               style={{
@@ -162,7 +115,7 @@ export default function LeaderboardPage() {
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none" }}>
                     <Medal size={14} style={{ color: medalColors[podiumRanks[i] - 1] }} />
                     <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                      {tab === "streak" ? `${e.streak}🔥` : e.correct}
+                      {tab === "streak" ? `${e.active_days}🗕` : e.correct}
                     </span>
                   </div>
                 </motion.div>
@@ -205,7 +158,7 @@ export default function LeaderboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>
-                      {e.display_name} {isMe && <span className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>• vous</span>}
+                      {e.display_name} {isMe && <span className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>· vous</span>}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{e.total} réponses · {e.rate}% réussite</span>
@@ -213,10 +166,10 @@ export default function LeaderboardPage() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                      {tab === "streak" ? `${e.streak}` : e.correct}
+                      {tab === "streak" ? `${e.active_days}` : e.correct}
                     </p>
                     <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {tab === "streak" ? "jours 🔥" : "correct"}
+                      {tab === "streak" ? "jours 🗕" : "correct"}
                     </p>
                   </div>
                 </motion.div>
