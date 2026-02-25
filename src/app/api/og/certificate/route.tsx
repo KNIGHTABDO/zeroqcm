@@ -22,10 +22,13 @@ export async function GET(req: NextRequest) {
           position: "relative",
           overflow: "hidden",
         }}>
+        {/* Background decorative circles */}
         <div style={{ position: "absolute", top: -80, right: -80, width: 320, height: 320,
           borderRadius: "50%", background: "radial-gradient(circle, rgba(255,215,0,0.06) 0%, transparent 70%)", display: "flex" }} />
         <div style={{ position: "absolute", bottom: -60, left: -60, width: 240, height: 240,
           borderRadius: "50%", background: "radial-gradient(circle, rgba(99,179,237,0.05) 0%, transparent 70%)", display: "flex" }} />
+
+        {/* Main card */}
         <div style={{
           width: "820px", padding: "56px 64px",
           border: "1px solid rgba(255,215,0,0.18)",
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest) {
           gap: "28px",
           boxShadow: "0 0 80px rgba(255,215,0,0.04)",
         }}>
+          {/* Trophy + brand */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{
               width: "52px", height: "52px", borderRadius: "16px",
@@ -46,6 +50,8 @@ export async function GET(req: NextRequest) {
               ZEROQCM
             </span>
           </div>
+
+          {/* Title */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
             <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               Certificat de r\u00e9ussite
@@ -54,6 +60,8 @@ export async function GET(req: NextRequest) {
               {module}
             </h1>
           </div>
+
+          {/* Score badge */}
           <div style={{
             padding: "14px 36px", borderRadius: "100px",
             background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.22)",
@@ -62,10 +70,14 @@ export async function GET(req: NextRequest) {
             <span style={{ fontSize: "36px", fontWeight: 900, color: "#FFD700" }}>{score}%</span>
             <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)", paddingTop: "2px" }}>de r\u00e9ussite</span>
           </div>
+
+          {/* Recipient */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.35)", margin: 0 }}>D\u00e9cern\u00e9 \u00e0</p>
             <p style={{ fontSize: "24px", fontWeight: 700, color: "rgba(255,255,255,0.85)", margin: 0 }}>{name}</p>
           </div>
+
+          {/* Date + divider */}
           <div style={{ display: "flex", alignItems: "center", gap: "16px", width: "100%" }}>
             <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.06)" }} />
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.35)", margin: 0, flexShrink: 0 }}>{date}</p>
@@ -74,6 +86,9 @@ export async function GET(req: NextRequest) {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 }
+    {
+      width: 1200,
+      height: 630,
+    }
   );
 }
