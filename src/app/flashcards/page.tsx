@@ -20,12 +20,22 @@ interface Module { id: number; nom: string; semester_id: string; }
 
 // ─── SM-2 Algorithm ──────────────────────────────────────────────────────────
 function sm2(card: Flashcard, quality: 0 | 3 | 5): { interval: number; ease: number; status: Flashcard["status"] } {
-  // quality: 0 = wrong, 3 = hard, 5 = easy
-  const oldEase = 2.5;
+  // quality: 0 = wrong/difficile, 3 = hard/moyen, 5 = easy/facile
+  const oldEase = card.ease_factor ?? 2.5;
   const newEase = Math.max(1.3, oldEase + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  if (quality < 3) return { interval: 1, ease: newEase, status: "learning" };
-  const newInterval = card.reviews === 0 ? 1 : card.reviews === 1 ? 6 : Math.round(card.interval_days * newEase);
-  return { interval: newInterval, ease: newEase, status: newInterval >= 21 ? "known" : "learning" };
+
+  if (quality === 0) {
+    // Difficile: reset to front of deck, short interval
+    return { interval: 1, ease: newEase, status: "new" };
+  }
+  if (quality === 3) {
+    // Moyen: learning, repeat sooner
+    const newInterval = card.reviews <= 1 ? 1 : Math.round(card.interval_days * 1.2);
+    return { interval: newInterval, ease: newEase, status: "learning" };
+  }
+  // Facile (quality === 5): mark as known immediately, growing interval
+  const newInterval = card.reviews === 0 ? 1 : card.reviews === 1 ? 4 : Math.round(card.interval_days * newEase);
+  return { interval: newInterval, ease: newEase, status: "known" };
 }
 
 // ─── Flip Card ────────────────────────────────────────────────────────────────
