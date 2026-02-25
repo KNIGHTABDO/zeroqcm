@@ -7,33 +7,33 @@ import {
 const FEATURES = [
   {
     icon: Mic,
-    title: "Dictez vos r\u00e9ponses",
-    desc: "Dites \u00ab A \u00bb, \u00ab r\u00e9ponse B \u00bb ou \u00ab troisi\u00e8me \u00bb \u2014 l\u2019IA vous comprend.",
+    title: "Dictez vos réponses",
+    desc: "Dites « A », « réponse B » ou « troisième » — l’IA vous comprend.",
   },
   {
     icon: Volume2,
-    title: "Questions lues \u00e0 voix haute",
-    desc: "Chaque question est \u00e9nonc\u00e9e clairement. R\u00e9visez les yeux ferm\u00e9s.",
+    title: "Questions lues à voix haute",
+    desc: "Chaque question est énoncée clairement. Révisez les yeux fermés.",
   },
   {
     icon: Brain,
     title: "Mode examen oral",
-    desc: "Simulez un examen oral avec feedback instantan\u00e9 apr\u00e8s chaque r\u00e9ponse.",
+    desc: "Simulez un examen oral avec feedback instantané après chaque réponse.",
   },
   {
     icon: Languages,
     title: "Multilangue",
-    desc: "Fran\u00e7ais, arabe, anglais \u2014 parlez dans la langue avec laquelle vous pensez.",
+    desc: "Français, arabe, anglais — parlez dans la langue avec laquelle vous pensez.",
   },
   {
     icon: MessageSquare,
     title: "Explications vocales",
-    desc: "Les explications des r\u00e9ponses sont aussi lues \u00e0 haute voix apr\u00e8s chaque question.",
+    desc: "Les explications des réponses sont aussi lues à haute voix après chaque question.",
   },
   {
     icon: Zap,
     title: "Session rapide",
-    desc: "10 questions en mode mains libres. Id\u00e9al en transport, en marchant, partout.",
+    desc: "10 questions en mode mains libres. Idéal en transport, en marchant, partout.",
   },
 ];
 
@@ -84,7 +84,7 @@ export default function VoicePage() {
             }}
           >
             <Sparkles size={11} />
-            Bient\u00f4t disponible
+            Bientôt disponible
           </div>
 
           <div>
@@ -95,8 +95,8 @@ export default function VoicePage() {
               className="mt-2 text-sm leading-relaxed"
               style={{ color: "var(--text-secondary)", maxWidth: 300, margin: "8px auto 0" }}
             >
-              R\u00e9visez vos QCM en mode mains libres \u2014 parlez, \u00e9coutez, apprenez.
-              On finalise les derniers d\u00e9tails.
+              Révisez vos QCM en mode mains libres — parlez, écoutez, apprenez.
+              On finalise les derniers détails.
             </p>
           </div>
         </motion.div>
