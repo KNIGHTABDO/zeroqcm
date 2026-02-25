@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Award, BookOpen, Share2, Download, CheckCircle2,
-  Loader2, ArrowLeft, Lock, ChevronRight, Star, Trophy
+  Loader2, ArrowLeft, Lock, ChevronRight, Star, Trophy, Trash2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -43,7 +44,7 @@ function TierBadge({ tier }: { tier: string }) {
 }
 
 // Certificate Card
-function CertCard({ cert, onShare }: { cert: Certificate; onShare: (cert: Certificate) => void }) {
+function CertCard({ cert, onShare, onDelete }: { cert: Certificate; onShare: (cert: Certificate) => void; onDelete: (cert: Certificate) => void }) {
   const m = TIER_META[cert.tier] ?? TIER_META.bronze;
   const date = new Date(cert.earned_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   return (
@@ -81,6 +82,12 @@ function CertCard({ cert, onShare }: { cert: Certificate; onShare: (cert: Certif
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
           style={{ background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
           <Share2 size={12} /> Partager
+        </button>
+        <button onClick={() => onDelete(cert)}
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
+          style={{ background: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.6)", border: "1px solid rgba(239,68,68,0.15)" }}
+          title="Supprimer et regénérer">
+          <Trash2 size={12} />
         </button>
       </div>
     </motion.div>
@@ -167,7 +174,7 @@ function ShareModal({ cert, userName, onClose }: { cert: Certificate; userName: 
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
       style={{ background: "var(--overlay)" }} onClick={onClose}>
       <motion.div initial={{ y: 40, scale: 0.97 }} animate={{ y: 0, scale: 1 }}
         exit={{ y: 40, scale: 0.97 }} transition={{ type: "spring", damping: 28, stiffness: 320 }}
@@ -283,6 +290,14 @@ export default function CertificatesPage() {
     setShareTarget(data);
   }
 
+  async function handleDeleteCert(cert: Certificate) {
+    if (!user) return;
+    await supabase.from("module_certificates").delete().eq("id", cert.id);
+    setCerts((prev) => prev.filter((c) => c.id !== cert.id));
+    setProgress((prev) => prev.map((p) => p.module_id === cert.module_id ? { ...p, has_cert: false } : p));
+    setTab("progress");
+  }
+
   const eligibleCount = progress.filter((mp) => mp.pct >= CERT_THRESHOLD && !mp.has_cert).length;
 
   if (!user) {
@@ -373,7 +388,7 @@ export default function CertificatesPage() {
               <div key="list" className="space-y-3">
                 {certs.map((cert, i) => (
                   <motion.div key={cert.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <CertCard cert={cert} onShare={setShareTarget} />
+                    <CertCard cert={cert} onShare={setShareTarget} onDelete={handleDeleteCert} />
                   </motion.div>
                 ))}
               </div>
@@ -406,11 +421,14 @@ export default function CertificatesPage() {
         )}
       </div>
 
-      <AnimatePresence>
-        {shareTarget && (
-          <ShareModal key="share" cert={shareTarget} userName={userName} onClose={() => setShareTarget(null)} />
-        )}
-      </AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {shareTarget && (
+            <ShareModal key="share" cert={shareTarget} userName={userName} onClose={() => setShareTarget(null)} />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </main>
   );
 }
