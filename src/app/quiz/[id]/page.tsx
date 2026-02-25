@@ -33,6 +33,7 @@ type ParsedAI = OptionExplanation[] | null;
 function parseAI(raw: string): ParsedAI {
   try {
     let cleaned = raw.trim();
+    // Strip markdown code block wrapper if present
     if (cleaned.startsWith("```")) {
       const firstNewline = cleaned.indexOf("\n");
       cleaned = firstNewline !== -1 ? cleaned.slice(firstNewline + 1) : cleaned.slice(3);
@@ -41,10 +42,13 @@ function parseAI(raw: string): ParsedAI {
       cleaned = cleaned.slice(0, cleaned.lastIndexOf("```"));
     }
     cleaned = cleaned.trim();
+    // If model added preamble text before the JSON array, find the actual array
+    const arrayStart = cleaned.indexOf("[");
+    if (arrayStart > 0) cleaned = cleaned.slice(arrayStart);
     const p = JSON.parse(cleaned) as OptionExplanation[];
     if (Array.isArray(p) && p.length > 0 && p[0]?.letter) return p;
   } catch {
-    // not valid JSON
+    // not valid JSON yet (e.g. partial stream) — caller will retry on next chunk
   }
   return null;
 }
@@ -218,11 +222,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         setAiText("Erreur: réponse vide (rate limit GitHub Models ou modèle indisponible). Réessayez dans quelques secondes.");
       } else if (!full.startsWith("Erreur")) {
         const parsed = parseAI(full);
-        if (parsed) setAiParsed(parsed);
-        supabase.from("ai_explanations").upsert(
-          { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
-          { onConflict: "question_id" }
-        ).then(() => setAiCached(full));
+        if (parsed) {
+          setAiParsed(parsed);
+          // Only save to DB if we got real explanations (not an empty [] from the model)
+          supabase.from("ai_explanations").upsert(
+            { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
+            { onConflict: "question_id" }
+          ).then(() => setAiCached(full));
+        } else {
+          // Model returned [] or unparseable text — show error instead of saving garbage
+          setAiText("Erreur: le modèle n'a pas pu générer d'explication pour cette question. Réessayez.");
+        }
       }
     }
   }
