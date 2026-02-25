@@ -2,7 +2,7 @@
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, CheckCircle, XCircle, Brain, MessageCircle, Send, RefreshCw, Loader2, Bookmark, BookmarkCheck
+  ArrowLeft, CheckCircle, XCircle, Brain, MessageCircle, Send, RefreshCw, Loader2, Bookmark, BookmarkCheck, RotateCcw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -300,6 +300,41 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     if (!q || selected.size === 0) return;
     lockAndScore();
     setPhase("revealed");
+  }
+
+  function handleRetry() {
+    if (!q) return;
+    // Roll back score for this question
+    const prevSel = history.get(current);
+    if (prevSel) {
+      const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
+      const wasCorrect =
+        prevSel.size === correctIds.size && [...prevSel].every((cid) => correctIds.has(cid));
+      setScore((s) => ({
+        correct: s.correct - (wasCorrect ? 1 : 0),
+        total: s.total - 1,
+      }));
+      setAnsweredCount((n) => n - 1);
+    }
+    // Remove from history so this question is no longer counted as answered
+    const newHistory = new Map(history);
+    newHistory.delete(current);
+    setHistory(newHistory);
+    // Delete saved answer from DB so the next answer is the one stored
+    if (user && q) {
+      supabase
+        .from("user_answers")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("question_id", q.id)
+        .then(() => {});
+    }
+    // Reset UI state
+    setSelected(new Set());
+    setPhase("quiz");
+    setAiText("");
+    setAiParsed(null);
+    setCommentsOpen(false);
   }
 
   function handleNext() {
@@ -688,6 +723,11 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   ← Préc.
                 </motion.button>
               )}
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleRetry}
+                className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all flex items-center gap-1.5"
+                style={{ borderColor: "rgba(251,191,36,0.25)", color: "#fbbf24", background: "rgba(251,191,36,0.08)" }}>
+                <RotateCcw size={13} /> Réessayer
+              </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
                 {isLast ? "Voir les résultats" : "Suivant →"}
