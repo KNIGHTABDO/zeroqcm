@@ -205,7 +205,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     }
     if (!controller.signal.aborted) {
       setAiLoading(false);
-      if (full && !full.startsWith("Erreur")) {
+      if (!full) {
+        // Empty stream — show a visible error so user knows what happened
+        setAiText("Erreur: réponse vide (rate limit GitHub Models ou modèle indisponible). Réessayez dans quelques secondes.");
+      } else if (!full.startsWith("Erreur")) {
         const parsed = parseAI(full);
         if (parsed) setAiParsed(parsed);
         supabase.from("ai_explanations").upsert(
@@ -600,6 +603,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
         {rev && (
           <div className="flex items-center justify-between px-1">
+            {/* Error banner — shown when aiText starts with Erreur */}
+            {!aiLoading && aiText && aiText.startsWith("Erreur") && (
+              <div className="flex items-center gap-2 w-full rounded-xl px-3 py-2"
+                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                <XCircle size={12} className="flex-shrink-0 text-red-400" />
+                <p className="text-[11px] leading-snug" style={{ color: "#f87171" }}>{aiText.replace(/^Erreur: ?/, "")}</p>
+                <button onClick={() => { setAiText(""); setAiParsed(null); }}
+                  className="ml-auto flex-shrink-0 text-[10px] px-2 py-0.5 rounded-md hover:opacity-80"
+                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}>Réessayer</button>
+              </div>
+            )}
             {/* Not yet triggered → primary CTA button */}
             {!aiLoading && !aiText && (
               <button
