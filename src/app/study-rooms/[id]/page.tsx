@@ -17,7 +17,7 @@ interface StudyRoom {
 }
 interface Participant {
   id: string; room_id: string; user_id: string;
-  display_name: string; score: number; answers: Record<string, string>;
+  display_name: string; score: number; answers: Record<string, string[]>;
 }
 interface Choice { id: string; contenu: string; est_correct: boolean; explication: string | null; }
 interface Question { id: string; texte: string; choices: Choice[]; }
@@ -140,11 +140,12 @@ function WaitingRoom({ room, participants, isHost, onStart, onLeave, copied, onC
 }
 
 // ─── QuestionView ─────────────────────────────────────────────────────────────
-function QuestionView({ question, qIdx, total, myAnswer, participants, isHost, timeLeft, onAnswer, onNext, onLeave }: {
+function QuestionView({ question, qIdx, total, myAnswers, submittedAnswers, submitted, participants, isHost, timeLeft, onToggle, onSubmit, onNext, onLeave }: {
   question: Question; qIdx: number; total: number;
-  myAnswer: string | null; participants: Participant[]; isHost: boolean;
-  timeLeft: number; onAnswer: (choiceId: string) => void;
-  onNext: () => void; onLeave: () => void;
+  myAnswers: string[]; submittedAnswers: string[] | null; submitted: boolean;
+  participants: Participant[]; isHost: boolean;
+  timeLeft: number; onToggle: (choiceId: string) => void;
+  onSubmit: () => void; onNext: () => void; onLeave: () => void;
 }) {
   const answeredCount = participants.filter((p) => p.answers[String(qIdx)] != null).length;
   const showResults = timeLeft === 0;
@@ -194,28 +195,35 @@ function QuestionView({ question, qIdx, total, myAnswer, participants, isHost, t
       {/* Choices */}
       <div className="space-y-2.5">
         {question.choices.map((choice, i) => {
-          const selected = myAnswer === choice.id;
+          const toggleSelected = myAnswers.includes(choice.id);
+          const wasSubmitted = submittedAnswers?.includes(choice.id) ?? false;
           const isCorrect = choice.est_correct;
           let bg = "var(--surface)", border = "var(--border)", textColor = "var(--text)";
           if (showResults) {
+            // Reveal correct/wrong after timer hits 0
             if (isCorrect) { bg = "var(--success-subtle)"; border = "var(--success-border)"; textColor = "var(--success)"; }
-            else if (selected) { bg = "var(--error-subtle)"; border = "var(--error-border)"; textColor = "var(--error)"; }
-          } else if (selected) {
+            else if (wasSubmitted) { bg = "var(--error-subtle)"; border = "var(--error-border)"; textColor = "var(--error)"; }
+          } else if (submitted) {
+            // Committed but timer still running: show what was submitted (locked)
+            if (wasSubmitted) { bg = "var(--accent-subtle)"; border = "var(--accent-border)"; textColor = "var(--accent)"; }
+          } else if (toggleSelected) {
+            // Pre-submission toggle state
             bg = "var(--accent-subtle)"; border = "var(--accent-border)"; textColor = "var(--accent)";
           }
+          const clickable = !showResults && !submitted;
           return (
-            <motion.button key={choice.id} onClick={() => !showResults && onAnswer(choice.id)}
-              whileHover={!showResults ? { scale: 1.01 } : {}}
-              whileTap={!showResults ? { scale: 0.99 } : {}}
+            <motion.button key={choice.id} onClick={() => clickable && onToggle(choice.id)}
+              whileHover={clickable ? { scale: 1.01 } : {}}
+              whileTap={clickable ? { scale: 0.99 } : {}}
               className="w-full flex items-start gap-3 px-4 py-3.5 rounded-2xl text-left transition-all"
-              style={{ background: bg, border: `1px solid ${border}`, cursor: showResults ? "default" : "pointer" }}>
+              style={{ background: bg, border: `1px solid ${border}`, cursor: clickable ? "pointer" : "default" }}>
               <span className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold mt-0.5"
                 style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>
                 {LETTERS[i]}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-relaxed" style={{ color: textColor }}>{choice.contenu}</p>
-                {showResults && isCorrect && choice.explication && (
+                {showResults && (isCorrect || wasSubmitted) && choice.explication && (
                   <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     {choice.explication}
                   </p>
@@ -225,6 +233,24 @@ function QuestionView({ question, qIdx, total, myAnswer, participants, isHost, t
           );
         })}
       </div>
+
+      {/* Valider button — shown when ≥1 choice selected and not yet submitted */}
+      {!showResults && !submitted && myAnswers.length > 0 && (
+        <motion.button initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+          onClick={onSubmit}
+          className="w-full py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95"
+          style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
+          Valider ({myAnswers.length} réponse{myAnswers.length > 1 ? "s" : ""})
+        </motion.button>
+      )}
+
+      {/* Submitted but waiting for timer/others */}
+      {!showResults && submitted && (
+        <div className="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs"
+          style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
+          Réponse envoyée — en attente des autres…
+        </div>
+      )}
 
       {/* Answered dots */}
       {participants.length > 1 && (
@@ -327,6 +353,8 @@ export default function StudyRoomPage() {
   const [currentQIdx, setCurrentQIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
   const [copied, setCopied] = useState(false);
+  const [myAnswers, setMyAnswers] = useState<string[]>([]); // selected choice IDs for current q
+  const [submitted, setSubmitted] = useState(false); // answer committed for current q
   const [connected, setConnected] = useState(false);
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -434,6 +462,8 @@ export default function StudyRoomPage() {
           else if (updatedRoom.status === "active") {
             setCurrentQIdx(updatedRoom.current_q_idx ?? 0);
             setTimeLeft(30);
+            setMyAnswers([]);
+            setSubmitted(false);
             setView("active");
           }
           else if (updatedRoom.status === "finished") setView("results");
@@ -454,11 +484,17 @@ export default function StudyRoomPage() {
     setTimeLeft(30);
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
-        if (t <= 1) { clearInterval(timerRef.current!); return 0; }
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          // Auto-submit with whatever is currently selected (even empty)
+          handleSubmit(myAnswers.length > 0 ? myAnswers : []);
+          return 0;
+        }
         return t - 1;
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentQIdx]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -483,24 +519,45 @@ export default function StudyRoomPage() {
     setStarting(false);
   }
 
-  async function handleAnswer(choiceId: string) {
+  // Toggle a choice in myAnswers (before submission)
+  function handleToggle(choiceId: string) {
+    if (submitted) return;
+    setMyAnswers((prev) =>
+      prev.includes(choiceId) ? prev.filter((id) => id !== choiceId) : [...prev, choiceId]
+    );
+  }
+
+  // Commit the answer: score, save to DB, detect all-answered
+  async function handleSubmit(selectedIds?: string[]) {
     const myP = myParticipantRef.current;
     const qs = questionsRef.current;
-    if (!myP || !qs[currentQIdx]) return;
+    if (!myP || !qs[currentQIdx] || submitted) return;
 
-    const isCorrect = qs[currentQIdx].choices.find((c) => c.id === choiceId)?.est_correct ?? false;
-    const newAnswers = { ...myP.answers, [String(currentQIdx)]: choiceId };
-    const newScore = myP.score + (isCorrect ? 1 : 0);
+    setSubmitted(true);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    const chosen = selectedIds ?? myAnswers;
+    const correctIds = qs[currentQIdx].choices.filter((c) => c.est_correct).map((c) => c.id);
+    const isFullyCorrect =
+      chosen.length === correctIds.length &&
+      correctIds.every((id) => chosen.includes(id));
+
+    const newAnswers = { ...myP.answers, [String(currentQIdx)]: chosen };
+    const newScore = myP.score + (isFullyCorrect ? 1 : 0);
 
     const updated = { ...myP, answers: newAnswers, score: newScore };
     myParticipantRef.current = updated;
     setMyParticipant(updated);
 
-    if (timerRef.current) clearInterval(timerRef.current);
-
     await supabase.from("room_participants")
       .update({ answers: newAnswers, score: newScore })
       .eq("id", myP.id);
+
+    // After saving, check if ALL participants have answered this question
+    const parts = await fetchParticipants(roomId);
+    setParticipants(parts);
+    const allAnswered = parts.every((p) => p.answers[String(currentQIdx)] != null);
+    if (allAnswered) setTimeLeft(0);
   }
 
   async function handleNext() {
@@ -515,6 +572,8 @@ export default function StudyRoomPage() {
       await supabase.from("study_rooms").update({ current_q_idx: nextIdx }).eq("id", room.id);
       setCurrentQIdx(nextIdx);
       setTimeLeft(30);
+      setMyAnswers([]);
+      setSubmitted(false);
     }
   }
 
@@ -536,7 +595,8 @@ export default function StudyRoomPage() {
 
   const isHost = !!(user && room && room.host_id === user.id);
   const currentQ = questions[currentQIdx] ?? null;
-  const myAnswer = myParticipant?.answers[String(currentQIdx)] ?? null;
+  // myAnswers is local toggle state; submittedAnswers is what was committed to DB
+  const submittedAnswers = myParticipant?.answers[String(currentQIdx)] ?? null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!user) {
@@ -582,9 +642,10 @@ export default function StudyRoomPage() {
           )}
           {view === "active" && currentQ && (
             <QuestionView key={`q-${currentQIdx}`} question={currentQ} qIdx={currentQIdx}
-              total={questions.length} myAnswer={myAnswer} participants={participants}
-              isHost={isHost} timeLeft={timeLeft} onAnswer={handleAnswer}
-              onNext={handleNext} onLeave={handleLeave} />
+              total={questions.length} myAnswers={myAnswers} submittedAnswers={submittedAnswers}
+              submitted={submitted} participants={participants}
+              isHost={isHost} timeLeft={timeLeft} onToggle={handleToggle}
+              onSubmit={() => handleSubmit()} onNext={handleNext} onLeave={handleLeave} />
           )}
           {view === "active" && !currentQ && (
             <motion.div key="loading-q" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
