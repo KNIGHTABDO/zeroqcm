@@ -83,12 +83,17 @@ function CreateModal({
       .from("questions")
       .select("id")
       .eq("module_id", moduleId)
-      .not("source_type", "in", '("open","no_answer")')
-      .limit(20)
-      .order("random()");
+      .not("source_type", "in", "(open,no_answer)")
+      .limit(60);
 
     if (qErr || !qData?.length) { setErr("Aucune question disponible."); setCreating(false); return; }
-    const questionIds = qData.map((q) => q.id);
+    // Shuffle and pick 20 random questions
+    const allIds = qData.map((q) => q.id);
+    for (let i = allIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allIds[i], allIds[j]] = [allIds[j], allIds[i]];
+    }
+    const questionIds = allIds.slice(0, 20);
     const code = genCode();
 
     const { data: room, error: rErr } = await supabase
@@ -535,10 +540,20 @@ export default function StudyRoomsPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Load modules
+  // Load modules filtered by user's year of study
   useEffect(() => {
-    supabase.from("modules").select("id, nom, semester_id").order("nom").then(({ data }) => setModules(data ?? []));
-  }, []);
+    if (!profile) return;
+    const year = profile.annee_etude;
+    // Year N → semesters S(2N-1) and S(2N)  e.g. year 2 → S3, S4
+    const s1 = \`S\${2 * year - 1}\`;
+    const s2 = \`S\${2 * year}\`;
+    supabase
+      .from("modules")
+      .select("id, nom, semester_id")
+      .in("semester_id", [s1, s2])
+      .order("nom")
+      .then(({ data }) => setModules(data ?? []));
+  }, [profile]);
 
   // Realtime subscription to room + participants
   const subscribeToRoom = useCallback((roomId: string) => {

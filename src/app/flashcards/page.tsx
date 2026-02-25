@@ -184,18 +184,28 @@ function StatsBar({ cards }: { cards: Flashcard[] }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function FlashcardsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [cardIdx, setCardIdx] = useState(0);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [sessionStats, setSessionStats] = useState({ correct: 0, wrong: 0, skipped: 0 });
 
   useEffect(() => {
-    supabase.from("modules").select("id, nom, semester_id").order("nom").then(({ data }) => setModules(data ?? []));
-  }, []);
+    if (!profile) return;
+    const year = profile.annee_etude;
+    const s1 = `S${2 * year - 1}`;
+    const s2 = `S${2 * year}`;
+    supabase
+      .from("modules")
+      .select("id, nom, semester_id")
+      .in("semester_id", [s1, s2])
+      .order("nom")
+      .then(({ data }) => setModules(data ?? []));
+  }, [profile]);
 
   async function loadCards(moduleId: number) {
     if (!user) return;
@@ -204,7 +214,9 @@ export default function FlashcardsPage() {
       p_user_id: user.id, p_module_id: moduleId,
     });
     setLoading(false);
-    if (error || !data?.length) { setCards([]); return; }
+    if (error) { setLoadError(true); setCards([]); return; }
+    setLoadError(false);
+    if (!data?.length) { setCards([]); return; }
     setCards(data as Flashcard[]);
     setCardIdx(0); setDone(false);
     setSessionStats({ correct: 0, wrong: 0, skipped: 0 });
@@ -317,11 +329,18 @@ export default function FlashcardsPage() {
             <StatsBar cards={cards} />
 
             {/* No cards due */}
-            {cards.length === 0 && (
+            {cards.length === 0 && !loadError && (
               <div className="flex flex-col items-center py-12 text-center space-y-3">
                 <Trophy size={32} style={{ color: "var(--warning)" }} />
                 <p className="font-semibold" style={{ color: "var(--text)" }}>Tout est à jour !</p>
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>Aucune carte à réviser maintenant.</p>
+              </div>
+            )}
+            {loadError && (
+              <div className="flex flex-col items-center py-12 text-center space-y-3">
+                <Brain size={32} style={{ color: "var(--text-muted)" }} />
+                <p className="font-semibold" style={{ color: "var(--text)" }}>Fonctionnalité non disponible</p>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>La base de données de flashcards n&apos;est pas encore configurée.</p>
               </div>
             )}
 

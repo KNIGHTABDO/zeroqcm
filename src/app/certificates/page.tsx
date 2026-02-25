@@ -234,26 +234,41 @@ export default function CertificatesPage() {
 
     if (!modules?.length) { setLoading(false); return; }
 
-    // Get module stats for all modules in parallel (batches of 5)
-    const results: ModuleProgress[] = [];
-    for (const mod of modules) {
-      const { data: stats } = await supabase
-        .rpc("get_module_stats_for_certificate", { p_user_id: user.id, p_module_id: mod.id });
+    // Fetch user answers aggregated by module (single query — fast)
+    const { data: answers, error: ansErr } = await supabase
+      .from("user_answers")
+      .select("module_id, is_correct")
+      .eq("user_id", user.id);
 
-      if (stats?.[0] && stats[0].answered > 0) {
-        const hasCert = (certData ?? []).some((c) => c.module_id === mod.id);
-        results.push({
-          module_id: mod.id,
-          module_name: mod.nom,
-          pct: stats[0].pct ?? 0,
-          answered: Number(stats[0].answered) ?? 0,
-          total_q: Number(stats[0].total_q) ?? 0,
-          has_cert: hasCert,
-        });
-      }
+    if (ansErr) { setLoading(false); return; }
+
+    // Group by module_id in JS
+    const byModule = new Map<number, { correct: number; total: number }>();
+    for (const a of (answers ?? [])) {
+      if (a.module_id == null) continue;
+      const cur = byModule.get(a.module_id) ?? { correct: 0, total: 0 };
+      byModule.set(a.module_id, {
+        total: cur.total + 1,
+        correct: cur.correct + (a.is_correct ? 1 : 0),
+      });
     }
 
-    // Sort by pct descending
+    const results: ModuleProgress[] = [];
+    for (const mod of modules) {
+      const stats = byModule.get(mod.id);
+      if (!stats || stats.total === 0) continue;
+      const pct = Math.round((stats.correct / stats.total) * 100);
+      const hasCert = (certData ?? []).some((c) => c.module_id === mod.id);
+      results.push({
+        module_id: mod.id,
+        module_name: mod.nom,
+        pct,
+        answered: stats.total,
+        total_q: stats.total,
+        has_cert: hasCert,
+      });
+    }
+
     results.sort((a, b) => b.pct - a.pct);
     setProgress(results);
     setLoading(false);

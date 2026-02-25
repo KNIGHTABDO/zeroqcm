@@ -8,6 +8,15 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Choice { id: string; contenu: string; est_correct: boolean; explication: string | null; }
 interface VoiceQuestion {
@@ -297,12 +306,11 @@ export default function VoiceModePage() {
       .from("questions")
       .select("id, texte, module_id, activity_id, choices(id, contenu, est_correct, explication)")
       .eq("module_id", moduleId)
-      .not("source_type", "in", '("open","no_answer")')
-      .limit(20)
-      .order("random()");
+      .not("source_type", "in", "(open,no_answer)")
+      .limit(60);
     setLoading(false);
     if (!data?.length) return;
-    setQuestions(data as VoiceQuestion[]);
+    setQuestions(shuffle(data as VoiceQuestion[]).slice(0, 20));
     setQIdx(0); setAnswered(false); setSelectedIdx(null); setIsCorrect(null);
     setScore({ correct: 0, wrong: 0 }); setDone(false);
   }
@@ -370,6 +378,22 @@ export default function VoiceModePage() {
           </div>
         )}
 
+
+        {/* No questions fallback */}
+        {selectedModule && !loading && !done && !currentQ && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-4">
+            <BookOpen size={36} style={{ color: "var(--text-muted)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Aucune question disponible pour ce module.
+            </p>
+            <button onClick={() => setSelectedModule(null)}
+              className="px-5 py-2.5 rounded-2xl text-sm font-semibold"
+              style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}>
+              Choisir un autre module
+            </button>
+          </motion.div>
+        )}
         {/* Active session */}
         {selectedModule && !loading && !done && currentQ && (
           <AnimatePresence mode="wait">
