@@ -545,8 +545,8 @@ export default function StudyRoomsPage() {
     if (!profile) return;
     const year = profile.annee_etude;
     // Year N → semesters S(2N-1) and S(2N)  e.g. year 2 → S3, S4
-    const s1 = \`S\${2 * year - 1}\`;
-    const s2 = \`S\${2 * year}\`;
+    const s1 = `S${2 * year - 1}`;
+    const s2 = `S${2 * year}`;
     supabase
       .from("modules")
       .select("id, nom, semester_id")
