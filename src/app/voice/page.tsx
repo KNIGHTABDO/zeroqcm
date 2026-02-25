@@ -49,22 +49,22 @@ export default function VoicePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] as number[] }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="flex flex-col items-center text-center gap-5 pt-4"
         >
-          {/* Animated mic orb */}
-          <div className="relative flex items-center justify-center">
+          {/* Pulsing mic orb */}
+          <div className="relative flex items-center justify-center" style={{ width: 120, height: 120 }}>
             <motion.div
-              className="absolute rounded-full"
-              style={{ width: 110, height: 110, background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
-              animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.2, 0.5] }}
+              className="absolute inset-0 rounded-full"
+              style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
+              animate={{ scale: [1, 1.14, 1], opacity: [0.6, 0.15, 0.6] }}
               transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
               className="absolute rounded-full"
-              style={{ width: 82, height: 82, background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
-              animate={{ scale: [1, 1.08, 1], opacity: [0.7, 0.35, 0.7] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+              style={{ width: 90, height: 90, background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
+              animate={{ scale: [1, 1.09, 1], opacity: [0.8, 0.3, 0.8] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0.45 }}
             />
             <div
               className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center"
@@ -74,10 +74,14 @@ export default function VoicePage() {
             </div>
           </div>
 
-          {/* Badge */}
+          {/* Coming soon badge */}
           <div
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-            style={{ background: "var(--warning-subtle)", color: "var(--warning)", border: "1px solid var(--warning-border)" }}
+            style={{
+              background: "var(--warning-subtle)",
+              color: "var(--warning)",
+              border: "1px solid var(--warning-border)",
+            }}
           >
             <Sparkles size={11} />
             Bient\u00f4t disponible
@@ -89,7 +93,7 @@ export default function VoicePage() {
             </h1>
             <p
               className="mt-2 text-sm leading-relaxed"
-              style={{ color: "var(--text-secondary)", maxWidth: 320, margin: "8px auto 0" }}
+              style={{ color: "var(--text-secondary)", maxWidth: 300, margin: "8px auto 0" }}
             >
               R\u00e9visez vos QCM en mode mains libres \u2014 parlez, \u00e9coutez, apprenez.
               On finalise les derniers d\u00e9tails.
@@ -97,7 +101,7 @@ export default function VoicePage() {
           </div>
         </motion.div>
 
-        {/* Waveform bars */}
+        {/* Animated waveform bars */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -110,32 +114,37 @@ export default function VoicePage() {
               key={i}
               className="rounded-full"
               style={{ width: 3, height: 36, background: "var(--accent)", opacity: 0.55 }}
-              animate={{ scaleY: [h * 0.4, h, h * 0.4] }}
+              animate={{ scaleY: [h * 0.35, h, h * 0.35] }}
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
             />
           ))}
         </motion.div>
 
         {/* Feature cards */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-col gap-3">
           {FEATURES.map(({ icon: Icon, title, desc }, i) => (
             <motion.div
               key={title}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 + i * 0.07, ease: [0.25, 0.1, 0.25, 1] as number[] }}
+              transition={{ duration: 0.4, delay: 0.08 + i * 0.07, ease: "easeOut" }}
               className="flex items-start gap-4 px-4 py-4 rounded-2xl"
               style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
               <div
                 className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
-                style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
+                style={{
+                  background: "var(--accent-subtle)",
+                  border: "1px solid var(--accent-border)",
+                }}
               >
                 <Icon size={16} style={{ color: "var(--accent)" }} />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{title}</p>
-                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  {desc}
+                </p>
               </div>
             </motion.div>
           ))}
