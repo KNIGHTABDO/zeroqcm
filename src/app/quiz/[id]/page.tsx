@@ -360,6 +360,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setAiText("");
     setAiParsed(null);
     setCommentsOpen(false);
+    // Sync the deletion to DB so that on refresh the retried question is not restored from answers
+    const retryHistory = new Map(history);
+    retryHistory.delete(current);
+    saveSession(retryHistory, current, elapsed, score, false);
   }
 
   function handleNext() {
@@ -383,6 +387,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setSelected(nextSel ? new Set(nextSel) : new Set());
     setPhase(latestHistory.has(nextIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
+    // CRITICAL: always save current_idx as nextIdx so session restore lands on the right question.
+    // Without this, current_idx stays frozen at the last *answered* question (index from lockAndScore),
+    // causing the ← Préc button to be hidden (current===0) after restore.
+    saveSession(latestHistory, nextIdx, elapsed, score, false);
   }
 
   function handlePrev() {
