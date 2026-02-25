@@ -343,6 +343,9 @@ export default function StudyRoomPage() {
     if (!user || !roomId) return;
 
     async function bootstrap() {
+      const uid = user?.id;
+      if (!uid) return;
+
       // 1. Fetch room
       const { data: roomData, error: rErr } = await supabase
         .from("study_rooms").select("*").eq("id", roomId).single();
@@ -355,13 +358,13 @@ export default function StudyRoomPage() {
 
       // 2. Ensure I am a participant (join if I'm not)
       const { data: existingP } = await supabase.from("room_participants")
-        .select("*").eq("room_id", roomId).eq("user_id", user.id).maybeSingle();
+        .select("*").eq("room_id", roomId).eq("user_id", uid).maybeSingle();
 
       let myP: Participant | null = existingP ?? null;
 
       if (!myP && roomData.status !== "finished") {
         const { data: newP } = await supabase.from("room_participants")
-          .insert({ room_id: roomId, user_id: user.id, display_name: displayName, score: 0, answers: {} })
+          .insert({ room_id: roomId, user_id: uid, display_name: displayName, score: 0, answers: {} })
           .select().single();
         myP = newP ?? null;
       }
