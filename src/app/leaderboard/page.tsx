@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Flame, CheckCircle, Loader2, Medal } from "lucide-react";
+import { Trophy, Flame, CheckCircle, Loader2, Medal, Calendar, BookOpen, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -12,7 +12,18 @@ interface LeaderEntry {
   correct: number;
   rate: number;
   active_days: number;
+  faculty: string | null;
+  annee_etude: number | null;
+  last_active: string | null;
   rank: number;
+}
+
+function daysAgo(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (diff === 0) return "Actif auj.";
+  if (diff === 1) return "Actif hier";
+  return `Il y a ${diff}j`;
 }
 
 export default function LeaderboardPage() {
@@ -44,7 +55,6 @@ export default function LeaderboardPage() {
   );
 
   const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-  const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="min-h-screen pb-24" style={{ background: "var(--bg)" }}>
@@ -102,7 +112,7 @@ export default function LeaderboardPage() {
               return (
                 <motion.div key={e.user_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                   className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{
                     background: isMe ? "var(--accent)" : "var(--surface-active)",
                     color: isMe ? "var(--bg)" : "var(--text)",
                     border: `2px solid ${medalColors[podiumRanks[i] - 1]}`,
@@ -112,11 +122,19 @@ export default function LeaderboardPage() {
                   <p className="text-[10px] font-medium text-center truncate w-full" style={{ color: "var(--text)" }}>
                     {e.display_name.split(" ")[0]}
                   </p>
+                  {e.faculty && (
+                    <p className="text-[9px] text-center truncate w-full" style={{ color: "var(--text-muted)" }}>
+                      {e.faculty}{e.annee_etude ? ` S${e.annee_etude}` : ""}
+                    </p>
+                  )}
                   <div className={`w-full ${heights[i]} rounded-t-xl flex items-center justify-center flex-col gap-0.5`}
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none" }}>
                     <Medal size={14} style={{ color: medalColors[podiumRanks[i] - 1] }} />
                     <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text)" }}>
                       {tab === "streak" ? `${e.active_days}🔥` : e.correct}
+                    </span>
+                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
+                      {tab === "streak" ? "jours" : `${e.rate}%`}
                     </span>
                   </div>
                 </motion.div>
@@ -141,38 +159,81 @@ export default function LeaderboardPage() {
             {sorted.map((e, i) => {
               const isMe = e.user_id === user?.id;
               const displayRank = i + 1;
+              const medals = ["🥇", "🥈", "🥉"];
               return (
                 <motion.div key={e.user_id}
                   initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.025 }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all"
+                  className="px-4 py-3 rounded-2xl border transition-all"
                   style={{
                     background: isMe ? "var(--surface-active)" : "var(--surface)",
                     borderColor: isMe ? "var(--border-strong)" : "var(--border)",
                   }}>
-                  <span className="w-6 text-center text-sm font-bold tabular-nums flex-shrink-0"
-                    style={{ color: displayRank <= 3 ? medalColors[displayRank - 1] : "var(--text-muted)" }}>
-                    {displayRank <= 3 ? ["🥇", "🥈", "🥉"][displayRank - 1] : displayRank}
-                  </span>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{ background: isMe ? "var(--accent)" : "var(--surface-active)", color: isMe ? "var(--bg)" : "var(--text)" }}>
-                    {e.display_name.charAt(0).toUpperCase()}
+                  {/* Top row */}
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 text-center text-sm font-bold tabular-nums flex-shrink-0"
+                      style={{ color: displayRank <= 3 ? medalColors[displayRank - 1] : "var(--text-muted)" }}>
+                      {displayRank <= 3 ? medals[displayRank - 1] : displayRank}
+                    </span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                      style={{ background: isMe ? "var(--accent)" : "var(--surface-active)", color: isMe ? "var(--bg)" : "var(--text)" }}>
+                      {e.display_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+                          {e.display_name}
+                        </p>
+                        {isMe && <span className="text-[10px] font-normal flex-shrink-0" style={{ color: "var(--text-muted)" }}>· vous</span>}
+                      </div>
+                      {/* Faculty + year + last active */}
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {(e.faculty || e.annee_etude) && (
+                          <span className="text-[10px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
+                            <BookOpen size={9} />
+                            {e.faculty ?? ""}{e.faculty && e.annee_etude ? " · " : ""}{e.annee_etude ? `S${e.annee_etude}` : ""}
+                          </span>
+                        )}
+                        {e.last_active && (
+                          <span className="text-[10px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
+                            <Calendar size={9} />
+                            {daysAgo(e.last_active)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Score column */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
+                        {tab === "streak" ? `${e.active_days}🔥` : e.correct}
+                      </p>
+                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {tab === "streak" ? "jours" : "correct"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>
-                      {e.display_name} {isMe && <span className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>· vous</span>}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      {e.total} réponses · {e.rate}% réussite
-                    </p>
+
+                  {/* Stats bar */}
+                  <div className="flex items-center gap-3 mt-2.5 pt-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+                    <div className="flex items-center gap-1 flex-1">
+                      <TrendingUp size={10} style={{ color: "var(--text-muted)" }} />
+                      <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                        {e.rate}% réussite
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1">
+                      <CheckCircle size={10} style={{ color: "var(--text-muted)" }} />
+                      <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                        {e.total} réponses
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1">
+                      <span className="text-[10px]">🔥</span>
+                      <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                        {e.active_days}j actifs
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                      {tab === "streak" ? `${e.active_days}🔥` : e.correct}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {tab === "streak" ? "jours" : "correct"}
-                    </p>
-                  </div>
+
                 </motion.div>
               );
             })}
