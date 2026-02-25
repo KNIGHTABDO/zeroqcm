@@ -14,7 +14,7 @@ interface Flashcard {
   question_id: string; texte: string;
   choices: { id: string; contenu: string; est_correct: boolean; explication: string | null }[];
   status: "new" | "learning" | "known";
-  interval_days: number; reviews: number;
+  interval_days: number; reviews: number; ease_factor: number;
 }
 interface Module { id: number; nom: string; semester_id: string; }
 
