@@ -123,6 +123,7 @@ returns table(total_q bigint, answered bigint, correct bigint, pct int) language
          else round(100.0 * count(distinct ua.question_id) filter (where ua.is_correct) / count(distinct ua.question_id))::int
     end as pct
   from user_answers ua
+  join questions q on q.id = ua.question_id
   where ua.user_id = p_user_id
-    and ua.module_id = p_module_id;
+    and q.module_id = p_module_id;
 $$;

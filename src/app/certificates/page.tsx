@@ -234,10 +234,10 @@ export default function CertificatesPage() {
 
     if (!modules?.length) { setLoading(false); return; }
 
-    // Fetch user answers aggregated by module (single query — fast)
+    // Fetch user answers with module context (join via questions)
     const { data: answers, error: ansErr } = await supabase
       .from("user_answers")
-      .select("module_id, is_correct")
+      .select("is_correct, questions(module_id)")
       .eq("user_id", user.id);
 
     if (ansErr) { setLoading(false); return; }
@@ -245,9 +245,10 @@ export default function CertificatesPage() {
     // Group by module_id in JS
     const byModule = new Map<number, { correct: number; total: number }>();
     for (const a of (answers ?? [])) {
-      if (a.module_id == null) continue;
-      const cur = byModule.get(a.module_id) ?? { correct: 0, total: 0 };
-      byModule.set(a.module_id, {
+      const moduleId = (a.questions as { module_id: number } | null)?.module_id;
+      if (moduleId == null) continue;
+      const cur = byModule.get(moduleId) ?? { correct: 0, total: 0 };
+      byModule.set(moduleId, {
         total: cur.total + 1,
         correct: cur.correct + (a.is_correct ? 1 : 0),
       });
