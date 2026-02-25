@@ -8,7 +8,7 @@ const NAV = [
   { href: "/", icon: Home, label: "Accueil", tourId: "dashboard" },
   { href: "/semestres", icon: BookOpen, label: "Semestres", tourId: "semestres" },
   { href: "/chatwithai", icon: Sparkles, label: "AI Chat", accent: true, tourId: "chatwithai" },
-  { href: "/bookmarks", icon: Bookmark, label: "Favoris", tourId: "bookmarks" },
+  { href: "/leaderboard", icon: Trophy, label: "Classement", tourId: "leaderboard" },
   { href: "/profil", icon: User, label: "Profil", tourId: "profil" },
 ];
 
