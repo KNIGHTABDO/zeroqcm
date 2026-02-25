@@ -63,7 +63,8 @@ function useVoiceRecognition() {
     recog.continuous = false;
     recog.interimResults = false;
 
-    recog.onresult = (e) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recog.onresult = (e: any) => {
       const t = e.results[0][0].transcript;
       setTranscript(t);
       setListening(false);
