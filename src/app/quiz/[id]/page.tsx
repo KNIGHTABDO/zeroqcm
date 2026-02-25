@@ -262,11 +262,14 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     }, 800); // debounce 800ms to avoid hammering on fast navigation
   }
 
-    function lockAndScore() {
-    // Save selection to history so user can review prev questions
-    const newHistory = new Map(history); newHistory.set(current, new Set(selected));
+    // lockAndScore: saves answer to history + scores it.
+  // Returns { newHistory, newScore } so callers can use the FRESH values immediately
+  // (avoids stale React state closure bugs in handleNext).
+  function lockAndScore(): { newHistory: Map<number, Set<string>>; newScore: { correct: number; total: number } } {
+    const newHistory = new Map(history);
+    newHistory.set(current, new Set(selected));
     setHistory(newHistory);
-    if (!q || selected.size === 0) return;
+    if (!q || selected.size === 0) return { newHistory, newScore: score };
     const correctIds = new Set(q.choices.filter((c) => c.est_correct).map((c) => c.id));
     const ok = selected.size === correctIds.size && [...selected].every((cid) => correctIds.has(cid));
     const newScore = { correct: score.correct + (ok ? 1 : 0), total: score.total + 1 };
@@ -274,6 +277,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setAnsweredCount((n) => n + 1);
     if (user) submitAnswer({ userId: user.id, questionId: q.id, activityId, selectedChoiceIds: [...selected], isCorrect: ok, timeSpent: elapsed });
     saveSession(newHistory, current, elapsed, newScore, false);
+    return { newHistory, newScore };
   }
 
 
@@ -350,19 +354,24 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   function handleNext() {
     if (!q) return;
-    if (phase === "quiz" && selected.size > 0) lockAndScore();
+    // Use the freshly-built history from lockAndScore (NOT the stale React state)
+    // to avoid the "Q6 not in history when checking Q7" stale-closure bug.
+    let latestHistory = history;
+    if (phase === "quiz" && selected.size > 0) {
+      const { newHistory } = lockAndScore();
+      latestHistory = newHistory;
+    }
     if (isLast) {
       setPhase("result");
-      saveSession(history, current, elapsed, score, true); // mark completed
+      saveSession(latestHistory, current, elapsed, score, true); // mark completed
       return;
     }
     const nextIdx = current + 1;
-    // If user already answered this question (e.g. from a previous session),
-    // restore their selection and show revealed state instead of blank quiz state
-    const nextSel = history.get(nextIdx);
+    // Restore history state for already-answered questions (cross-session safe)
+    const nextSel = latestHistory.get(nextIdx);
     setCurrent(nextIdx);
     setSelected(nextSel ? new Set(nextSel) : new Set());
-    setPhase(history.has(nextIdx) ? "revealed" : "quiz");
+    setPhase(latestHistory.has(nextIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
   }
 
