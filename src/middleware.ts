@@ -5,27 +5,12 @@ import type { CookieOptions } from "@supabase/ssr";
 
 const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
 
-// All client-side pages — auth is handled via useAuth() hook on the client.
-// Middleware only gates /admin (server-side admin check).
-// Everything else passes through freely.
-const BYPASS_PATHS = [
-  "/", "/auth", "/activate", "/api", "/_next",
-  "/favicon", "/icon", "/apple", "/site", "/images", "/logo",
-  "/semestres", "/quiz", "/stats", "/settings",
-  "/chatwithai", "/bookmarks", "/revision",
-  "/profil",
-];
-
-function isBypass(pathname: string): boolean {
-  return BYPASS_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + ".")
-  );
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only /admin/* routes need server-side auth gating
+  // Only /admin/* needs server-side auth gating.
+  // All other pages (/profil, /semestres, /quiz, etc.) are client-side components
+  // that handle auth via useAuth() — the middleware must not interfere.
   if (!pathname.startsWith("/admin")) {
     return NextResponse.next();
   }
@@ -38,9 +23,11 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll(); },
+        getAll() {
+          return request.cookies.getAll();
+        },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) = {
+          cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
           });
@@ -49,7 +36,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   if (!session) {
     const loginUrl = new URL("/auth", request.url);
