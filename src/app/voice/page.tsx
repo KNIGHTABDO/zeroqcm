@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import {
-  Mic, Waveform, Languages, Zap, Brain, MessageSquare, Volume2, Sparkles
+  Mic, Languages, Zap, Brain, MessageSquare, Volume2, Sparkles
 } from "lucide-react";
 
 const FEATURES = [
