@@ -147,7 +147,7 @@ function QuestionView({ question, qIdx, total, myAnswer, participants, isHost, t
   onNext: () => void; onLeave: () => void;
 }) {
   const answeredCount = participants.filter((p) => p.answers[String(qIdx)] != null).length;
-  const showResults = myAnswer != null || timeLeft === 0;
+  const showResults = timeLeft === 0;
   const timerPct = (timeLeft / 30) * 100;
 
   return (
