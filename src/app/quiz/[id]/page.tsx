@@ -133,11 +133,15 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   }, [phase, loading]);
 
   useEffect(() => {
+    // Abort any in-flight AI request for the previous question
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    setAiLoading(false);
     setAiCached(null); setAiText(""); setAiParsed(null);
     if (!q) return;
     supabase.from("ai_explanations").select("explanation").eq("question_id", q.id).maybeSingle()
       .then(({ data }) => { if (data?.explanation) setAiCached(data.explanation); });
-  }, [q?.id]);
+  }, [q?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AbortController ref — cancels in-flight AI fetches when user navigates
   const aiAbortRef = useRef<AbortController | null>(null);
@@ -200,7 +204,11 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         if (parsed) setAiParsed(parsed);
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === "AbortError") return;
+      if (err instanceof Error && err.name === "AbortError") {
+        // Still reset loading so the UI doesn't get stuck in spinner state
+        setAiLoading(false);
+        return;
+      }
       full = "Erreur de connexion."; setAiText(full);
     }
     if (!controller.signal.aborted) {
