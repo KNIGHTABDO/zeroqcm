@@ -66,9 +66,9 @@ function getActiveSemId(fac: string, savedSemId?: string): string {
 }
 
 export default function ProfilPage() {
-  const { user, profile, signOut, refreshProfile } = useAuth();
+  const { user, profile, loading, signOut, refreshProfile } = useAuth();
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editing,  setEditing]  = useState(false);
   const [name,    setName]    = useState("");
   const [faculty, setFaculty] = useState("FMPC");
   const [semId,   setSemId]   = useState("s1");
@@ -143,6 +143,10 @@ export default function ProfilPage() {
     router.replace("/");
   }
 
+  // ── Still resolving session — don't flash login screen ──
+  if (loading) return null;
+
+  // ── Session resolved, no user → show login prompt ──
   if (!user) return (
     <main className="min-h-screen flex items-center justify-center pb-28" style={{ background: "var(--bg)" }}>
       <div className="text-center space-y-4 px-4">
@@ -253,9 +257,9 @@ export default function ProfilPage() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="grid grid-cols-3 gap-3">
             {[
-              { label: "Repondues", value: stats.total,      icon: BookOpen, color: "var(--accent)"   },
-              { label: "Reussite",  value: `${stats.rate}%`, icon: Target,   color: "var(--success)"  },
-              { label: "Serie",     value: `${stats.streak}j`, icon: Brain,  color: "var(--warning)"  },
+              { label: "Repondues", value: stats.total,        icon: BookOpen, color: "var(--accent)"   },
+              { label: "Reussite",  value: `${stats.rate}%`,  icon: Target,   color: "var(--success)"  },
+              { label: "Serie",     value: `${stats.streak}j`, icon: Brain,   color: "var(--warning)"  },
             ].map(s => (
               <div key={s.label} className="rounded-2xl border px-3 py-3 text-center"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
