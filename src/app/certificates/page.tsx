@@ -18,7 +18,7 @@ interface ModuleProgress {
   pct: number; answered: number; total_q: number;
   has_cert: boolean;
 }
-const CERT_THRESHOLD = 80; // need ≥80% accuracy to earn cert
+const CERT_THRESHOLD = 75; // need ≥75% accuracy to earn cert
 
 // ─── Certificate Card ─────────────────────────────────────────────────────────
 function CertCard({ cert, onShare }: { cert: Certificate; onShare: (cert: Certificate) => void }) {
