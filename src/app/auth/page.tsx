@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -15,12 +15,22 @@ export default function AuthPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn, signUp } = useAuth();
+  // Track the redirect target after successful auth
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+  const { signIn, signUp, user } = useAuth();
   const router = useRouter();
 
   const FACULTY_SEM: Record<string, string> = {
     FMPC: "s1", FMPR: "S1_FMPR", FMPM: "S1_FMPM", UM6SS: "S1_UM6", FMPDF: "s1_FMPDF",
   };
+
+  // Once AuthProvider propagates the user state, do the redirect
+  useEffect(() => {
+    if (user && pendingRedirect) {
+      router.replace(pendingRedirect);
+      setPendingRedirect(null);
+    }
+  }, [user, pendingRedirect, router]);
 
   async function handle(e: React.FormEvent) {
     e.preventDefault();
@@ -29,12 +39,12 @@ export default function AuthPage() {
     if (mode === "signin") {
       const { error: err } = await signIn(email, password);
       if (err) { setError(err); setLoading(false); }
-      else router.replace("/semestres/s1");
+      else setPendingRedirect("/semestres/s1");
     } else {
       if (!name.trim()) { setError("Entrez votre prénom"); setLoading(false); return; }
       const { error: err } = await signUp(email, password, name, faculty);
       if (err) { setError(err); setLoading(false); }
-      else router.replace(`/semestres/${FACULTY_SEM[faculty] ?? "s1"}`);
+      else setPendingRedirect(`/semestres/${FACULTY_SEM[faculty] ?? "s1"}`);
     }
   }
 
