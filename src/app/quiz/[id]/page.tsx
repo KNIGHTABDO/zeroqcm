@@ -349,9 +349,12 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       return;
     }
     const nextIdx = current + 1;
+    // If user already answered this question (e.g. from a previous session),
+    // restore their selection and show revealed state instead of blank quiz state
+    const nextSel = history.get(nextIdx);
     setCurrent(nextIdx);
-    setSelected(new Set());
-    setPhase("quiz");
+    setSelected(nextSel ? new Set(nextSel) : new Set());
+    setPhase(history.has(nextIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
   }
 
@@ -714,7 +717,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                 <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrev}
                   className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all"
                   style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
-                  ←
+                  ← Préc.
                 </motion.button>
               )}
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleReveal} disabled={selected.size === 0}
