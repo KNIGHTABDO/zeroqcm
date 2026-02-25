@@ -196,13 +196,11 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     if (!profile) return;
-    const year = profile.annee_etude;
-    const s1 = `S${2 * year - 1}`;
-    const s2 = `S${2 * year}`;
+    const semNum = 2 * profile.annee_etude - 1;
     supabase
       .from("modules")
       .select("id, nom, semester_id")
-      .in("semester_id", [s1, s2])
+      .ilike("semester_id", `s${semNum}%`)
       .order("nom")
       .then(({ data }) => setModules(data ?? []));
   }, [profile]);

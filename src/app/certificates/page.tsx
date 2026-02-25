@@ -245,7 +245,7 @@ export default function CertificatesPage() {
     // Group by module_id in JS
     const byModule = new Map<number, { correct: number; total: number }>();
     for (const a of (answers ?? [])) {
-      const moduleId = (a.questions as { module_id: number }[] | null)?.[0]?.module_id;
+      const moduleId = (a.questions as { module_id: number } | null)?.module_id;
       if (moduleId == null) continue;
       const cur = byModule.get(moduleId) ?? { correct: 0, total: 0 };
       byModule.set(moduleId, {

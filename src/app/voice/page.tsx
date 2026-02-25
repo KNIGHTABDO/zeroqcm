@@ -26,25 +26,43 @@ interface VoiceQuestion {
 interface Module { id: number; nom: string; }
 
 // ─── Speech helpers ───────────────────────────────────────────────────────────
-const CHOICE_LABELS_FR: Record<string, number> = {
-  "a": 0, "alpha": 0, "la a": 0, "réponse a": 0, "choix a": 0, "option a": 0,
-  "b": 1, "beta": 1,  "la b": 1, "réponse b": 1, "choix b": 1, "option b": 1,
-  "c": 2, "la c": 2,  "réponse c": 2, "choix c": 2, "option c": 2,
-  "d": 3, "la d": 3,  "réponse d": 3, "choix d": 3, "option d": 3,
-  "e": 4, "la e": 4,  "réponse e": 4, "choix e": 4, "option e": 4,
-  "premier": 0, "première": 0, "deuxième": 1, "second": 1, "troisième": 2, "quatrième": 3,
-  "one": 0, "two": 1, "three": 2, "four": 3,
-};
+// Map of phrase → choice index (0-based). Order matters: longer phrases first.
+const CHOICE_PHRASES: [string, number][] = [
+  // Multi-word (checked first — no ambiguity)
+  ["réponse a", 0], ["réponse b", 1], ["réponse c", 2], ["réponse d", 3], ["réponse e", 4],
+  ["choix a", 0],   ["choix b", 1],   ["choix c", 2],   ["choix d", 3],   ["choix e", 4],
+  ["option a", 0],  ["option b", 1],  ["option c", 2],  ["option d", 3],  ["option e", 4],
+  ["la a", 0],      ["la b", 1],      ["la c", 2],      ["la d", 3],      ["la e", 4],
+  ["première", 0],  ["premier", 0],
+  ["deuxième", 1],  ["second", 1],
+  ["troisième", 2],
+  ["quatrième", 3],
+  ["alpha", 0],     ["beta", 1],
+  ["one", 0],       ["two", 1],       ["three", 2],     ["four", 3],
+];
 
 function parseVoiceAnswer(transcript: string, choices: Choice[]): number | null {
   const t = transcript.toLowerCase().trim();
-  for (const [key, idx] of Object.entries(CHOICE_LABELS_FR)) {
-    if (t.includes(key) && idx < choices.length) return idx;
+
+  // 1. Check multi-word phrases
+  for (const [phrase, idx] of CHOICE_PHRASES) {
+    if (idx < choices.length && t.includes(phrase)) return idx;
   }
-  // Try matching spoken text against choice content
+
+  // 2. Check single letters A–E as whole words only (word boundary via regex)
+  const singleLetterMap: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
+  for (const [letter, idx] of Object.entries(singleLetterMap)) {
+    if (idx >= choices.length) continue;
+    // Match letter as a standalone token (not part of a word)
+    if (new RegExp("(?:^|[^a-zàâæçéèêëîïôùûüÿ])" + letter + "(?:[^a-zàâæçéèêëîïôùûüÿ]|$)").test(t)) {
+      return idx;
+    }
+  }
+
+  // 3. Fuzzy match spoken text against choice content (≥2 significant words)
   for (let i = 0; i < choices.length; i++) {
-    const choiceWords = choices[i].contenu.toLowerCase().split(" ");
-    const matchCount = choiceWords.filter((w) => w.length > 3 && t.includes(w)).length;
+    const choiceWords = choices[i].contenu.toLowerCase().split(/\s+/);
+    const matchCount = choiceWords.filter((w) => w.length > 4 && t.includes(w)).length;
     if (matchCount >= 2) return i;
   }
   return null;

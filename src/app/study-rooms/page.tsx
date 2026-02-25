@@ -540,17 +540,14 @@ export default function StudyRoomsPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Load modules filtered by user's year of study
+  // Load modules filtered by user's year of study (semester_id is like "s1", "S1_FMPM", etc.)
   useEffect(() => {
     if (!profile) return;
-    const year = profile.annee_etude;
-    // Year N → semesters S(2N-1) and S(2N)  e.g. year 2 → S3, S4
-    const s1 = `S${2 * year - 1}`;
-    const s2 = `S${2 * year}`;
+    const semNum = 2 * profile.annee_etude - 1; // year 1 → 1, year 2 → 3, etc.
     supabase
       .from("modules")
       .select("id, nom, semester_id")
-      .in("semester_id", [s1, s2])
+      .ilike("semester_id", `s${semNum}%`)
       .order("nom")
       .then(({ data }) => setModules(data ?? []));
   }, [profile]);
