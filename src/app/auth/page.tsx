@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function AuthPage() {
@@ -19,6 +19,7 @@ export default function AuthPage() {
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const { signIn, signUp, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const FACULTY_SEM: Record<string, string> = {
     FMPC: "s1", FMPR: "S1_FMPR", FMPM: "S1_FMPM", UM6SS: "S1_UM6", FMPDF: "s1_FMPDF",
@@ -36,15 +37,17 @@ export default function AuthPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    // Honour the ?next= param set by the middleware, fall back to /Semestres/s1
+    const nextPath = searchParams.get("next") || null;
     if (mode === "signin") {
       const { error: err } = await signIn(email, password);
       if (err) { setError(err); setLoading(false); }
-      else setPendingRedirect("/semestres/s1");
+      else setPendingRedirect(nextPath ?? "/semestres/s1");
     } else {
-      if (!name.trim()) { setError("Entrez votre prénom"); setLoading(false); return; }
+      if (!name.trim()) { setError("Entrez le prenom"); setLoading(false); return; }
       const { error: err } = await signUp(email, password, name, faculty);
       if (err) { setError(err); setLoading(false); }
-      else setPendingRedirect(`/semestres/${FACULTY_SEM[faculty] ?? "s1"}`);
+      else setPendingRedirect(nextPath ?? `/semestres/${FACULTY_SEM[faculty] ?? "s1"}`);
     }
   }
 
@@ -67,9 +70,9 @@ export default function AuthPage() {
                 </svg>
           </div>
           <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-            {mode === "signin" ? "Connexion" : "Créer un compte"}
+            {mode === "signin" ? "Connexion" : "Creer un compte"}
           </h1>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>ZeroQCM — Médecine Maroc</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>ZeroQCM — Medecine Maroc</p>
         </div>
 
         <div className="rounded-2xl border p-6 space-y-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
@@ -77,13 +80,13 @@ export default function AuthPage() {
             <AnimatePresence>
               {mode === "signup" && (
                 <motion.div key="signup-fields" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
-                  <input type="text" placeholder="Votre prénom" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} style={inputStyle} required />
+                  <input type="text" placeholder="Votre prenom" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} style={inputStyle} required />
                   <select value={faculty} onChange={(e) => setFaculty(e.target.value)} className={inputCls} style={inputStyle}>
                     <option value="FMPC">FMPC — Casablanca</option>
                     <option value="FMPR">FMPR — Rabat</option>
                     <option value="FMPM">FMPM — Marrakech</option>
                     <option value="UM6SS">UM6SS — UM6</option>
-                    <option value="FMPDF">FMPDF — Fès</option>
+                    <option value="FMPDF">FMPDF — Fes</option>
                   </select>
                 </motion.div>
               )}
@@ -94,23 +97,23 @@ export default function AuthPage() {
             <div className="relative">
               <input type={showPw ? "text" : "password"} placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls + " pr-11"} style={inputStyle} required minLength={6} />
               <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }}>
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                { showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" /> }
               </button>
             </div>
 
             {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
 
             <button type="submit" disabled={loading}
-              className="w-full py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 disabled:opacity-50 transition-all">
-              {loading ? "..." : mode === "signin" ? "Se connecter" : "Créer mon compte"}
+              className="w-we py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 disabled:opacity-50 transition-all">
+                {loading ? "..." : mode === "signin" ? "Se connecter" : "Creer mon compte"}
             </button>
           </form>
 
           <p className="text-center text-xs" style={{ color: "var(--text-muted)" }}>
-            {mode === "signin" ? "Pas encore de compte ?" : "Déjà inscrit ?"}{" "}
+            {mode === "signin" ? "Pas encore de compte ?" : "Deja inscrit ?"}{" "}
             <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); }}
               className="text-blue-400 hover:underline font-medium">
-              {mode === "signin" ? "Créer un compte" : "Se connecter"}
+              {mode === "signin" ? "Creer un compte" : "Se connecter"}
             </button>
           </p>
         </div>
