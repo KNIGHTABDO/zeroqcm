@@ -115,7 +115,7 @@ export default function LeaderboardPage() {
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none" }}>
                     <Medal size={14} style={{ color: medalColors[podiumRanks[i] - 1] }} />
                     <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                      {tab === "streak" ? `${e.active_days}🗕` : e.correct}
+                      {tab === "streak" ? `${e.active_days}🔥` : e.correct}
                     </span>
                   </div>
                 </motion.div>
@@ -152,9 +152,9 @@ export default function LeaderboardPage() {
                     style={{ color: displayRank <= 3 ? medalColors[displayRank - 1] : "var(--text-muted)" }}>
                     {displayRank <= 3 ? ["🥇","🥈","🥉"][displayRank - 1] : displayRank}
                   </span>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  <div className="w-��gh-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                     style={{ background: isMe ? "var(--accent)" : "var(--surface-active)", color: isMe ? "var(--bg)" : "var(--text)" }}>
-                    {e.display_name.charAt(0).toUpperCase()}
+                     {e.display_name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>
@@ -169,7 +169,7 @@ export default function LeaderboardPage() {
                       {tab === "streak" ? `${e.active_days}` : e.correct}
                     </p>
                     <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {tab === "streak" ? "jours 🗕" : "correct"}
+                      {tab === "streak" ? "jours 🔥" : "correct"}
                     </p>
                   </div>
                 </motion.div>
