@@ -1,479 +1,182 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Mic, MicOff, Volume2, CheckCircle2, XCircle, ArrowRight,
-  ArrowLeft, Loader2, RefreshCw, BookOpen, Layers, ChevronRight, Trophy
+  Mic, Waveform, Languages, Zap, Brain, MessageSquare, Volume2, Sparkles
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/components/auth/AuthProvider";
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Choice { id: string; contenu: string; est_correct: boolean; explication: string | null; }
-interface VoiceQuestion {
-  id: string; texte: string; choices: Choice[];
-  module_id: number; activity_id: number;
-}
-interface Module { id: number; nom: string; }
-
-// ─── Speech helpers ───────────────────────────────────────────────────────────
-// Map of phrase → choice index (0-based). Order matters: longer phrases first.
-const CHOICE_PHRASES: [string, number][] = [
-  // Multi-word (checked first — no ambiguity)
-  ["réponse a", 0], ["réponse b", 1], ["réponse c", 2], ["réponse d", 3], ["réponse e", 4],
-  ["choix a", 0],   ["choix b", 1],   ["choix c", 2],   ["choix d", 3],   ["choix e", 4],
-  ["option a", 0],  ["option b", 1],  ["option c", 2],  ["option d", 3],  ["option e", 4],
-  ["la a", 0],      ["la b", 1],      ["la c", 2],      ["la d", 3],      ["la e", 4],
-  ["première", 0],  ["premier", 0],
-  ["deuxième", 1],  ["second", 1],
-  ["troisième", 2],
-  ["quatrième", 3],
-  ["alpha", 0],     ["beta", 1],
-  ["one", 0],       ["two", 1],       ["three", 2],     ["four", 3],
+const FEATURES = [
+  {
+    icon: Mic,
+    title: "Dictez vos r\u00e9ponses",
+    desc: "Dites \u00ab A \u00bb, \u00ab r\u00e9ponse B \u00bb ou \u00ab troisi\u00e8me \u00bb \u2014 l\u2019IA vous comprend.",
+  },
+  {
+    icon: Volume2,
+    title: "Questions lues \u00e0 voix haute",
+    desc: "Chaque question est \u00e9nonc\u00e9e clairement. R\u00e9visez les yeux ferm\u00e9s.",
+  },
+  {
+    icon: Brain,
+    title: "Mode examen oral",
+    desc: "Simulez un examen oral avec feedback instantan\u00e9 apr\u00e8s chaque r\u00e9ponse.",
+  },
+  {
+    icon: Languages,
+    title: "Multilangue",
+    desc: "Fran\u00e7ais, arabe, anglais \u2014 parlez dans la langue avec laquelle vous pensez.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Explications vocales",
+    desc: "Les explications des r\u00e9ponses sont aussi lues \u00e0 haute voix apr\u00e8s chaque question.",
+  },
+  {
+    icon: Zap,
+    title: "Session rapide",
+    desc: "10 questions en mode mains libres. Id\u00e9al en transport, en marchant, partout.",
+  },
 ];
 
-function parseVoiceAnswer(transcript: string, choices: Choice[]): number | null {
-  const t = transcript.toLowerCase().trim();
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
+};
 
-  // 1. Check multi-word phrases
-  for (const [phrase, idx] of CHOICE_PHRASES) {
-    if (idx < choices.length && t.includes(phrase)) return idx;
-  }
-
-  // 2. Check single letters A–E as whole words only (word boundary via regex)
-  const singleLetterMap: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4 };
-  for (const [letter, idx] of Object.entries(singleLetterMap)) {
-    if (idx >= choices.length) continue;
-    // Match letter as a standalone token (not part of a word)
-    if (new RegExp("(?:^|[^a-zàâæçéèêëîïôùûüÿ])" + letter + "(?:[^a-zàâæçéèêëîïôùûüÿ]|$)").test(t)) {
-      return idx;
-    }
-  }
-
-  // 3. Fuzzy match spoken text against choice content (≥2 significant words)
-  for (let i = 0; i < choices.length; i++) {
-    const choiceWords = choices[i].contenu.toLowerCase().split(/\s+/);
-    const matchCount = choiceWords.filter((w) => w.length > 4 && t.includes(w)).length;
-    if (matchCount >= 2) return i;
-  }
-  return null;
-}
-
-function useVoiceRecognition() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recogRef = useRef<any>(null);
-  const [supported, setSupported] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
-
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) { setSupported(true); }
-  }, []);
-
-  const startListening = useCallback((lang = "fr-FR") => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    if (recogRef.current) { recogRef.current.abort(); }
-    const recog = new SpeechRecognition();
-    recog.lang = lang;
-    recog.continuous = false;
-    recog.interimResults = false;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recog.onresult = (e: any) => {
-      const t = e.results[0][0].transcript;
-      setTranscript(t);
-      setListening(false);
-    };
-    recog.onerror = () => setListening(false);
-    recog.onend = () => setListening(false);
-
-    recogRef.current = recog;
-    setTranscript("");
-    setListening(true);
-    recog.start();
-  }, []);
-
-  const stopListening = useCallback(() => {
-    recogRef.current?.stop();
-    setListening(false);
-  }, []);
-
-  const resetTranscript = useCallback(() => setTranscript(""), []);
-
-  return { supported, listening, transcript, startListening, stopListening, resetTranscript };
-}
-
-// ─── Module Picker ────────────────────────────────────────────────────────────
-function ModulePicker({ modules, onSelect }: { modules: Module[]; onSelect: (id: number) => void }) {
-  const [search, setSearch] = useState("");
-  const filtered = modules.filter((m) => m.nom.toLowerCase().includes(search.toLowerCase()));
-
+export default function VoicePage() {
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Mode Vocal</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-          Répondez aux QCM par la voix. Dites &quot;La réponse A&quot;, &quot;B&quot;, etc.
-        </p>
-      </div>
-      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un module…"
-        className="w-full px-4 py-3 rounded-2xl text-sm outline-none transition"
-        style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--input-text)" }} />
-      <div className="space-y-2">
-        {filtered.map((m, i) => (
-          <motion.button key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-            onClick={() => onSelect(m.id)}
-            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-left transition-all active:scale-98 hover:opacity-80"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: "var(--surface-alt)" }}>
-                <Volume2 size={15} style={{ color: "var(--text-muted)" }} />
-              </div>
-              <span className="text-sm font-medium" style={{ color: "var(--text)" }}>{m.nom}</span>
+    <main
+      className="min-h-screen pb-32 flex flex-col"
+      style={{ background: "var(--bg)", color: "var(--text)" }}
+    >
+      <div className="max-w-lg mx-auto w-full px-5 pt-10 flex flex-col gap-8">
+
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+          className="flex flex-col items-center text-center gap-5 pt-4"
+        >
+          {/* Animated mic orb */}
+          <div className="relative flex items-center justify-center">
+            {/* Outer pulse ring */}
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                width: 110, height: 110,
+                background: "var(--accent-subtle)",
+                border: "1px solid var(--accent-border)",
+              }}
+              animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            {/* Inner ring */}
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                width: 82, height: 82,
+                background: "var(--accent-subtle)",
+                border: "1px solid var(--accent-border)",
+              }}
+              animate={{ scale: [1, 1.08, 1], opacity: [0.7, 0.35, 0.7] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+            />
+            {/* Core icon */}
+            <div
+              className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ background: "var(--accent)", boxShadow: "0 8px 32px var(--accent-subtle)" }}
+            >
+              <Mic size={28} color="white" />
             </div>
-            <ChevronRight size={15} style={{ color: "var(--text-muted)" }} />
-          </motion.button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Voice Question Card ─────────────────────────────────────────────────────
-function VoiceQuestionCard({
-  question, qIdx, total, answered, isCorrect, selectedIdx,
-  transcript, listening, supported,
-  onVoiceStart, onVoiceStop, onManualSelect, onNext, onBack,
-}: {
-  question: VoiceQuestion; qIdx: number; total: number;
-  answered: boolean; isCorrect: boolean | null; selectedIdx: number | null;
-  transcript: string; listening: boolean; supported: boolean;
-  onVoiceStart: () => void; onVoiceStop: () => void;
-  onManualSelect: (idx: number) => void; onNext: () => void; onBack: () => void;
-}) {
-  const LETTERS = ["A", "B", "C", "D", "E"];
-  const progress = (qIdx / total) * 100;
-
-  return (
-    <motion.div key={`vq-${qIdx}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }} className="space-y-4">
-
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:opacity-70"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <ArrowLeft size={16} style={{ color: "var(--text-secondary)" }} />
-        </button>
-        <div className="flex-1">
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-alt)" }}>
-            <motion.div className="h-full rounded-full" style={{ background: "var(--accent)" }}
-              animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }} />
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Q {qIdx + 1} / {total}</p>
-        </div>
-      </div>
 
-      {/* Question */}
-      <div className="rounded-3xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{question.texte}</p>
-      </div>
+          {/* Coming soon badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+            style={{
+              background: "var(--warning-subtle)",
+              color: "var(--warning)",
+              border: "1px solid var(--warning-border)",
+            }}
+          >
+            <Sparkles size={11} />
+            Bient\u00f4t disponible
+          </motion.div>
 
-      {/* Choices */}
-      <div className="space-y-2.5">
-        {question.choices.map((choice, i) => {
-          const selected = selectedIdx === i;
-          const correct = choice.est_correct;
-          let bg = "var(--surface)";
-          let border = "var(--border)";
-          let textColor = "var(--text)";
-          if (answered) {
-            if (correct) { bg = "var(--success-subtle)"; border = "var(--success-border)"; textColor = "var(--success)"; }
-            else if (selected) { bg = "var(--error-subtle)"; border = "var(--error-border)"; textColor = "var(--error)"; }
-          } else if (selected) {
-            bg = "var(--accent-subtle)"; border = "var(--accent-border)"; textColor = "var(--accent)";
-          }
-          return (
-            <motion.button key={choice.id}
-              whileHover={!answered ? { scale: 1.01 } : {}}
-              whileTap={!answered ? { scale: 0.99 } : {}}
-              onClick={() => !answered && onManualSelect(i)}
-              className="w-full flex items-start gap-3 px-4 py-3.5 rounded-2xl text-left transition-all"
-              style={{ background: bg, border: `1px solid ${border}`, cursor: answered ? "default" : "pointer" }}>
-              <span className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold mt-0.5"
-                style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>
-                {LETTERS[i]}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed" style={{ color: textColor }}>{choice.contenu}</p>
-                {answered && correct && choice.explication && (
-                  <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>{choice.explication}</p>
-                )}
-              </div>
-              {answered && correct && <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--success)" }} />}
-              {answered && selected && !correct && <XCircle size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--error)" }} />}
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Voice UI */}
-      {!answered && (
-        <div className="space-y-3">
-          {/* Big mic button */}
-          {supported ? (
-            <div className="flex flex-col items-center gap-3">
-              <motion.button
-                onClick={listening ? onVoiceStop : onVoiceStart}
-                className="relative w-20 h-20 rounded-full flex items-center justify-center transition-all active:scale-95"
-                style={{
-                  background: listening ? "var(--error-subtle)" : "var(--accent-subtle)",
-                  border: `2px solid ${listening ? "var(--error-border)" : "var(--accent-border)"}`,
-                }}
-                animate={listening ? { scale: [1, 1.05, 1] } : {}}
-                transition={listening ? { repeat: Infinity, duration: 1.2 } : {}}>
-                {listening
-                  ? <MicOff size={28} style={{ color: "var(--error)" }} />
-                  : <Mic size={28} style={{ color: "var(--accent)" }} />}
-                {listening && (
-                  <motion.div className="absolute inset-0 rounded-full border-2"
-                    style={{ borderColor: "var(--error)" }}
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
-                    transition={{ repeat: Infinity, duration: 1.2 }} />
-                )}
-              </motion.button>
-              <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
-                {listening ? "En écoute… dites votre réponse" : "Appuyez pour parler"}
-              </p>
-              {transcript && (
-                <div className="px-4 py-2.5 rounded-2xl text-sm text-center"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                  &ldquo;{transcript}&rdquo;
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm"
-              style={{ background: "var(--warning-subtle)", border: "1px solid var(--warning-border)", color: "var(--warning)" }}>
-              <MicOff size={14} /> Microphone non supporté dans ce navigateur
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Answered - next button */}
-      {answered && (
-        <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          onClick={onNext}
-          className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
-          style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-          {qIdx + 1 < total ? <><ArrowRight size={16} /> Question suivante</> : <><Trophy size={16} /> Voir les résultats</>}
-        </motion.button>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function VoiceModePage() {
-  const { user } = useAuth();
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [questions, setQuestions] = useState<VoiceQuestion[]>([]);
-  const [qIdx, setQIdx] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [score, setScore] = useState({ correct: 0, wrong: 0 });
-  const [done, setDone] = useState(false);
-
-  const { supported, listening, transcript, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-
-  useEffect(() => {
-    supabase.from("modules").select("id, nom").order("nom").then(({ data }) => setModules(data ?? []));
-  }, []);
-
-  // Watch transcript to auto-parse answer
-  useEffect(() => {
-    if (!transcript || answered) return;
-    const currentQ = questions[qIdx];
-    if (!currentQ) return;
-    const idx = parseVoiceAnswer(transcript, currentQ.choices);
-    if (idx !== null) { handleSelect(idx); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transcript]);
-
-  async function loadQuestions(moduleId: number) {
-    setLoading(true);
-    const { data } = await supabase
-      .from("questions")
-      .select("id, texte, module_id, activity_id, choices(id, contenu, est_correct, explication)")
-      .eq("module_id", moduleId)
-      .not("source_type", "in", "(open,no_answer)")
-      .limit(60);
-    setLoading(false);
-    if (!data?.length) return;
-    setQuestions(shuffle(data as VoiceQuestion[]).slice(0, 20));
-    setQIdx(0); setAnswered(false); setSelectedIdx(null); setIsCorrect(null);
-    setScore({ correct: 0, wrong: 0 }); setDone(false);
-  }
-
-  function handleSelect(idx: number) {
-    if (answered) return;
-    const currentQ = questions[qIdx];
-    if (!currentQ) return;
-    const correct = currentQ.choices[idx]?.est_correct ?? false;
-    setSelectedIdx(idx);
-    setAnswered(true);
-    setIsCorrect(correct);
-    setScore((s) => ({ ...s, [correct ? "correct" : "wrong"]: s[correct ? "correct" : "wrong"] + 1 }));
-    stopListening();
-
-    // Save to user_answers
-    if (user && currentQ.choices[idx]) {
-      supabase.from("user_answers").upsert({
-        user_id: user.id,
-        question_id: currentQ.id,
-        choice_id: currentQ.choices[idx].id,
-        is_correct: correct,
-        module_id: currentQ.module_id,
-      }, { onConflict: "user_id,question_id" });
-    }
-  }
-
-  function handleNext() {
-    if (qIdx + 1 >= questions.length) { setDone(true); return; }
-    setQIdx((i) => i + 1);
-    setAnswered(false); setSelectedIdx(null); setIsCorrect(null);
-    resetTranscript();
-  }
-
-  async function handleSelectModule(id: number) {
-    const mod = modules.find((m) => m.id === id);
-    if (mod) { setSelectedModule(mod); await loadQuestions(id); }
-  }
-
-  if (!user) {
-    return (
-      <main className="min-h-screen pb-24 flex items-center justify-center" style={{ background: "var(--bg)" }}>
-        <div className="text-center space-y-3 px-6">
-          <Mic size={36} className="mx-auto" style={{ color: "var(--text-muted)" }} />
-          <p style={{ color: "var(--text-muted)" }}>Connectez-vous pour utiliser le mode vocal.</p>
-        </div>
-      </main>
-    );
-  }
-
-  const currentQ = questions[qIdx];
-
-  return (
-    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <div className="max-w-md mx-auto px-4 pt-8 lg:pt-10 space-y-5">
-
-        {/* Module picker */}
-        {!selectedModule && !loading && (
-          <ModulePicker modules={modules} onSelect={handleSelectModule} />
-        )}
-
-        {loading && (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 size={28} className="animate-spin" style={{ color: "var(--text-muted)" }} />
-          </div>
-        )}
-
-
-        {/* No questions fallback */}
-        {selectedModule && !loading && !done && !currentQ && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-4">
-            <BookOpen size={36} style={{ color: "var(--text-muted)" }} />
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Aucune question disponible pour ce module.
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text)" }}>
+              Mode Voice
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 320, margin: "8px auto 0" }}>
+              R\u00e9visez vos QCM en mode mains libres \u2014 parlez, \u00e9coutez, apprenez.
+              On finalise les derniers d\u00e9tails.
             </p>
-            <button onClick={() => setSelectedModule(null)}
-              className="px-5 py-2.5 rounded-2xl text-sm font-semibold"
-              style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}>
-              Choisir un autre module
-            </button>
-          </motion.div>
-        )}
-        {/* Active session */}
-        {selectedModule && !loading && !done && currentQ && (
-          <AnimatePresence mode="wait">
-            <VoiceQuestionCard
-              key={qIdx} question={currentQ} qIdx={qIdx} total={questions.length}
-              answered={answered} isCorrect={isCorrect} selectedIdx={selectedIdx}
-              transcript={transcript} listening={listening} supported={supported}
-              onVoiceStart={() => startListening("fr-FR")} onVoiceStop={stopListening}
-              onManualSelect={handleSelect} onNext={handleNext}
-              onBack={() => setSelectedModule(null)} />
-          </AnimatePresence>
-        )}
+          </div>
+        </motion.div>
 
-        {/* Results */}
-        {done && selectedModule && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setSelectedModule(null)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:opacity-70"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                <ArrowLeft size={16} style={{ color: "var(--text-secondary)" }} />
-              </button>
-              <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>Résultats</h2>
-            </div>
+        {/* ── Waveform decoration ───────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="flex items-center justify-center gap-1"
+          style={{ height: 36 }}
+        >
+          {[0.6, 0.9, 0.5, 1, 0.7, 0.85, 0.45, 0.95, 0.6, 0.75, 0.5, 0.8, 0.65].map((h, i) => (
+            <motion.div
+              key={i}
+              className="rounded-full"
+              style={{ width: 3, background: "var(--accent)", opacity: 0.6 }}
+              animate={{ scaleY: [h * 0.4, h, h * 0.4] }}
+              transition={{
+                duration: 1.4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.1,
+              }}
+              initial={{ scaleY: h * 0.4, height: 36 }}
+            />
+          ))}
+        </motion.div>
 
-            <div className="rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <Trophy size={32} className="mx-auto mb-3" style={{ color: "#FFD700" }} />
-              <p className="text-3xl font-bold mb-1" style={{ color: "var(--text)" }}>
-                {Math.round((score.correct / questions.length) * 100)}%
-              </p>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                {score.correct}/{questions.length} correctes
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col items-center py-4 rounded-2xl"
-                style={{ background: "var(--success-subtle)", border: "1px solid var(--success-border)" }}>
-                <span className="text-2xl font-bold" style={{ color: "var(--success)" }}>{score.correct}</span>
-                <span className="text-xs mt-0.5" style={{ color: "var(--success)" }}>Correctes</span>
+        {/* ── Feature grid ─────────────────────────────────────────────────── */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 gap-3"
+        >
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
+            <motion.div
+              key={title}
+              variants={itemVariants}
+              className="flex items-start gap-4 px-4 py-4 rounded-2xl"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
+                style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
+              >
+                <Icon size={16} style={{ color: "var(--accent)" }} />
               </div>
-              <div className="flex flex-col items-center py-4 rounded-2xl"
-                style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)" }}>
-                <span className="text-2xl font-bold" style={{ color: "var(--error)" }}>{score.wrong}</span>
-                <span className="text-xs mt-0.5" style={{ color: "var(--error)" }}>Incorrectes</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{title}</p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{desc}</p>
               </div>
-            </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
-            <div className="flex gap-3">
-              <button onClick={() => loadQuestions(selectedModule.id)}
-                className="flex-1 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 border"
-                style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}>
-                <RefreshCw size={15} /> Recommencer
-              </button>
-              <button onClick={() => setSelectedModule(null)}
-                className="flex-1 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
-                style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-                <BookOpen size={15} /> Autre module
-              </button>
-            </div>
-          </motion.div>
-        )}
       </div>
     </main>
   );
