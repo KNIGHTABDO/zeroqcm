@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import type { CookieOptions } from "@supabase/ssr";
 
 const ADMIN_EMAIL   = "aabidaabdessamad@gmail.com";
-const PUBLIC_PATHS  = ["/", "/auth", "/activate", "/api", "/_next", "/favicon", "/icon", "/apple", "/site", "/images", "/logo"];
+const PUBLIC_PATHS  = ["/", "/auth", "/activate", "/api", "/_next", "/favicon", "/icon", "/apple", "/site", "/images", "/logo", "/semestres", "/quiz", "/stats", "/settings", "/chatwithai", "/bookmarks", "/revision"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -34,9 +34,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession() reads the JWT directly from cookies — no network round-trip,
+  // no race condition, no false "user not found" when session is valid
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session) {
     const loginUrl = new URL("/auth", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
@@ -44,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
   // Admin routes: only ADMIN_EMAIL — everyone else sees 404
   if (pathname.startsWith("/admin")) {
-    if (user.email !== ADMIN_EMAIL) {
+    if (session.user.email !== ADMIN_EMAIL) {
       return NextResponse.rewrite(new URL("/not-found", request.url));
     }
   }
