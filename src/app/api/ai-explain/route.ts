@@ -61,24 +61,49 @@ async function streamGhModels(token: string, model: string, messages: Msg[]): Pr
     }),
   });
 
+  const enc = new TextEncoder();
+
+  // Non-2xx: forward error text
   if (!res.ok) {
     const errText = await res.text();
-    const enc = new TextEncoder();
     return new ReadableStream({
       start(ctrl) {
-        ctrl.enqueue(enc.encode("Erreur GitHub Models " + res.status + ": " + errText.slice(0, 200)));
+        ctrl.enqueue(enc.encode("Erreur GitHub Models " + res.status + ": " + errText.slice(0, 300)));
         ctrl.close();
       },
     });
   }
 
-  const enc = new TextEncoder();
+  // 200 OK but JSON error body (e.g. rate-limit exhausted, model unavailable)
+  // GitHub Models sometimes returns {"error":{...}} with Content-Type: application/json
+  // even though the request succeeded at the HTTP layer.
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const body = await res.text();
+    let msg = "Erreur modèle IA";
+    try {
+      const parsed = JSON.parse(body) as { error?: { message?: string }; message?: string };
+      msg = parsed?.error?.message ?? parsed?.message ?? msg;
+    } catch { /* keep default */ }
+    return new ReadableStream({
+      start(ctrl) {
+        ctrl.enqueue(enc.encode("Erreur: " + msg.slice(0, 300)));
+        ctrl.close();
+      },
+    });
+  }
+
   return new ReadableStream({
     async start(ctrl) {
       const reader = res.body?.getReader();
-      if (!reader) { ctrl.close(); return; }
+      if (!reader) {
+        ctrl.enqueue(enc.encode("Erreur: stream non disponible"));
+        ctrl.close();
+        return;
+      }
       const dec = new TextDecoder();
       let buf = "";
+      let hasContent = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -90,10 +115,15 @@ async function streamGhModels(token: string, model: string, messages: Msg[]): Pr
             try {
               const d = JSON.parse(line.slice(6)) as { choices?: { delta?: { content?: string } }[] };
               const t = d?.choices?.[0]?.delta?.content;
-              if (t) ctrl.enqueue(enc.encode(t));
-            } catch { /* skip */ }
+              if (t) { ctrl.enqueue(enc.encode(t)); hasContent = true; }
+            } catch { /* skip malformed SSE line */ }
           }
         }
+      }
+      // If we got a valid SSE stream but zero content tokens, emit an error
+      // so the client shows feedback instead of silently resetting
+      if (!hasContent) {
+        ctrl.enqueue(enc.encode("Erreur: réponse vide du modèle (rate limit ou modèle indisponible)"));
       }
       ctrl.close();
     },
