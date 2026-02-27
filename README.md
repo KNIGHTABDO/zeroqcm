@@ -1,6 +1,6 @@
 <div align="center">
   <br />
-  <img src="public/logo.jpg" width="96" height="96" alt="ZeroQCM" style="border-radius: 22px" />
+  <img src="https://raw.githubusercontent.com/KNIGHTABDO/zeroqcm/main/public/logo.jpg" width="96" height="96" alt="ZeroQCM" style="border-radius: 22px" />
   <br /><br />
 
   <h1>ZeroQCM</h1>
@@ -18,10 +18,11 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
   [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
   [![License](https://img.shields.io/badge/License-MIT-black?style=flat-square)](LICENSE)
+  [![Stars](https://img.shields.io/github/stars/KNIGHTABDO/zeroqcm?style=flat-square&color=gold)](https://github.com/KNIGHTABDO/zeroqcm/stargazers)
 
   <br /><br />
 
-  <img src="public/images/hero-dark.png" alt="ZeroQCM Hero" width="100%" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08)" />
+  <img src="https://raw.githubusercontent.com/KNIGHTABDO/zeroqcm/main/public/images/hero-dark.png" alt="ZeroQCM Hero" width="100%" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.08)" />
 </div>
 
 ---
@@ -45,10 +46,16 @@
 
 ## Overview
 
-ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates 180 000+ validated QCM questions spanning all five years of the *premier cycle*, provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
+ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates **180 000+ validated QCM questions** spanning all five years of the *premier cycle*, provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
 
-> *"وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئاً وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ ۙ لَعَلَّكُمْ تَشْكُرُونَ"*
+> *"يُعالل أُوجُحر أَؤتِخُرَجُؤنُسَ أَؤمُجُؤنُسَ لُؤنَى تُؤعُلَؤمُؤنُسَ وُؤنَى أَؤيُسَرُ لُؤنَى كُؤمُؤنُسَ اتُسَكُؤنُسَ وُؤنَى كُؤمُؤنُسَ اقُرَأُؤ وُؤنَى أَؤيُؤفُؤنُسَ"*
 > — An-Nahl 16:78
+
+---
+
+## Why ZeroQCM?
+
+Morocco has **~35,000 medical students** across 7 faculties. The existing platforms (DariQCM, MonQCM) require institutional access, are paywalled, or don't support all faculties. There is no free, unified, open-source repository of Moroccan medical QCMs. ZeroQCM fills that gap — permanently free, self-hostable, open source.
 
 ---
 
@@ -60,12 +67,12 @@ ZeroQCM is a free, open-source medical revision platform built specifically for 
 |---|---|
 | **QCM + QROC** | Multiple-choice and open-response questions supported |
 | **Multi-select** | Handles questions with multiple correct answers |
-| **Keyboard navigation** | `A–E` to select, `Enter` to confirm, `←/→` to navigate |
+| **Keyboard navigation** | `A`–`E` to select, `Enter` to confirm, `←/↑` to navigate |
 | **Swipe gestures** | Native touch swipe for mobile navigation |
 | **Instant feedback** | Correct/incorrect revealed immediately with color-coded options |
 | **Question counter** | Progress indicator across full module sessions |
 
-### 🤖 AI Explanations
+### 🧠 AI Explanations
 
 | Feature | Details |
 |---|---|
@@ -95,7 +102,7 @@ ZeroQCM is a free, open-source medical revision platform built specifically for 
 | **Comments** | Per-question discussion thread — share tips, corrections, and mnemonics with peers |
 | **Leaderboard** | Anonymous ranking by total correct answers and daily streak — podium top 3 + full list |
 
-### 📊 Rich Content Rendering
+### 📋 Rich Content Rendering
 
 | Feature | Details |
 |---|---|
@@ -177,29 +184,29 @@ comment_likes   id, comment_id, user_id
 ```
 Browser
   └── Next.js App Router (SSR/CSR hybrid)
-        ├── /app                    # Pages (App Router)
-        │    ├── /                  # Landing + LoggedIn home
-        │    ├── /semestres         # Semester/module browser
-        │    ├── /quiz/[activityId] # Quiz engine
-        │    ├── /revision          # Révision ciblée dashboard
-        │    ├── /revision/[id]     # Focused quiz session
-        │    ├── /stats             # Progress dashboard
-        │    ├── /profil            # User profile
-        │    ├── /settings          # AI model + theme + data reset
-        │    ├── /auth              # Sign in / Sign up
-        │    └── /not-found         # EKG flatline 404
+        ├── /app                           # Pages (App Router)
+        │   ├── /                          # Landing + LoggedIn home
+        │   ├── /semestres                 # Semester/module browser
+        │   ├── /quiz/[activityId]         # Quiz engine
+        │   ├── /revision                  # Révision ciblée dashboard
+        │   ├── /revision/[id]             # Focused quiz session
+        │   ├── /stats                     # Progress dashboard
+        │   ├── /profil                    # User profile
+        │   ├── /settings                  # AI model + theme + data reset
+        │   ├── /auth                      # Sign in / Sign up
+        │   └── /not-found                 # EKG flatline 404
         │
         ├── /api
-        │    ├── /ai-explain        # GitHub Models streaming (maxDuration=60)
-        │    ├── /gh-models         # Models catalog, cached 1h
-        │    ├── /sync              # Cron 02:00 UTC — DariQCM incremental sync
-        │    └── /scrape-expand     # POST {year} — seed new semester
+        │   ├── /ai-explain                # GitHub Models streaming (maxDuration=60)
+        │   ├── /gh-models                 # Models catalog, cached 1h
+        │   ├── /sync                      # Cron 02:00 UTC — DariQCM incremental sync
+        │   └── /scrape-expand             # POST {year} — seed new semester
         │
         └── /components
-             ├── layout/            # AppShell, Sidebar, ThemeProvider
-             ├── auth/              # AuthProvider, forms
-             ├── quiz/              # QuizEngine, OptionCard, AIExplain
-             └── ui/                # Shared primitives
+            ├── layout/                    # AppShell, Sidebar, ThemeProvider
+            ├── auth/                      # AuthProvider, forms
+            ├── quiz/                      # QuizEngine, OptionCard, AIExplain
+            └── ui/                        # Shared primitives
 
 Supabase (PostgreSQL)
   ├── Auth (email/password, no verification)
@@ -264,21 +271,21 @@ DARIQCM_TOKEN=your-dariqcm-jwt
 ```
 zeroqcm/
 ├── public/
-│   ├── logo.jpg                  # ZeroQCM official logo
-│   ├── favicon.ico               # 16/32/48px ICO
-│   ├── icon.png                  # 512×512 PNG
-│   ├── icon-192.png              # 192×192 PWA icon
-│   ├── apple-touch-icon.png      # 180×180 iOS
-│   ├── site.webmanifest          # PWA manifest
-│   └── images/                   # Landing hero images
+│   ├── logo.jpg                    # ZeroQCM official logo
+│   ├── favicon.ico                 # 16/32/48px ICO
+│   ├── icon.png                    # 512×512 PNG
+│   ├── icon-192.png                # 192×192 PWA icon
+│   ├── apple-touch-icon.png        # 180×180 iOS
+│   ├── site.webmanifest            # PWA manifest
+│   └── images/                     # Landing hero images
 │
 ├── src/
-│   ├── app/                      # Next.js App Router pages
-│   ├── components/               # React components
+│   ├── app/                        # Next.js App Router pages
+│   ├── components/                 # React components
 │   ├── lib/
-│   │   ├── supabase.ts           # Supabase client + helpers
+│   │   ├── supabase.ts             # Supabase client + helpers
 │   │   └── utils.ts
-│   └── types/                    # Shared TypeScript types
+│   └── types/                      # Shared TypeScript types
 │
 ├── .env.example
 ├── next.config.ts
@@ -311,7 +318,7 @@ const ALLOWED_MODELS = [
 ];
 ```
 
-Invalid model names (e.g., leftover `gemini-2.0-flash` from other integrations) silently return a 404 from GitHub Models — the whitelist prevents this.
+Invalid model names silently return a 404 from GitHub Models — the whitelist prevents this.
 
 ---
 
@@ -324,10 +331,10 @@ All question data is sourced from **DariQCM**, the official Moroccan medical fac
 ```
 DariQCM API (AES-256-GCM encrypted, key = SHA256(JWT))
   │
-  ├── /api/scrape-expand?year=1-5   ← One-time seeding per semester
-  │     └── Decrypts → normalizes → upserts to Supabase
+  ├── /api/scrape-expand?year=1-5   → One-time seeding per semester
+  │   └── Decrypts → normalizes → upserts to Supabase
   │
-  └── /api/sync (Cron 02:00 UTC)    ← Incremental daily sync
+  └── /api/sync (Cron 02:00 UTC)    → Incremental daily sync
         └── Fetches delta → upserts new questions
 ```
 
@@ -375,7 +382,7 @@ Push to main → Vercel build → Deploy to zeroqcm.me
 - [x] Creative 404 EKG-monitor page
 - [x] Reset stats with confirmation bottom-sheet
 
-#### 🔜 Upcoming
+#### 📜 Upcoming
 - [ ] MonQCM past-exam questions (30k+)
 - [ ] Push notifications for streak reminders
 - [ ] Offline mode (PWA service worker)
