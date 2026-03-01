@@ -7,7 +7,7 @@
   <p><strong>La révision médicale, réinventée.</strong></p>
   <p>
     Free, AI-powered QCM platform for Moroccan medical students —<br />
-    S1 through S9, 180 000+ questions, built to replace MonQCM and DariQCM.
+    S1 through S10, 230 000+ questions, built to replace MonQCM and DariQCM.
   </p>
 
   <br />
@@ -46,9 +46,9 @@
 
 ## Overview
 
-ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates **180 000+ validated QCM questions** spanning all five years of the *premier cycle*, provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
+ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates **230 000+ validated QCM questions** spanning all years of the *premier cycle* — both odd and even semesters — provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
 
-> *"يُعالل أُوجُحر أَؤتِخُرَجُؤنُسَ أَؤمُجُؤنُسَ لُؤنَى تُؤعُلَؤمُؤنُسَ وُؤنَى أَؤيُسَرُ لُؤنَى كُؤمُؤنُسَ اتُسَكُؤنُسَ وُؤنَى كُؤمُؤنُسَ اقُرَأُؤ وُؤنَى أَؤيُؤفُؤنُسَ"*
+> *"وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئًا وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ لَعَلَّكُمْ تَشْكُرُونَ"*
 > — An-Nahl 16:78
 
 ---
@@ -93,7 +93,6 @@ Morocco has **~35,000 medical students** across 7 faculties. The existing platfo
 | **Per-module error badges** | Visual indicator of error count per module |
 | **Reset stats** | One-tap reset with confirmation sheet — wipes all `user_answers` for the account |
 
-
 ### 📚 Student Community
 
 | Feature | Details |
@@ -101,6 +100,9 @@ Morocco has **~35,000 medical students** across 7 faculties. The existing platfo
 | **Bookmarks** | Save any question during quiz with one tap — review later from `/bookmarks` |
 | **Comments** | Per-question discussion thread — share tips, corrections, and mnemonics with peers |
 | **Leaderboard** | Anonymous ranking by total correct answers and daily streak — podium top 3 + full list |
+| **Study Rooms** | Real-time collaborative revision rooms (Supabase Realtime) |
+| **Flashcards** | SM-2 spaced repetition flashcard system |
+| **Module Certificates** | Bronze/Silver/Gold tier certificates with HD shareable OG images |
 
 ### 📋 Rich Content Rendering
 
@@ -130,35 +132,47 @@ Morocco has **~35,000 medical students** across 7 faculties. The existing platfo
 | **Auto-profile trigger** | PostgreSQL trigger creates `profiles` row on signup |
 | **Year of study** | `annee_etude` (1–5) gates which semesters appear in the sidebar |
 | **RLS policies** | Row-level security on all user data tables |
+| **Activation system** | Key-gated access with admin approval dashboard |
 
 ---
 
 ## Database
 
-> 180 650+ questions · 5 faculties · all odd semesters S1–S9
+> 230 000+ questions · 2 faculties (FMPC + FMPM) · full S1–S10 coverage
 
-| Semester | Year | Questions |
-|---|---|---|
-| S1 | Year 1 | 59 278 |
-| S3 | Year 2 | 37 613 |
-| S5 | Year 3 | 38 653 |
-| S7 | Year 4 | 26 144 |
-| S9 | Year 5 | 18 962 |
-| **Total** | | **~180 650** |
+| Semester | Year | Faculty | Questions |
+|---|---|---|---|
+| S1 | Year 1 | FMPC, FMPM, FMPR, UM6SS, FMPDF | ~43 985 |
+| S2 ✨ | Year 1 | FMPC, FMPM | ~24 206 |
+| S3 | Year 2 | FMPC, FMPM, FMPR, UM6SS | ~36 473 |
+| S4 ✨ | Year 2 | FMPC, FMPM | ~12 134 |
+| S5 | Year 3 | FMPC, FMPM, FMPR, UM6SS | ~38 536 |
+| S6 ✨ | Year 3 | FMPC, FMPM | ~9 996 |
+| S7 | Year 4 | FMPC, FMPM, FMPR, UM6SS | ~26 144 |
+| S8 ✨ | Year 4 | FMPC, FMPM | ~10 520 |
+| S9 | Year 5 | FMPC, FMPM, FMPR, UM6SS | ~18 962 |
+| S10 ✨ | Year 5 | FMPC, FMPM | ~11 963 |
+| **Total** | | | **~232 919** |
+
+✨ = Even semesters added March 2026
 
 ### Schema
 
 ```sql
-semesters       id, name, code
-modules         id, semester_id, name, faculty
-activities      id, module_id, title, type (qcm | open)
-questions       id, activity_id, text, type, explanation
-choices         id, question_id, text, is_correct
+semesters       id, semestre_id, nom, faculty, total_modules, total_questions
+modules         id, module_id, semester_id, nom, total_questions, total_activities
+activities      id, activite_id, module_id, nom, type_activite, chapitre
+questions       id, id_question, activity_id, module_id, texte, source_type, correction
+choices         id, id_choix, question_id, contenu, est_correct, pourcentage
 profiles        id (→ auth.users), full_name, annee_etude, preferences (jsonb)
 user_answers    id, user_id, question_id, choice_id, is_correct, answered_at
 ai_explanations id, prompt_hash, response, model, created_at
 comments        id, question_id, user_id, content
 comment_likes   id, comment_id, user_id
+study_rooms     id, name, created_by, is_active
+flashcard_sessions id, user_id, module_id, card_data (jsonb)
+module_certificates id, user_id, module_id, score, tier (bronze/silver/gold)
+activation_keys id, key, created_by, used_by, used_at
 ```
 
 ---
@@ -194,13 +208,20 @@ Browser
         │   ├── /profil                    # User profile
         │   ├── /settings                  # AI model + theme + data reset
         │   ├── /auth                      # Sign in / Sign up
+        │   ├── /chatwithai                # AI Chat (streaming)
+        │   ├── /bookmarks                 # Saved questions
+        │   ├── /leaderboard               # Rankings
+        │   ├── /activate                  # Activation key entry
+        │   ├── /admin                     # Admin panel (seeding, users)
         │   └── /not-found                 # EKG flatline 404
         │
         ├── /api
         │   ├── /ai-explain                # GitHub Models streaming (maxDuration=60)
+        │   ├── /chat                      # ChatWithAI streaming + searchQCM tool
         │   ├── /gh-models                 # Models catalog, cached 1h
         │   ├── /sync                      # Cron 02:00 UTC — DariQCM incremental sync
-        │   └── /scrape-expand             # POST {year} — seed new semester
+        │   ├── /scrape-expand             # POST {year:2-5} — seed odd semesters
+        │   └── /scrape-even               # POST — seed even semesters (S2/S4/S6/S8/S10)
         │
         └── /components
             ├── layout/                    # AppShell, Sidebar, ThemeProvider
@@ -257,8 +278,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # GitHub Models (server-side only — never exposed to client)
 GITHUB_MODELS_TOKEN=ghp_your_token_with_models_read
 
-# DariQCM sync (optional, for seeding)
-DARIQCM_TOKEN=your-dariqcm-jwt
+# Cron secret (for seeding endpoints)
+CRON_SECRET=your-secret
 ```
 
 > **Security note:** `GITHUB_MODELS_TOKEN` is server-side only. Never prefix it with `NEXT_PUBLIC_`.
@@ -318,8 +339,6 @@ const ALLOWED_MODELS = [
 ];
 ```
 
-Invalid model names silently return a 404 from GitHub Models — the whitelist prevents this.
-
 ---
 
 ## Data Pipeline
@@ -329,20 +348,17 @@ All question data is sourced from **DariQCM**, the official Moroccan medical fac
 ### Sync architecture
 
 ```
-DariQCM API (AES-256-GCM encrypted, key = SHA256(JWT))
+DariQCM API
   │
-  ├── /api/scrape-expand?year=1-5   → One-time seeding per semester
-  │   └── Decrypts → normalizes → upserts to Supabase
+  ├── /api/scrape-expand   POST {year:2-5}  → Odd semesters (S1,S3,S5,S7,S9)
+  │   └── AES-256-GCM encrypted → decrypts → normalizes → upserts
   │
-  └── /api/sync (Cron 02:00 UTC)    → Incremental daily sync
+  ├── /api/scrape-even     POST             → Even semesters (S2,S4,S6,S8,S10)
+  │   └── Direct /api/modules/{id}/questions → normalizes → upserts
+  │
+  └── /api/sync            Cron 02:00 UTC  → Incremental daily sync
         └── Fetches delta → upserts new questions
 ```
-
-### Notes
-
-- Only **odd semesters** (S1, S3, S5, S7, S9) exist on DariQCM — even semesters unpublished
-- DariQCM gates content by `annee_etude` registration field — seeding covers all five years
-- 2 176 open/QROC questions filtered from QCM quiz UI (displayed separately)
 
 ---
 
@@ -366,21 +382,20 @@ Push to main → Vercel build → Deploy to zeroqcm.me
 
 ## Roadmap
 
-#### ✅ Shipped (Feb 2026)
+#### ✅ Shipped (Feb–Mar 2026)
 - [x] Full QCM engine — multi-select, keyboard/swipe, instant feedback
 - [x] AI per-option explanations (GitHub Models, server-side PAT, cached)
 - [x] Spaced repetition — weak question targeting, `/revision` page
 - [x] Stats — SVG rings, streaks, per-module breakdown, reset-all
 - [x] Auth, profiles, year-selector, settings, model picker
-- [x] 180 000+ questions — S1 through S9 (all odd semesters, 5 faculties)
+- [x] **230 000+ questions** — S1 through S10 (odd + even semesters, FMPC + FMPM + FMPR + UM6SS)
 - [x] Dark/light mode, Apple-style design, responsive mobile
 - [x] Custom domain `zeroqcm.me`, PWA favicons + webmanifest
-- [x] **Bookmarks** — save questions, view at `/bookmarks`
-- [x] **Leaderboard** — podium + ranked list at `/leaderboard`
-- [x] **Comments** — per-question discussion threads
-- [x] **Rich content** — markdown tables, bold, italic, lists in questions
+- [x] Bookmarks, Leaderboard, Comments, Rich content rendering
+- [x] Study Rooms (Realtime), Flashcards (SM-2), Module Certificates (tier system)
+- [x] Activation system + Admin panel
+- [x] ChatWithAI (streaming, model picker, searchQCM tool)
 - [x] Creative 404 EKG-monitor page
-- [x] Reset stats with confirmation bottom-sheet
 
 #### 📜 Upcoming
 - [ ] MonQCM past-exam questions (30k+)
@@ -388,7 +403,6 @@ Push to main → Vercel build → Deploy to zeroqcm.me
 - [ ] Offline mode (PWA service worker)
 - [ ] PDF export of bookmarked questions
 - [ ] Faculty-specific question filters
-
 
 ## Contributing
 
