@@ -116,8 +116,9 @@ export async function submitAnswer(params: {
   selectedChoiceIds: string[];
   isCorrect: boolean;
   timeSpent: number;
-}) {
-  return supabase.from("user_answers").insert({
+}): Promise<{ error: Error | null }> {
+  // #14: surface DB errors so callers can log/handle them
+  const { error } = await supabase.from("user_answers").insert({
     user_id: params.userId,
     question_id: params.questionId,
     activity_id: params.activityId,
@@ -125,6 +126,8 @@ export async function submitAnswer(params: {
     is_correct: params.isCorrect,
     time_spent_seconds: params.timeSpent,
   });
+  if (error) console.error("[submitAnswer] DB error:", error.message);
+  return { error: error ? new Error(error.message) : null };
 }
 
 export async function getUserStats(userId: string) {
@@ -177,12 +180,15 @@ export async function addComment(params: {
   content: string;
   isAnonymous: boolean;
 }) {
-  return supabase.from("comments").insert({
+  const result = await supabase.from("comments").insert({
     question_id: params.questionId,
     user_id: params.userId,
     content: params.content,
     is_anonymous: params.isAnonymous,
   }).select().single();
+  // #14: log DB errors on comment insert
+  if (result.error) console.error("[addComment] DB error:", result.error.message);
+  return result;
 }
 
 // ── Bookmarks ─────────────────────────────────────────────────────────────────
