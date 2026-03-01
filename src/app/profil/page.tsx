@@ -23,35 +23,45 @@ const FACULTIES = Object.keys(FACULTY_DEFAULT_SEM);
 // Real semesters available per faculty in DB. Expand this when S2 data is seeded.
 const FACULTY_SEMESTERS: Record<string, { id: string; label: string }[]> = {
   FMPC:  [
-    { id: "s1",       label: "S1 FMPC"  },
-    { id: "s3",       label: "S3 FMPC"  },
-    { id: "s5",       label: "S5 FMPC"  },
-    { id: "s7",       label: "S7 FMPC"  },
-    { id: "s9",       label: "S9 FMPC"  },
+    { id: "s1",       label: "S1 FMPC"   },
+    { id: "s2",       label: "S2 FMPC"   },
+    { id: "s3",       label: "S3 FMPC"   },
+    { id: "s4",       label: "S4 FMPC"   },
+    { id: "s5",       label: "S5 FMPC"   },
+    { id: "s6",       label: "S6 FMPC"   },
+    { id: "s7",       label: "S7 FMPC"   },
+    { id: "s8",       label: "S8 FMPC"   },
+    { id: "s9",       label: "S9 FMPC"   },
+    { id: "s10",      label: "S10 FMPC"  },
   ],
   FMPDF: [
-    { id: "s1_FMPDF", label: "S1 FMPDF" },
+    { id: "s1_FMPDF", label: "S1 FMPDF"  },
   ],
   FMPM:  [
-    { id: "S1_FMPM",  label: "S1 FMPM"  },
-    { id: "S3_FMPM",  label: "S3 FMPM"  },
-    { id: "S5_FMPM",  label: "S5 FMPM"  },
-    { id: "S7_FMPM",  label: "S7 FMPM"  },
-    { id: "S9_FMPM",  label: "S9 FMPM"  },
+    { id: "S1_FMPM",  label: "S1 FMPM"   },
+    { id: "S2_FMPM",  label: "S2 FMPM"   },
+    { id: "S3_FMPM",  label: "S3 FMPM"   },
+    { id: "S4_FMPM",  label: "S4 FMPM"   },
+    { id: "S5_FMPM",  label: "S5 FMPM"   },
+    { id: "S6_FMPM",  label: "S6 FMPM"   },
+    { id: "S7_FMPM",  label: "S7 FMPM"   },
+    { id: "S8_FMPM",  label: "S8 FMPM"   },
+    { id: "S9_FMPM",  label: "S9 FMPM"   },
+    { id: "S10_FMPM", label: "S10 FMPM"  },
   ],
   FMPR:  [
-    { id: "S1_FMPR",  label: "S1 FMPR"  },
-    { id: "S3_FMPR",  label: "S3 FMPR"  },
-    { id: "S5_FMPR",  label: "S5 FMPR"  },
-    { id: "S7_FMPR",  label: "S7 FMPR"  },
-    { id: "S9_FMPR",  label: "S9 FMPR"  },
+    { id: "S1_FMPR",  label: "S1 FMPR"   },
+    { id: "S3_FMPR",  label: "S3 FMPR"   },
+    { id: "S5_FMPR",  label: "S5 FMPR"   },
+    { id: "S7_FMPR",  label: "S7 FMPR"   },
+    { id: "S9_FMPR",  label: "S9 FMPR"   },
   ],
   UM6SS: [
-    { id: "S1_UM6",   label: "S1 UM6SS" },
-    { id: "S3_UM6",   label: "S3 UM6SS" },
-    { id: "S5_UM6",   label: "S5 UM6SS" },
-    { id: "S7_UM6",   label: "S7 UM6SS" },
-    { id: "S9_UM6",   label: "S9 UM6SS" },
+    { id: "S1_UM6",   label: "S1 UM6SS"  },
+    { id: "S3_UM6",   label: "S3 UM6SS"  },
+    { id: "S5_UM6",   label: "S5 UM6SS"  },
+    { id: "S7_UM6",   label: "S7 UM6SS"  },
+    { id: "S9_UM6",   label: "S9 UM6SS"  },
   ],
 };
 
@@ -81,11 +91,16 @@ export default function ProfilPage() {
     if (!profile) return;
     const fac = profile.faculty ?? "FMPC";
     const yearToSemId: Record<number, Record<string, string>> = {
-      1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM", FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
-      2: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM", FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
-      3: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM", FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
-      4: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM", FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
-      5: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+       1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM",  FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+       2: { FMPC: "s2",  FMPDF: "s1_FMPDF", FMPM: "S2_FMPM",  FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+       3: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM",  FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+       4: { FMPC: "s4",  FMPDF: "s1_FMPDF", FMPM: "S4_FMPM",  FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+       5: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM",  FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+       6: { FMPC: "s6",  FMPDF: "s1_FMPDF", FMPM: "S6_FMPM",  FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+       7: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM",  FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+       8: { FMPC: "s8",  FMPDF: "s1_FMPDF", FMPM: "S8_FMPM",  FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+       9: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM",  FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+      10: { FMPC: "s10", FMPDF: "s1_FMPDF", FMPM: "S10_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
     };
     const year = profile.annee_etude ?? 1;
     const saved = yearToSemId[year]?.[fac] ?? FACULTY_SEMESTERS[fac]?.[0]?.id ?? "s1";
@@ -121,11 +136,16 @@ export default function ProfilPage() {
     if (!user) return;
     setSaving(true);
     const semToYear: Record<string, number> = {
-      "s1": 1, "s1_FMPDF": 1, "S1_FMPM": 1, "S1_FMPR": 1, "S1_UM6": 1,
-      "s3": 2, "S3_FMPM": 2, "S3_FMPR": 2, "S3_UM6": 2,
-      "s5": 3, "S5_FMPM": 3, "S5_FMPR": 3, "S5_UM6": 3,
-      "s7": 4, "S7_FMPM": 4, "S7_FMPR": 4, "S7_UM6": 4,
-      "s9": 5, "S9_FMPM": 5, "S9_FMPR": 5, "S9_UM6": 5,
+      "s1": 1, "s1_FMPDF": 1, "S1_FMPM": 1,  "S1_FMPR": 1, "S1_UM6": 1,
+      "s2": 2,                 "S2_FMPM": 2,
+      "s3": 3,                 "S3_FMPM": 3,  "S3_FMPR": 3, "S3_UM6": 3,
+      "s4": 4,                 "S4_FMPM": 4,
+      "s5": 5,                 "S5_FMPM": 5,  "S5_FMPR": 5, "S5_UM6": 5,
+      "s6": 6,                 "S6_FMPM": 6,
+      "s7": 7,                 "S7_FMPM": 7,  "S7_FMPR": 7, "S7_UM6": 7,
+      "s8": 8,                 "S8_FMPM": 8,
+      "s9": 9,                 "S9_FMPM": 9,  "S9_FMPR": 9, "S9_UM6": 9,
+      "s10": 10,               "S10_FMPM": 10,
     };
     const annee_etude = semToYear[semId] ?? 1;
     const { error } = await supabase.from("profiles").upsert(

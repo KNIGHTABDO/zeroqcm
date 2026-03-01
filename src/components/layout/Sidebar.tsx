@@ -44,13 +44,20 @@ export function Sidebar() {
       .then(({ data }) => setSemesters(data ?? []));
   }, []);
 
-  const YEAR_TO_SEM: Record<number, string> = { 1: "S1", 2: "S3", 3: "S5", 4: "S7", 5: "S9" };
+  const YEAR_TO_SEM: Record<number, string> = { 1: "S1", 2: "S2", 3: "S3", 4: "S4", 5: "S5", 6: "S6", 7: "S7", 8: "S8", 9: "S9", 10: "S10" };
   const userSemKey = profile?.annee_etude ? (YEAR_TO_SEM[profile.annee_etude] ?? null) : null;
   const visibleSemesters = userSemKey
     ? semesters.filter((s) => {
         const id = s.semestre_id.toUpperCase();
-        const semNum = userSemKey.replace("S","");
-        return id.startsWith(userSemKey) || id === ("S" + semNum + "_FMPM") || id === ("S" + semNum + "_FMPR") || id === ("S" + semNum + "_UM6") || id === ("S" + semNum + "_FMPDF");
+        const semNum = userSemKey.replace("S", "");
+        // Use exact match (not startsWith) to prevent S1 from matching S10
+        return id === userSemKey
+          || id === ("S" + semNum + "_FMPC")
+          || id === ("S" + semNum + "_FMPM")
+          || id === ("S" + semNum + "_FMPR")
+          || id === ("S" + semNum + "_UM6")
+          || id === ("S" + semNum + "_FMPDF")
+          || id === ("S" + semNum + "_PHARMA_UM6");
       })
     : semesters;
 
