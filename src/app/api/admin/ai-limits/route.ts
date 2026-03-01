@@ -15,7 +15,7 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
   return _verify(req);
 }
 
-/** GET: returns category limits + today's usage summary */
+/** GET: returns category limits + today's usage summary (per-user, not aggregated) */
 export async function GET(req: NextRequest) {
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -25,17 +25,27 @@ export async function GET(req: NextRequest) {
   const [limitsRes, usageRes] = await Promise.all([
     sb.from("ai_rate_limits").select("multiplier,daily_limit,label").order("multiplier"),
     sb.from("ai_usage")
-      .select("multiplier,count")
+      .select("multiplier,count,user_id")
       .eq("usage_date", today),
   ]);
 
-  // Aggregate usage by multiplier (sum across all users)
-  const usageByMult: Record<number, number> = {};
+  // Per-user counts per multiplier: { mult -> { userId -> count } }
+  const perUser: Record<number, Record<string, number>> = {};
   for (const row of usageRes.data ?? []) {
-    usageByMult[row.multiplier] = (usageByMult[row.multiplier] ?? 0) + (row.count ?? 0);
+    if (!perUser[row.multiplier]) perUser[row.multiplier] = {};
+    perUser[row.multiplier][row.user_id] = (perUser[row.multiplier][row.user_id] ?? 0) + (row.count ?? 0);
   }
-  const usage_today = Object.entries(usageByMult).map(([m, count]) => ({
-    multiplier: Number(m), count,
+
+  // usage_today: for each multiplier, report distinct users who used it today + their counts
+  const usage_today = Object.entries(perUser).map(([m, userMap]) => ({
+    multiplier: Number(m),
+    user_count: Object.keys(userMap).length,
+    total_requests: Object.values(userMap).reduce((a, b) => a + b, 0),
+    // Top users (up to 5) for drill-down in UI
+    top_users: Object.entries(userMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([uid, count]) => ({ uid, count })),
   }));
 
   return NextResponse.json({
