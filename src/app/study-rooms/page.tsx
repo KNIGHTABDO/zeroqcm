@@ -42,12 +42,20 @@ function CreateModal({ onClose, modules, userId, displayName }: {
       [allIds[i], allIds[j]] = [allIds[j], allIds[i]];
     }
     const questionIds = allIds.slice(0, Math.min(20, allIds.length));
-    const code = genCode();
-
-    const { data: room, error: rErr } = await supabase
-      .from("study_rooms")
-      .insert({ code, name: name.trim(), module_id: moduleId, host_id: userId, questions: questionIds, status: "waiting", current_q_idx: 0 })
-      .select().single();
+    // #20: retry up to 5 times on unique code collision (23505 = unique_violation)
+    let room = null;
+    let rErr = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = genCode();
+      const res = await supabase
+        .from("study_rooms")
+        .insert({ code, name: name.trim(), module_id: moduleId, host_id: userId, questions: questionIds, status: "waiting", current_q_idx: 0 })
+        .select().single();
+      room = res.data;
+      rErr = res.error;
+      // If no error, or if error is NOT a unique violation, stop retrying
+      if (!rErr || (rErr as { code?: string }).code !== "23505") break;
+    }
 
     if (rErr || !room) { setErr("Impossible de créer la salle."); setCreating(false); return; }
 
