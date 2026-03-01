@@ -1,7 +1,26 @@
 // @ts-nocheck
 import { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
 import { checkAiQuota, incrementAiUsage } from "@/lib/ai-rate-limit";
+
+const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
+
+async function getAuthUser() {
+  try {
+    const cookieStore = await cookies();
+    const sb = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+    );
+    const { data: { user } } = await sb.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
+}
 
 export const maxDuration = 90;
 
@@ -174,27 +193,28 @@ async function streamCopilotExplain(modelId: string, prompt: string): Promise<Re
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { prompt, model, userId } = (await req.json()) as {
+  const { prompt, model } = (await req.json()) as {
     prompt: string;
     model?: string;
-    userId?: string;
   };
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
+  // Server-side auth — ignore any client-provided userId
+  const user = await getAuthUser();
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   // Default: gpt-4.1 (1× premium, no thinking overhead, strong JSON output)
-  // Claude Sonnet only used if explicitly requested (higher tier users/admin)
   const modelId = model?.trim() || "gpt-4.1";
 
-  // ── Rate limit check (if userId provided) ──
-  if (userId) {
-    const ADMIN_EMAIL_HASH = "aabidaabdessamad@gmail.com"; // admin bypass via userId comparison
+  // ── Rate limit check ──
+  if (user) {
     try {
-      const quota = await checkAiQuota(userId, modelId, false);
+      const quota = await checkAiQuota(user.id, modelId, isAdmin);
       if (!quota.allowed) {
         return new Response(
           JSON.stringify({
             error: "rate_limited",
-            message: `Limite journalière atteinte (${quota.limit}/jour). Réessaie demain.`,
+            message: `Limite journalière atteinte (${quota.limit}/jour). Réessaie demain ou utilise un modèle gratuit.`,
           }),
           { status: 429, headers: { "Content-Type": "application/json" } }
         );
@@ -207,9 +227,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const stream = await streamCopilotExplain(modelId, prompt);
-    // Increment usage (fire-and-forget)
-    if (userId) {
-      incrementAiUsage(userId, modelId).catch(err =>
+    // Increment usage on success (fire-and-forget, server-verified user only)
+    if (user) {
+      incrementAiUsage(user.id, modelId).catch(err =>
         console.error("[ai-explain] usage increment failed (non-fatal):", err)
       );
     }

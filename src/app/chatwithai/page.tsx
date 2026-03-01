@@ -319,9 +319,24 @@ export default function ChatWithAIPage() {
     }
   }, [profile, fetchedModels]);
 
+  const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop, reload } = useChat({
     api: "/api/chat",
     body: { model: selectedModel, thinking: thinkingMode },
+    onError: (err) => {
+      // Parse rate_limited / unauthorized errors and show user-friendly toast
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed?.error === "rate_limited") {
+          setRateLimitMsg(parsed.message ?? "Limite journalière atteinte.");
+        } else if (parsed?.error === "unauthorized") {
+          setRateLimitMsg("Connecte-toi pour utiliser les modèles premium.");
+        }
+      } catch {
+        // non-JSON error — ignore
+      }
+    },
     onFinish: (message) => {
       // Save assistant message to DB when streaming is complete
       if (!user || message.role !== "assistant") return;
@@ -614,6 +629,18 @@ export default function ChatWithAIPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Rate limit banner ── */}
+      {rateLimitMsg && (
+        <div className="mx-auto w-full max-w-[760px] px-4 mb-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "#fca5a5" }}>
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{rateLimitMsg}</span>
+            <button onClick={() => setRateLimitMsg(null)} className="ml-auto opacity-50 hover:opacity-100">✕</button>
+          </div>
+        </div>
+      )}
 
       {/* ── Input bar ── */}
       <div className="flex-shrink-0 px-3 pt-2 pb-[4.75rem] lg:pb-4" style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>

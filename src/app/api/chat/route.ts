@@ -5,8 +5,9 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
-import { checkAiQuota, incrementAiUsage } from "@/lib/ai-rate-limit";
+import { checkAiQuota, incrementAiUsage, getModelMultiplier } from "@/lib/ai-rate-limit";
 
 export const maxDuration = 90;
 
@@ -48,16 +49,15 @@ Anatomie · Histologie · Embryologie · Physiologie · Biochimie · Pharmacolog
 - Ne jamais afficher les paramètres d\'appel d\'outil (JSON) dans ta réponse — appelle l\'outil silencieusement.
 - Pour chaque QCM présenté, inclus son champ \`_source\` (lien cliquable) sur une nouvelle ligne juste après les explications de cette question — jamais regroupé à la fin.`;
 
-function makeSupabase() {
-  const cookieStore: Record<string, string> = {};
+async function makeSupabase() {
+  const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => Object.entries(cookieStore).map(([name, value]) => ({ name, value })),
-        setAll: (cookies: { name: string; value: string }[]) =>
-          cookies.forEach(({ name, value }) => { cookieStore[name] = value; }),
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {}, // read-only in Route Handler
       },
     }
   );
@@ -140,7 +140,7 @@ const QCM_SELECT = "id, texte, activity_id, choices(id, contenu, est_correct), a
 export async function POST(req: NextRequest) {
   try {
     const { messages, model: requestedModel, thinking } = await req.json();
-    const supabase = makeSupabase();
+    const supabase = await makeSupabase();
 
     // ── User auth ──
     const { data: { user } } = await supabase.auth.getUser();
@@ -154,6 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Rate limit check ──
+    // Premium/heavy models require auth — unauthenticated users can only use free models
+    if (!user && getModelMultiplier(modelId) > 0) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized", message: "Connecte-toi pour utiliser les modèles premium." }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     if (user) {
       const quota = await checkAiQuota(user.id, modelId, isAdmin);
       if (!quota.allowed) {
@@ -198,7 +205,7 @@ export async function POST(req: NextRequest) {
       model: copilot(modelId),
       system: SYSTEM_PROMPT,
       messages,
-      maxTokens: thinkingEnabled ? 8000 : 900,  // 900 covers 95% of medical explanations, saves tokens
+      maxTokens: thinkingEnabled ? 8000 : 1500,  // 1500 covers complex multi-topic medical explanations
       temperature: thinkingEnabled ? 1 : 0.2, // thinking models require temp=1
       maxSteps: 3,
       tools: {
@@ -265,11 +272,17 @@ export async function POST(req: NextRequest) {
       streamOpts.providerOptions = { openaicompatible: thinkingOpts };
     }
 
-    // Increment usage counter (non-blocking — don't await in hot path)
+    // Increment usage on stream finish (only counts successful completions)
     if (user) {
-      incrementAiUsage(user.id, modelId).catch(err =>
-        console.error("[chat] usage increment failed (non-fatal):", err)
-      );
+      const uid = user.id;
+      const mid = modelId;
+      const existing = (streamOpts as any).onFinish;
+      (streamOpts as any).onFinish = async (...args: unknown[]) => {
+        incrementAiUsage(uid, mid).catch(err =>
+          console.error("[chat] usage increment failed (non-fatal):", err)
+        );
+        if (existing) await (existing as (...a: unknown[]) => void)(...args);
+      };
     }
 
     const result = await streamText(streamOpts as Parameters<typeof streamText>[0]);
