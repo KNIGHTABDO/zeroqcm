@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { NextRequest } from "next/server";
 import { streamText, tool } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -107,10 +107,11 @@ export async function POST(req: NextRequest) {
     const copilotToken = await getCopilotToken();
     const baseURL = `${getCopilotBaseURL(copilotToken)}/v1`;
 
-    const copilot = createOpenAI({
+    const copilot = createOpenAICompatible({
+      name: "github-copilot",
       baseURL,
-      apiKey: copilotToken,
       headers: {
+        Authorization: `Bearer ${copilotToken}`,
         "editor-version": "vscode/1.98.0",
         "editor-plugin-version": "GitHub.copilot/1.276.0",
         "copilot-integration-id": "vscode-chat",
