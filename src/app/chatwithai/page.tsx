@@ -291,13 +291,22 @@ export default function ChatWithAIPage() {
   }, []);
 
   // ── Sync selected model from profile preference ──
+  // Falls back to admin default if stored model is no longer in the list
   useEffect(() => {
+    if (fetchedModels.length === 0) return; // wait until models are loaded
+    const adminDefault = fetchedModels.find(m => m.is_default) ?? fetchedModels[0];
     const fromProfile = (profile?.preferences as Record<string, string> | undefined)?.ai_model;
-    if (fromProfile) {
+    if (fromProfile && fetchedModels.some(m => m.id === fromProfile)) {
+      // Stored model still exists — use it
       setSelectedModel(fromProfile);
-    } else if (fetchedModels.length > 0) {
-      const def = fetchedModels.find(m => m.is_default) ?? fetchedModels[0];
-      if (def) setSelectedModel(def.id);
+    } else {
+      // Stored model gone, or no stored model → use admin default
+      setSelectedModel(adminDefault.id);
+      // Persist the new default to profile so it doesn't revert on next load
+      if (profile) {
+        const prefs = { ...(profile.preferences ?? {}), ai_model: adminDefault.id };
+        supabase.from("profiles").update({ preferences: prefs }).eq("id", profile.id).then(() => {});
+      }
     }
   }, [profile, fetchedModels]);
 
@@ -607,8 +616,8 @@ export default function ChatWithAIPage() {
                 boxShadow: inputFocused ? "0 0 0 4px rgba(16,163,127,0.05), 0 8px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.3)",
               }}
               transition={{ duration: 0.18 }}
-              className="rounded-3xl overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              className="rounded-3xl"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", overflow: "visible" }}>
 
               <textarea
                 ref={inputRef} value={input}
@@ -616,11 +625,11 @@ export default function ChatWithAIPage() {
                 onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}
                 placeholder="Pose ta question médicale…"
                 rows={1} disabled={isLoading}
-                className="w-full bg-transparent resize-none outline-none px-4 pt-4 pb-2 placeholder:text-white/20"
+                className="w-full bg-transparent resize-none outline-none px-4 pt-4 pb-2 placeholder:text-white/20 rounded-t-3xl"
                 style={{ color: "rgba(255,255,255,0.9)", caretColor: "#10a37f", minHeight: "56px", maxHeight: "220px", lineHeight: "1.6", WebkitAppearance: "none", fontSize: "16px" }}
               />
 
-              <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2">
+              <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2 rounded-b-3xl" style={{ background: "rgba(255,255,255,0.04)" }}>
                 <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} />
 
                 {/* Thinking mode toggle — only for capable models */}
