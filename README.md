@@ -7,7 +7,7 @@
   <p><strong>La révision médicale, réinventée.</strong></p>
   <p>
     Free, AI-powered QCM platform for Moroccan medical students —<br />
-    S1 through S10, 230 000+ questions, built to replace MonQCM and DariQCM.
+    S1 through S10, 215 000+ questions, built to replace MonQCM and DariQCM.
   </p>
 
   <br />
@@ -46,7 +46,7 @@
 
 ## Overview
 
-ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates **230 000+ validated QCM questions** spanning all years of the *premier cycle* — both odd and even semesters — provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
+ZeroQCM is a free, open-source medical revision platform built specifically for students at Moroccan medical faculties (FMPC, FMPR, FMPT, FMPK, FMPM and others). It aggregates **215 000+ validated QCM questions** spanning all years of the *premier cycle* — both odd and even semesters — provides AI-powered per-option explanations via GitHub Models, and tracks each student's progress with a spaced-repetition algorithm — completely free, no account paywall.
 
 > *"وَاللَّهُ أَخْرَجَكُم مِّن بُطُونِ أُمَّهَاتِكُمْ لَا تَعْلَمُونَ شَيْئًا وَجَعَلَ لَكُمُ السَّمْعَ وَالْأَبْصَارَ وَالْأَفْئِدَةَ لَعَلَّكُمْ تَشْكُرُونَ"*
 > — An-Nahl 16:78
@@ -138,21 +138,21 @@ Morocco has **~35,000 medical students** across 7 faculties. The existing platfo
 
 ## Database
 
-> 230 000+ questions · 2 faculties (FMPC + FMPM) · full S1–S10 coverage
+> 215 000+ questions · 2 faculties (FMPC + FMPM) · full S1–S10 coverage
 
 | Semester | Year | Faculty | Questions |
 |---|---|---|---|
 | S1 | Year 1 | FMPC, FMPM, FMPR, UM6SS, FMPDF | ~43 985 |
-| S2 ✨ | Year 1 | FMPC, FMPM | ~24 206 |
+| S2 ✨ | Year 1 | FMPC, FMPM | ~21 985 |
 | S3 | Year 2 | FMPC, FMPM, FMPR, UM6SS | ~36 473 |
-| S4 ✨ | Year 2 | FMPC, FMPM | ~12 134 |
+| S4 ✨ | Year 2 | FMPC, FMPM | ~12 115 |
 | S5 | Year 3 | FMPC, FMPM, FMPR, UM6SS | ~38 536 |
 | S6 ✨ | Year 3 | FMPC, FMPM | ~9 996 |
 | S7 | Year 4 | FMPC, FMPM, FMPR, UM6SS | ~26 144 |
 | S8 ✨ | Year 4 | FMPC, FMPM | ~10 520 |
 | S9 | Year 5 | FMPC, FMPM, FMPR, UM6SS | ~18 962 |
 | S10 ✨ | Year 5 | FMPC, FMPM | ~11 963 |
-| **Total** | | | **~232 919** |
+| **Total** | | | **~215 699** |
 
 ✨ = Even semesters added March 2026
 
@@ -388,7 +388,7 @@ Push to main → Vercel build → Deploy to zeroqcm.me
 - [x] Spaced repetition — weak question targeting, `/revision` page
 - [x] Stats — SVG rings, streaks, per-module breakdown, reset-all
 - [x] Auth, profiles, year-selector, settings, model picker
-- [x] **230 000+ questions** — S1 through S10 (odd + even semesters, FMPC + FMPM + FMPR + UM6SS)
+- [x] **215 000+ questions** — S1 through S10 (odd + even semesters, FMPC + FMPM + FMPR + UM6SS)
 - [x] Dark/light mode, Apple-style design, responsive mobile
 - [x] Custom domain `zeroqcm.me`, PWA favicons + webmanifest
 - [x] Bookmarks, Leaderboard, Comments, Rich content rendering
