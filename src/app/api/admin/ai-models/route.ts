@@ -38,54 +38,80 @@ function inferTier(id: string): "standard" | "premium" {
   return "standard";
 }
 
-// GET: returns all live Copilot models merged with per-model overrides from DB
+// GET: returns live Copilot models merged with DB overrides.
+// Falls back to DB rows if Copilot API is unavailable (no token yet, cold start, etc).
 export async function GET(req: NextRequest) {
   const sb = getServiceSupabase();
-  // Load overrides
-  const { data: overrides } = await sb.from("ai_models_config").select("id, is_enabled, is_default, sort_order, custom_label");
-  const overrideMap = new Map((overrides ?? []).map((o: any) => [o.id, o]));
 
+  // Always load DB rows first (seed data + overrides)
+  const { data: dbRows } = await sb.from("ai_models_config").select("*").order("sort_order");
+  const dbMap = new Map((dbRows ?? []).map((r: any) => [r.id, r]));
+
+  // Try to fetch live models from Copilot API (3s timeout)
   let liveModels: any[] = [];
+  let usingLive = false;
   try {
-    const token = await getCopilotToken();
-    const baseURL = getCopilotBaseURL(token);
+    const tokenStr = await getCopilotToken();
+    const baseURL = getCopilotBaseURL(tokenStr);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${baseURL}/models`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${tokenStr}`,
         "editor-version": "vscode/1.98.0",
         "editor-plugin-version": "GitHub.copilot/1.276.0",
         "copilot-integration-id": "vscode-chat",
       },
+      signal: controller.signal,
       cache: "no-store",
     });
+    clearTimeout(timer);
     if (res.ok) {
       const json = await res.json();
       liveModels = (json.data ?? json).filter((m: any) =>
         m.id && (m.capabilities?.type === "chat" || !m.capabilities?.type) && m.model_picker_enabled !== false
       );
+      usingLive = liveModels.length > 0;
     }
   } catch {}
 
-  const result = liveModels.map((m: any) => {
-    const ov = overrideMap.get(m.id);
-    return {
-      id: m.id,
-      label: ov?.custom_label ?? m.name ?? m.id,
-      provider: inferProvider(m.id),
-      tier: inferTier(m.id),
-      is_enabled: ov ? ov.is_enabled : true,
-      is_default: ov?.is_default ?? false,
-      sort_order: ov?.sort_order ?? 999,
-      supports_vision: m.capabilities?.supports?.vision ?? false,
-      supports_tools: m.capabilities?.supports?.tool_calls ?? false,
-      max_context: m.capabilities?.limits?.max_context_window_tokens,
-      // live info
-      billing_plan: m.billing_plan,
-      model_picker_enabled: m.model_picker_enabled,
-    };
-  });
+  if (usingLive) {
+    // Merge live Copilot models with DB overrides
+    const result = liveModels.map((m: any) => {
+      const db = dbMap.get(m.id);
+      return {
+        id: m.id,
+        label: db?.custom_label ?? db?.label ?? m.name ?? m.id,
+        provider: inferProvider(m.id),
+        tier: inferTier(m.id),
+        is_enabled: db ? db.is_enabled : true,
+        is_default: db?.is_default ?? false,
+        sort_order: db?.sort_order ?? 999,
+        supports_vision: m.capabilities?.supports?.vision ?? false,
+        supports_tools: m.capabilities?.supports?.tool_calls ?? false,
+        max_context: m.capabilities?.limits?.max_context_window_tokens,
+        billing_plan: m.billing_plan,
+        source: "live",
+      };
+    });
+    return NextResponse.json(result.sort((a: any, b: any) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)));
+  }
 
-  return NextResponse.json(result.sort((a: any, b: any) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)));
+  // Fallback: serve from DB seed (gracefully handles no-token and cold-start)
+  const fallback = (dbRows ?? []).map((m: any) => ({
+    id: m.id,
+    label: m.custom_label ?? m.label ?? m.id,
+    provider: m.provider ?? inferProvider(m.id),
+    tier: m.tier ?? inferTier(m.id),
+    is_enabled: m.is_enabled ?? true,
+    is_default: m.is_default ?? false,
+    sort_order: m.sort_order ?? 999,
+    supports_vision: m.supports_vision ?? false,
+    supports_tools: m.supports_tools ?? true,
+    max_context: null,
+    source: "db",
+  }));
+  return NextResponse.json(fallback.sort((a: any, b: any) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)));
 }
 
 // PATCH: upsert per-model override
@@ -97,7 +123,6 @@ export async function PATCH(req: NextRequest) {
   if (updates.is_default === true) {
     await sb.from("ai_models_config").update({ is_default: false }).neq("id", id);
   }
-  // Upsert override row
   const { data, error } = await sb.from("ai_models_config")
     .upsert({ id, ...updates }, { onConflict: "id" })
     .select().single();
