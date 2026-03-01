@@ -807,7 +807,7 @@ function AiSection() {
             </AnimatePresence>
 
             {!addOpen && (
-              <button onClick={() => setAddOpen(true); setFlowState('idle'); setFlowLabel(''); setFlowError(''); setFlowData(null)}
+              <button onClick={() => { setAddOpen(true); setFlowState("idle"); setFlowLabel(""); setFlowError(""); setFlowData(null); }}
                 className="w-full py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-80"
                 style={{ background: "rgba(99,102,241,0.06)", borderColor: "rgba(99,102,241,0.15)", color: "#818cf8" }}>
                 <Plus className="w-3.5 h-3.5" />
