@@ -157,7 +157,7 @@ function ModelPicker({ models, selected, onSelect, loading }: {
           color: "rgba(255,255,255,0.85)",
         }}>
         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: pColor }} />
-        <span className="max-w-[130px] truncate">{loading ? "…" : current.name}</span>
+        <span className="max-w-[90px] sm:max-w-[130px] truncate">{loading ? "…" : current.name}</span>
         <ChevronDown className={cn("w-3 h-3 flex-shrink-0 transition-transform duration-200", open && "rotate-180")}
           style={{ color: "rgba(255,255,255,0.35)" }} />
       </button>
@@ -301,7 +301,7 @@ export default function ChatWithAIPage() {
     }
   }, [profile, fetchedModels]);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop, reload } = useChat({
     api: "/api/chat",
     body: { model: selectedModel, thinking: thinkingMode },
   });
@@ -472,7 +472,7 @@ export default function ChatWithAIPage() {
             )}
           </AnimatePresence>
 
-          <div className="space-y-6 pt-4">
+          <div className="space-y-4 sm:space-y-6 pt-4">
             <AnimatePresence initial={false}>
               {messages.map((msg, i) => {
                 const isUser = msg.role === "user";
@@ -494,7 +494,7 @@ export default function ChatWithAIPage() {
                         : <AIAvatar size={7} />}
                     </div>
 
-                    <div className={cn("flex flex-col gap-1.5 min-w-0", isUser ? "items-end max-w-[80%]" : "items-start max-w-[88%]")}>
+                    <div className={cn("flex flex-col gap-1.5 min-w-0", isUser ? "items-end max-w-[82%] sm:max-w-[80%]" : "items-start max-w-[92%] sm:max-w-[88%]")}>
                       {!isUser && qcmCall && (
                         <div className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs w-fit"
                           style={{ background: "rgba(16,163,127,0.06)", border: "1px solid rgba(16,163,127,0.12)", color: "rgba(16,163,127,0.7)" }}>
@@ -505,7 +505,7 @@ export default function ChatWithAIPage() {
 
                       <div className={cn("relative group w-full msg-hover")}>
                         {isUser ? (
-                          <div className="px-4 py-3 rounded-3xl rounded-tr-md text-sm leading-relaxed whitespace-pre-wrap select-text"
+                          <div className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-3xl rounded-tr-md text-sm leading-relaxed whitespace-pre-wrap select-text"
                             style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.9)" }}>
                             {msg.content}
                           </div>
@@ -548,14 +548,23 @@ export default function ChatWithAIPage() {
               )}
             </AnimatePresence>
 
-            {/* Error */}
+            {/* Error — dismissable, shows retry */}
             <AnimatePresence>
               {error && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm"
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm"
                   style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)", color: "#f87171" }}>
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  Erreur de connexion. Vérifie les tokens AI dans l&apos;admin.
+                  <span className="flex-1 text-xs leading-snug">
+                    Erreur de connexion — réessaie ou change de modèle.
+                  </span>
+                  <button type="button"
+                    onClick={() => { if (input.trim()) handleSubmit({ preventDefault: () => {} } as any); }}
+                    className="flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg font-medium transition-all active:scale-95"
+                    style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+                    Réessayer
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -566,7 +575,7 @@ export default function ChatWithAIPage() {
       </div>
 
       {/* ── Input bar ── */}
-      <div className="flex-shrink-0 px-3 pb-3 pt-2" style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <div className="flex-shrink-0 px-3 pb-3 pt-2 sm:pb-4" style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div className="max-w-[760px] mx-auto">
           <form onSubmit={handleSubmitWithSave}>
             <motion.div
@@ -604,7 +613,7 @@ export default function ChatWithAIPage() {
                       color: thinkingMode ? "#a78bfa" : "rgba(255,255,255,0.35)",
                     }}>
                     <Zap className="w-3 h-3" style={{ fill: thinkingMode ? "#a78bfa" : "none" }} />
-                    <span className="hidden sm:inline">{thinkingMode ? "Réflexion" : "Réflexion"}</span>
+                    <span className="hidden xs:inline">{thinkingMode ? "Réfl." : "Réfl."}</span>
                   </button>
                 )}
 
