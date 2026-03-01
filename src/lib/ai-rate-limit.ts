@@ -93,10 +93,24 @@ export async function checkAiQuota(
   modelId: string,
   isAdmin = false
 ): Promise<{ allowed: boolean; remaining: number; limit: number; multiplier: number }> {
-  const multiplier = getModelMultiplier(modelId);
+  // Admin: always allowed (check before any DB work)
+  if (isAdmin) return { allowed: true, remaining: 999, limit: 999, multiplier: 0 };
 
-  // Admin: always allowed
-  if (isAdmin) return { allowed: true, remaining: 999, limit: 999, multiplier };
+  // Resolve multiplier: in-memory first, then DB fallback (so admin edits take effect immediately)
+  let multiplier = getModelMultiplier(modelId);
+  if (multiplier === 0 && modelId) {
+    try {
+      const sb = getServiceSupabase();
+      const { data } = await sb
+        .from("ai_models_config")
+        .select("premium_multiplier")
+        .eq("id", modelId)
+        .maybeSingle();
+      if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
+        multiplier = data.premium_multiplier as 0 | 1 | 3;
+      }
+    } catch { /* fail-open */ }
+  }
 
   // Free/standard models: always allowed
   if (multiplier === 0) return { allowed: true, remaining: 999, limit: 0, multiplier: 0 };

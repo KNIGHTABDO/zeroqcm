@@ -517,7 +517,7 @@ function SeedSection() {
 
 // ── AI Tokens & Models Section ───────────────────────────────────────────────
 interface AiToken  { id: string; label: string; status: "alive"|"dead"|"rate_limited"|"unknown"; last_tested_at: string|null; last_used_at: string|null; use_count: number; created_at: string; }
-interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; supports_vision?: boolean; supports_tools?: boolean; max_context?: number; billing_plan?: string; }
+interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; premium_multiplier?: number; supports_vision?: boolean; supports_tools?: boolean; max_context?: number; billing_plan?: string; }
 
 const STATUS_COLOR: Record<string, string> = {
   alive: "#22c55e", dead: "#ef4444", rate_limited: "#f59e0b", unknown: "rgba(255,255,255,0.25)"
@@ -648,12 +648,17 @@ function AiSection() {
   }
 
   async function saveModelMult(modelId: string) {
-    const val = parseInt(editMult[modelId] ?? "");
+    const rawVal = editMult[modelId];
+    if (rawVal === undefined) return;
+    const val = parseInt(rawVal, 10);
     if (isNaN(val) || ![0,1,3].includes(val)) return;
     setSavingMult(modelId);
     const h = await authHdr();
-    await fetch("/api/admin/ai-models", { method: "PATCH", headers: h, body: JSON.stringify({ id: modelId, premium_multiplier: val }) });
-    await loadModels(); await loadLimits();
+    const res = await fetch("/api/admin/ai-models", { method: "PATCH", headers: h, body: JSON.stringify({ id: modelId, premium_multiplier: val, tier: val === 0 ? "standard" : "premium" }) });
+    if (res.ok) {
+      await loadModels();
+      await loadLimits();
+    }
     setSavingMult(null);
     setEditMult(prev => { const n = {...prev}; delete n[modelId]; return n; });
   }
