@@ -95,7 +95,7 @@ async function streamCopilotExplain(modelId: string, prompt: string): Promise<Re
 
   let res: Response;
   try {
-    res = await fetch(`${baseURL}/v1/chat/completions`, {
+    res = await fetch(`${baseURL}/chat/completions`, { // No /v1 — Copilot API uses root path
       method: "POST",
       headers: {
         "Content-Type": "application/json",

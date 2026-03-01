@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     // Get rotating Copilot inference token
     const copilotToken = await getCopilotToken();
-    const baseURL = `${getCopilotBaseURL(copilotToken)}/v1`;
+    const baseURL = getCopilotBaseURL(copilotToken); // No /v1 — Copilot API uses root path
 
     const copilot = createOpenAICompatible({
       name: "github-copilot",
