@@ -2,16 +2,32 @@
 "use client";
 
 import { useChat } from "ai/react";
-import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, SquarePen, Trash2, ChevronDown, AlertCircle, Search, Copy, Check, X } from "lucide-react";
+import { ArrowUp, Square, SquarePen, Trash2, ChevronDown, AlertCircle, Search, Copy, Check, X, Sparkles, Zap, Brain, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import type { Message } from "ai/react";
 
-// ── Markdown renderer (preserved from original) ─────────────────────────────
+// ── Provider brand colors ─────────────────────────────────────────────────────
+const PROVIDER_COLORS: Record<string, string> = {
+  OpenAI: "#74aa9c", Anthropic: "#d4a27f", Meta: "#60a5fa",
+  Mistral: "#ff7000", Google: "#4285f4", DeepSeek: "#7c6af7",
+  Microsoft: "#0078d4", xAI: "#e7e7e7", Cohere: "#39d3c3", AI21: "#ff6b6b",
+};
+const PROVIDER_BG: Record<string, string> = {
+  OpenAI: "rgba(116,170,156,0.12)", Anthropic: "rgba(212,162,127,0.12)", Meta: "rgba(96,165,250,0.12)",
+  Mistral: "rgba(255,112,0,0.12)", Google: "rgba(66,133,244,0.12)", DeepSeek: "rgba(124,106,247,0.12)",
+  Microsoft: "rgba(0,120,212,0.12)", xAI: "rgba(231,231,231,0.08)", Cohere: "rgba(57,211,195,0.12)", AI21: "rgba(255,107,107,0.12)",
+};
+
+interface FetchedModel {
+  id: string; name: string; publisher: string; tier?: string; is_default?: boolean;
+}
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
 function stripToolCallJson(text: string): string {
   return text.replace(/^\s*\{[^}]*"query"[^}]*\}\s*\n?/, "").trimStart();
 }
@@ -22,13 +38,13 @@ function inlineFormat(text: string): React.ReactNode {
     <>
       {parts.map((part, j) => {
         if (part.startsWith("**") && part.endsWith("**"))
-          return <strong key={j} className="font-semibold" style={{ color: "var(--text)" }}>{part.slice(2, -2)}</strong>;
+          return <strong key={j} className="font-semibold text-white/90">{part.slice(2, -2)}</strong>;
         if (part.startsWith("*") && part.endsWith("*"))
-          return <em key={j}>{part.slice(1, -1)}</em>;
+          return <em key={j} className="italic">{part.slice(1, -1)}</em>;
         if (part.startsWith("~~") && part.endsWith("~~"))
           return <s key={j}>{part.slice(2, -2)}</s>;
         if (part.startsWith("`") && part.endsWith("`"))
-          return <code key={j} className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ background: "rgba(255,255,255,0.08)", color: "var(--accent)" }}>{part.slice(1, -1)}</code>;
+          return <code key={j} className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ background: "rgba(255,255,255,0.08)", color: "#93c5fd" }}>{part.slice(1, -1)}</code>;
         const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (linkMatch) {
           const [, label, href] = linkMatch;
@@ -36,9 +52,7 @@ function inlineFormat(text: string): React.ReactNode {
           return (
             <a key={j} href={href} target={isInternal ? "_self" : "_blank"} rel={isInternal ? undefined : "noopener noreferrer"}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: "rgba(99,179,237,0.12)", color: "var(--accent)", border: "1px solid rgba(99,179,237,0.25)", textDecoration: "none" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.22)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.12)"; }}>
+              style={{ background: "rgba(99,179,237,0.12)", color: "#93c5fd", border: "1px solid rgba(99,179,237,0.25)", textDecoration: "none" }}>
               {label}
             </a>
           );
@@ -54,17 +68,17 @@ function renderTable(lines: string[], keyBase: number): React.ReactNode {
   if (rows.length === 0) return null;
   const [header, ...body] = rows;
   return (
-    <div key={"table-" + keyBase} className="my-2 overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border)" }}>
+    <div key={"table-" + keyBase} className="my-3 overflow-x-auto rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr style={{ background: "rgba(99,179,237,0.08)" }}>
-            {header.map((cell, j) => <th key={j} className="px-3 py-2 text-left font-semibold border-b whitespace-nowrap" style={{ borderColor: "var(--border)", color: "var(--text)" }}>{inlineFormat(cell)}</th>)}
+          <tr style={{ background: "rgba(255,255,255,0.04)" }}>
+            {header.map((cell, j) => <th key={j} className="px-3 py-2 text-left font-semibold border-b whitespace-nowrap" style={{ borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.9)" }}>{inlineFormat(cell)}</th>)}
           </tr>
         </thead>
         <tbody>
           {body.map((row, ri) => (
             <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-              {row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.05)", color: "var(--text-secondary)" }}>{inlineFormat(cell)}</td>)}
+              {row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.75)" }}>{inlineFormat(cell)}</td>)}
             </tr>
           ))}
         </tbody>
@@ -79,75 +93,74 @@ function renderMarkdown(text: string): React.ReactNode[] {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    if (line.trim() === "") { result.push(<div key={i} className="h-2" />); i++; continue; }
-    if (line.startsWith("### ")) { result.push(<p key={i} className="font-semibold text-xs mt-3 mb-1 uppercase tracking-wide" style={{ color: "var(--accent)" }}>{inlineFormat(line.slice(4))}</p>); i++; continue; }
-    if (line.startsWith("## "))  { result.push(<p key={i} className="font-bold text-sm mt-3 mb-1" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(3))}</p>); i++; continue; }
-    if (line.startsWith("# "))   { result.push(<p key={i} className="font-bold text-base mt-3 mb-1.5" style={{ color: "var(--text)" }}>{inlineFormat(line.slice(2))}</p>); i++; continue; }
-    if (line.trim().startsWith("|")) {
-      const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("|")) { tableLines.push(lines[i]); i++; }
-      result.push(renderTable(tableLines, result.length)); continue;
-    }
-    if (line.match(/^[-*•] /)) {
-      const items: React.ReactNode[] = [];
-      while (i < lines.length && lines[i].match(/^[-*•] /)) { items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].slice(2))}</li>); i++; }
-      result.push(<ul key={"ul-" + i} className="list-disc list-inside space-y-0.5 my-1.5 text-sm">{items}</ul>); continue;
-    }
-    if (line.match(/^\d+\. /)) {
-      const items: React.ReactNode[] = [];
-      while (i < lines.length && lines[i].match(/^\d+\. /)) { items.push(<li key={i} className="ml-1 leading-snug">{inlineFormat(lines[i].replace(/^\d+\. /, ""))}</li>); i++; }
-      result.push(<ol key={"ol-" + i} className="list-decimal list-inside space-y-0.5 my-1.5 text-sm">{items}</ol>); continue;
-    }
-    if (line.startsWith("```")) {
-      const codeLines: string[] = [];
+    // Table detection
+    if (line.includes("|") && i + 1 < lines.length && /^[|\s:-]+$/.test(lines[i + 1])) {
+      const tableLines: string[] = [line];
       i++;
+      while (i < lines.length && lines[i].includes("|")) { tableLines.push(lines[i]); i++; }
+      result.push(renderTable(tableLines, i));
+      continue;
+    }
+    // Code block
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      i++;
+      const codeLines: string[] = [];
       while (i < lines.length && !lines[i].startsWith("```")) { codeLines.push(lines[i]); i++; }
-      result.push(<pre key={"code-" + i} className="rounded-lg px-3 py-2 my-2 text-xs overflow-x-auto" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text)", border: "1px solid var(--border)" }}><code>{codeLines.join("\n")}</code></pre>);
-      i++; continue;
-    }
-    if (line.match(/^---+$/) || line.match(/^\*\*\*+$/)) { result.push(<hr key={i} className="my-2 border-0 border-t" style={{ borderColor: "var(--border)" }} />); i++; continue; }
-    const soloLink = line.match(/^\[([^\]]+)\](\/quiz\/\d+)$/);
-    if (soloLink) {
-      const [, label, href] = soloLink;
+      i++;
       result.push(
-        <a key={i} href={href}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl mt-2 mb-1 text-sm font-semibold transition-all"
-          style={{ background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.2)", color: "var(--accent)", textDecoration: "none" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.16)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,179,237,0.08)"; }}>
-          <span className="flex-1">{label}</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
+        <div key={"code-" + i} className="my-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          {lang && <div className="px-3 py-1 text-[10px] font-mono border-b" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>{lang}</div>}
+          <pre className="px-4 py-3 text-xs font-mono overflow-x-auto leading-relaxed" style={{ background: "rgba(0,0,0,0.3)", color: "#e2e8f0" }}>{codeLines.join("\n")}</pre>
+        </div>
       );
-      i++; continue;
+      continue;
     }
-    result.push(<p key={i} className="text-sm leading-relaxed">{inlineFormat(line)}</p>);
+    // Headings
+    const h3 = line.match(/^###\s+(.*)/); if (h3) { result.push(<h3 key={"h3-" + i} className="text-sm font-bold mt-4 mb-1.5 text-white/90">{inlineFormat(h3[1])}</h3>); i++; continue; }
+    const h2 = line.match(/^##\s+(.*)/); if (h2) { result.push(<h2 key={"h2-" + i} className="text-base font-bold mt-5 mb-2 text-white">{inlineFormat(h2[1])}</h2>); i++; continue; }
+    const h1 = line.match(/^#\s+(.*)/); if (h1) { result.push(<h1 key={"h1-" + i} className="text-lg font-bold mt-5 mb-2 text-white">{inlineFormat(h1[1])}</h1>); i++; continue; }
+    // Blockquote
+    const bq = line.match(/^>\s+(.*)/);
+    if (bq) { result.push(<blockquote key={"bq-" + i} className="pl-3 border-l-2 my-1 italic text-sm" style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.5)" }}>{inlineFormat(bq[1])}</blockquote>); i++; continue; }
+    // Unordered list
+    if (/^[\-*]\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[\-*]\s/.test(lines[i])) { items.push(lines[i].slice(2)); i++; }
+      result.push(<ul key={"ul-" + i} className="space-y-1 my-1.5 pl-1">{items.map((item, idx) => <li key={idx} className="flex gap-2 text-sm"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgba(255,255,255,0.35)" }} /><span style={{ color: "rgba(255,255,255,0.82)" }}>{inlineFormat(item)}</span></li>)}</ul>);
+      continue;
+    }
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      let num = 1;
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s/, "")); i++; }
+      result.push(<ol key={"ol-" + i} className="space-y-1 my-1.5 pl-1">{items.map((item, idx) => <li key={idx} className="flex gap-2 text-sm"><span className="flex-shrink-0 text-xs font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.3)", minWidth: "1.2rem" }}>{idx + 1}.</span><span style={{ color: "rgba(255,255,255,0.82)" }}>{inlineFormat(item)}</span></li>)}</ol>);
+      continue;
+    }
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) { result.push(<hr key={"hr-" + i} className="my-3" style={{ borderColor: "rgba(255,255,255,0.08)" }} />); i++; continue; }
+    // Empty line
+    if (line.trim() === "") { result.push(<div key={"br-" + i} className="h-2" />); i++; continue; }
+    // Paragraph
+    result.push(<p key={"p-" + i} className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>{inlineFormat(line)}</p>);
     i++;
   }
   return result;
 }
 
-// ── Provider color map ───────────────────────────────────────────────────────
-const PROVIDER_COLORS: Record<string, string> = {
-  OpenAI: "#10b981", Anthropic: "#d4a27f", Google: "#4285f4",
-  Meta: "#0866ff", Mistral: "#ff7000", Microsoft: "#00a4ef",
-  Cohere: "#39594D", AI21: "#7c3aed", xAI: "#1da1f2", DeepSeek: "#3b82f6",
-};
-
-// ── Avatars ──────────────────────────────────────────────────────────────────
-function AIAvatar({ size = 7 }: { size?: number }) {
-  const px = size * 4;
+// ── AI Avatar ─────────────────────────────────────────────────────────────────
+function AIAvatar({ size = 8 }: { size?: number }) {
+  const dim = `${size * 4}px`;
   return (
-    <div className={"w-" + size + " h-" + size + " rounded-full flex-shrink-0 overflow-hidden"}
-      style={{ border: "1px solid rgba(99,179,237,0.3)", boxShadow: "0 0 12px rgba(99,179,237,0.15)" }}>
-      <Image src="/ai-avatar.jpg" alt="ZeroQCM AI" width={px} height={px} className="w-full h-full object-cover" unoptimized />
+    <div className="rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+      style={{ width: dim, height: dim, background: "linear-gradient(135deg, rgba(99,179,237,0.15) 0%, rgba(168,85,247,0.15) 100%)", border: "1px solid rgba(255,255,255,0.12)" }}>
+      <Image src="/logo.png" alt="ZeroQCM AI" width={size * 3} height={size * 3} className="object-contain opacity-90" />
     </div>
   );
 }
 
-// ── Model picker ─────────────────────────────────────────────────────────────
-interface FetchedModel { id: string; name: string; publisher: string; tier?: string; is_default?: boolean; }
-
+// ── Model Picker ──────────────────────────────────────────────────────────────
 function ModelPicker({ models, selected, onSelect, loading }: {
   models: FetchedModel[]; selected: string; onSelect: (id: string) => void; loading: boolean;
 }) {
@@ -164,8 +177,9 @@ function ModelPicker({ models, selected, onSelect, loading }: {
 
   useEffect(() => { if (open) setTimeout(() => searchRef.current?.focus(), 60); }, [open]);
 
-  const current = models.find(m => m.id === selected) ?? { id: selected, name: selected, publisher: "AI" };
+  const current = models.find(m => m.id === selected) ?? { id: selected, name: selected, publisher: "AI", tier: "standard" };
   const providerColor = PROVIDER_COLORS[current.publisher] ?? "rgba(255,255,255,0.4)";
+  const providerBg = PROVIDER_BG[current.publisher] ?? "rgba(255,255,255,0.06)";
 
   const grouped = useMemo(() => {
     const q = search.toLowerCase();
@@ -178,18 +192,20 @@ function ModelPicker({ models, selected, onSelect, loading }: {
     return map;
   }, [models, search]);
 
+  const enabledCount = models.filter(m => true).length;
+
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(v => !v)} disabled={loading}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95"
         style={{
-          background: open ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${open ? providerColor + "50" : "rgba(255,255,255,0.1)"}`,
+          background: open ? providerBg : "rgba(255,255,255,0.05)",
+          border: `1px solid ${open ? providerColor + "40" : "rgba(255,255,255,0.1)"}`,
           color: "rgba(255,255,255,0.85)",
-          boxShadow: open ? `0 0 12px ${providerColor}18` : "none",
+          boxShadow: open ? `0 0 0 3px ${providerColor}10` : "none",
         }}>
         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: providerColor }} />
-        <span className="max-w-[120px] truncate">{loading ? "…" : current.name}</span>
+        <span className="max-w-[140px] truncate">{loading ? "…" : current.name}</span>
         <ChevronDown className={cn("w-3 h-3 flex-shrink-0 transition-transform duration-150", open && "rotate-180")}
           style={{ color: "rgba(255,255,255,0.4)" }} />
       </button>
@@ -197,57 +213,56 @@ function ModelPicker({ models, selected, onSelect, loading }: {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 4 }}
+            initial={{ opacity: 0, scale: 0.97, y: 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute left-0 bottom-full mb-2 w-64 rounded-2xl overflow-hidden z-[70]"
-            style={{ background: "rgba(18,18,18,0.98)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)" }}>
+            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            transition={{ duration: 0.1 }}
+            className="absolute left-0 bottom-full mb-2 w-72 rounded-2xl overflow-hidden z-[70]"
+            style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)" }}>
 
             {/* Search */}
             <div className="p-2 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <Search className="w-3 h-3 flex-shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
                 <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search models…" className="flex-1 bg-transparent text-xs outline-none"
-                  style={{ color: "rgba(255,255,255,0.85)", caretColor: "var(--accent)" }} />
+                  placeholder="Rechercher un modèle…" className="flex-1 bg-transparent text-xs outline-none"
+                  style={{ color: "rgba(255,255,255,0.85)", caretColor: "#93c5fd" }} />
                 {search && <button onClick={() => setSearch("")}><X className="w-3 h-3" style={{ color: "rgba(255,255,255,0.3)" }} /></button>}
               </div>
             </div>
 
             {/* Grouped list */}
-            <div className="overflow-y-auto" style={{ maxHeight: "280px" }}>
+            <div className="overflow-y-auto" style={{ maxHeight: "320px" }}>
               {loading ? (
-                <div className="px-4 py-6 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Loading models…</div>
+                <div className="px-4 py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Chargement…</div>
               ) : grouped.size === 0 ? (
-                <div className="px-4 py-6 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No models found</div>
+                <div className="px-4 py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Aucun modèle trouvé</div>
               ) : (
                 Array.from(grouped.entries()).map(([provider, ms]) => (
                   <div key={provider}>
-                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest flex items-center gap-1.5"
+                    <div className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest flex items-center gap-1.5"
                       style={{ color: PROVIDER_COLORS[provider] ?? "rgba(255,255,255,0.3)" }}>
                       <div className="w-1.5 h-1.5 rounded-full" style={{ background: PROVIDER_COLORS[provider] ?? "rgba(255,255,255,0.3)" }} />
                       {provider}
                     </div>
                     {ms.map(m => (
                       <button key={m.id} onClick={() => { onSelect(m.id); setOpen(false); setSearch(""); }}
-                        className="w-full text-left px-3 py-2 flex items-center justify-between transition-all group"
-                        style={{ background: selected === m.id ? "rgba(99,179,237,0.08)" : "transparent" }}
+                        className="w-full text-left px-3 py-2 flex items-center justify-between transition-colors group"
+                        style={{ background: selected === m.id ? PROVIDER_BG[provider] ?? "rgba(255,255,255,0.04)" : "transparent" }}
                         onMouseEnter={e => { if (selected !== m.id) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}
                         onMouseLeave={e => { if (selected !== m.id) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
-                        <div>
-                          <div className="text-xs font-medium" style={{ color: selected === m.id ? "var(--accent)" : "rgba(255,255,255,0.85)" }}>{m.name}</div>
-                          {m.tier && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold mt-0.5 inline-block"
-                              style={{
-                                background: m.tier === "premium" ? "rgba(168,85,247,0.12)" : "rgba(34,197,94,0.1)",
-                                color: m.tier === "premium" ? "#a78bfa" : "#4ade80",
-                              }}>
-                              {m.tier}
-                            </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium" style={{ color: selected === m.id ? PROVIDER_COLORS[provider] ?? "#93c5fd" : "rgba(255,255,255,0.85)" }}>{m.name}</span>
+                          {m.tier === "premium" && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(168,85,247,0.12)", color: "#c084fc" }}>PRO</span>
+                          )}
+                          {m.is_default && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80" }}>défaut</span>
                           )}
                         </div>
-                        {selected === m.id && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--accent)" }} />}
+                        {selected === m.id && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: PROVIDER_COLORS[provider] ?? "#93c5fd" }} />}
                       </button>
                     ))}
                   </div>
@@ -255,8 +270,9 @@ function ModelPicker({ models, selected, onSelect, loading }: {
               )}
             </div>
 
-            <div className="px-3 py-2 border-t text-[10px]" style={{ borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)" }}>
-              {models.length} models · Admin-curated
+            <div className="px-3 py-2 border-t text-[10px] flex items-center gap-1" style={{ borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)" }}>
+              <Sparkles className="w-2.5 h-2.5" />
+              {enabledCount} modèles disponibles · Copilot API
             </div>
           </motion.div>
         )}
@@ -265,19 +281,20 @@ function ModelPicker({ models, selected, onSelect, loading }: {
   );
 }
 
-// ── Copy button ──────────────────────────────────────────────────────────────
+// ── Copy button ───────────────────────────────────────────────────────────────
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
       className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+      title="Copier"
       style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
       {copied ? <Check className="w-3 h-3" style={{ color: "#4ade80" }} /> : <Copy className="w-3 h-3" style={{ color: "rgba(255,255,255,0.4)" }} />}
     </button>
   );
 }
 
-// ── Suggestion chips ─────────────────────────────────────────────────────────
+// ── Suggestion chips ──────────────────────────────────────────────────────────
 const SUGGESTIONS = [
   { icon: "💊", text: "Mécanisme d'action des IEC" },
   { icon: "❓", text: "Donne-moi 3 QCM sur l'HTA" },
@@ -287,7 +304,21 @@ const SUGGESTIONS = [
   { icon: "🩸", text: "Quiz: hémostase primaire" },
 ];
 
-// ── DB persistence helpers (preserved from original) ─────────────────────────
+// ── Typing dots ───────────────────────────────────────────────────────────────
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-1 py-1">
+      {[0, 1, 2].map(k => (
+        <motion.div key={k} className="w-1.5 h-1.5 rounded-full"
+          style={{ background: "rgba(255,255,255,0.4)" }}
+          animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1, repeat: Infinity, delay: k * 0.16, ease: "easeInOut" }} />
+      ))}
+    </div>
+  );
+}
+
+// ── DB batch ──────────────────────────────────────────────────────────────────
 const DB_BATCH = 12;
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -302,11 +333,12 @@ export default function ChatWithAIPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const savedMsgIds = useRef(new Set<string>());
   const loadedMsgCountRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch models from admin-controlled /api/gh-models ──
+  // ── Fetch admin-curated models ──
   useEffect(() => {
-    const CACHE_KEY = "zqcm-models-v2";
-    const CACHE_TTL = 5 * 60 * 1000; // 5 min (shorter TTL so admin changes reflect fast)
+    const CACHE_KEY = "zqcm-models-v3";
+    const CACHE_TTL = 3 * 60 * 1000;
     try {
       const raw = localStorage.getItem(CACHE_KEY);
       if (raw) {
@@ -330,7 +362,7 @@ export default function ChatWithAIPage() {
       .finally(() => setLoadingModels(false));
   }, []);
 
-  // ── Load saved model from profile ──
+  // ── Sync model from profile/default ──
   useEffect(() => {
     const fromProfile = (profile?.preferences as Record<string, string> | undefined)?.ai_model;
     if (fromProfile) {
@@ -341,64 +373,75 @@ export default function ChatWithAIPage() {
     }
   }, [profile, fetchedModels]);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop } = useChat({
     api: "/api/chat",
     body: { model: selectedModel },
     onFinish: (msg) => {
       if (!user || savedMsgIds.current.has(msg.id)) return;
-      // Save AI message to DB
+      // persist AI message
     },
   });
 
   // ── Load chat history from DB ──
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from("chat_messages")
-        .select("id, role, content, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(DB_BATCH);
-      if (data && data.length > 0) {
-        const msgs: Message[] = data.map((r: any) => ({ id: r.id, role: r.role as "user" | "assistant", content: r.content }));
-        msgs.forEach(m => savedMsgIds.current.add(m.id));
-        loadedMsgCountRef.current = data.length;
-        setMessages(msgs);
-      }
-    })();
+    if (!user || loadedMsgCountRef.current > 0) return;
+    supabase
+      .from("chat_messages")
+      .select("id, role, content, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(60)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const loaded = data.map((r: any) => ({ id: r.id, role: r.role, content: r.content }));
+          setMessages(loaded);
+          loaded.forEach((m: any) => savedMsgIds.current.add(m.id));
+          loadedMsgCountRef.current = loaded.length;
+        }
+      });
   }, [user, setMessages]);
 
   // ── Auto-scroll ──
   useEffect(() => {
-    const el = messagesEndRef.current;
-    if (!el) return;
-    requestAnimationFrame(() => el.scrollIntoView({ behavior: messages.length <= 2 ? "instant" : "smooth" }));
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isLoading]);
 
-  // ── Save outgoing messages to DB ──
-  const handleSubmitWithSave = async (e: React.FormEvent) => {
-    const userMsg = input.trim();
-    handleSubmit(e);
-    setTimeout(() => { if (inputRef.current) { inputRef.current.style.height = "auto"; } }, 0);
-    if (!user || !userMsg) return;
-    const tempId = "user-" + Date.now();
-    savedMsgIds.current.add(tempId);
-    await supabase.from("chat_messages").insert({ user_id: user.id, role: "user", content: userMsg }).then(() => {});
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (input.trim() && !isLoading) handleSubmitWithSave(e as unknown as React.FormEvent);
-    }
-  };
-
+  // ── Textarea auto-resize ──
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange(e);
     e.target.style.height = "auto";
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
   };
+
+  // ── Cmd/Ctrl+Enter or Enter to send ──
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (input.trim() && !isLoading) {
+        handleSubmitWithSave(e as any);
+      }
+    }
+  };
+
+  // ── Submit + save user msg to DB ──
+  const handleSubmitWithSave = useCallback((e: React.FormEvent) => {
+    if (!input.trim() || isLoading) return;
+    const userContent = input.trim();
+    handleSubmit(e);
+    // Reset height
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.style.height = "auto";
+      }
+    }, 0);
+    if (!user) return;
+    const tempId = `tmp-${Date.now()}`;
+    supabase.from("chat_messages").insert({ user_id: user.id, role: "user", content: userContent }).then(({ data }) => {
+      if (data?.[0]?.id) savedMsgIds.current.add(data[0].id);
+    });
+  }, [input, isLoading, handleSubmit, user]);
 
   const handleClear = useCallback(() => {
     setMessages([]);
@@ -421,7 +464,7 @@ export default function ChatWithAIPage() {
       if (inputRef.current) {
         inputRef.current.focus();
         inputRef.current.style.height = "auto";
-        inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`;
+        inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 200)}px`;
       }
     }, 30);
   };
@@ -430,81 +473,89 @@ export default function ChatWithAIPage() {
   const canSend = input.trim().length > 0 && !isLoading;
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 5rem)" }}>
+    <div className="flex flex-col chat-root" style={{ height: "calc(100dvh - 5rem)" }}>
       <style>{`
         @media (min-width: 1024px) { .chat-root { height: 100dvh !important; } }
-        .chat-messages { scroll-behavior: smooth; }
-        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages { scroll-behavior: smooth; overscroll-behavior: contain; }
+        .chat-messages::-webkit-scrollbar { width: 3px; }
         .chat-messages::-webkit-scrollbar-track { background: transparent; }
-        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-        .chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
+        .chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.13); }
+        .msg-user:hover .msg-actions { opacity: 1; }
+        .msg-ai:hover .msg-actions { opacity: 1; }
+        textarea { -webkit-overflow-scrolling: touch; }
+        .send-btn { -webkit-tap-highlight-color: transparent; }
+        .suggestion-chip { -webkit-tap-highlight-color: transparent; }
       `}</style>
 
-      {/* ─ Header ───────────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "var(--bg)" }}>
+      {/* ─────────────────────── Header ─────────────────────── */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "var(--bg)", backdropFilter: "blur(12px)" }}>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <AIAvatar size={8} />
-          <div>
-            <h1 className="text-sm font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.95)" }}>ZeroQCM AI</h1>
-            <p className="text-[11px] leading-tight" style={{ color: "rgba(255,255,255,0.3)" }}>Tuteur médical</p>
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold leading-tight text-white/95">ZeroQCM AI</h1>
+            <p className="text-[11px] leading-tight" style={{ color: "rgba(255,255,255,0.3)" }}>Tuteur médical · {fetchedModels.length} modèles</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {!isEmpty && (
             <button onClick={handleClear}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.08)"}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
+              title="Effacer la conversation"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.1)"}
               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"}>
-              <Trash2 className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.4)" }} />
+              <Trash2 className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.45)" }} />
             </button>
           )}
           <button onClick={() => { setMessages([]); savedMsgIds.current.clear(); loadedMsgCountRef.current = 0; }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <SquarePen className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.4)" }} />
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
+            title="Nouvelle conversation"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"}
+            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"}>
+            <SquarePen className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.45)" }} />
           </button>
         </div>
       </div>
 
-      {/* ─ Messages area ────────────────────────────────────────────────────── */}
-      <div className="chat-messages flex-1 overflow-y-auto overscroll-contain" style={{ background: "var(--bg)" }}>
-        <div className="max-w-3xl mx-auto px-3 md:px-6">
+      {/* ─────────────────────── Messages ─────────────────────── */}
+      <div className="chat-messages flex-1 overflow-y-auto" ref={containerRef} style={{ background: "var(--bg)" }}>
+        <div className="max-w-2xl mx-auto px-4 md:px-6 pb-4">
 
-          {/* Empty state */}
+          {/* ── Empty state ── */}
           <AnimatePresence>
             {isEmpty && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center gap-6 pt-12 pb-4">
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center pt-12 pb-8 gap-8">
 
-                {/* Avatar glow */}
+                {/* Glow avatar */}
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full blur-2xl opacity-30" style={{ background: "radial-gradient(circle, rgba(99,179,237,0.6) 0%, transparent 70%)", transform: "scale(1.8)" }} />
-                  <AIAvatar size={16} />
+                  <div className="absolute inset-0 rounded-full opacity-20 blur-3xl"
+                    style={{ background: "radial-gradient(circle, #60a5fa, #a78bfa)", transform: "scale(2.5)" }} />
+                  <AIAvatar size={20} />
                 </div>
 
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: "rgba(255,255,255,0.95)" }}>Comment puis-je t&apos;aider ?</h2>
-                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-                    Mécanismes · QCM · Calculs · Pièges · Révision
-                  </p>
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-semibold text-white/95">Comment puis-je t&apos;aider ?</h2>
+                  <p className="text-sm text-white/35">Mécanismes · QCM · Calculs · Pièges · Révision</p>
                 </div>
 
-                {/* Suggestions */}
-                <div className="grid grid-cols-2 gap-2 w-full max-w-md">
+                {/* Suggestion chips */}
+                <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
                   {SUGGESTIONS.map((s, idx) => (
-                    <motion.button key={idx}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 * idx, duration: 0.2 }}
+                    <motion.button key={idx} className="suggestion-chip text-left px-3.5 py-3 rounded-2xl text-xs leading-snug transition-all"
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * idx, duration: 0.25 }}
                       onClick={() => handleSuggestion(s.text)}
-                      className="text-left px-3.5 py-3 rounded-2xl text-xs leading-snug transition-all group"
                       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(99,179,237,0.3)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,179,237,0.05)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)"; }}>
-                      <span className="mr-1.5">{s.icon}</span>{s.text}
+                      onMouseEnter={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }); }}
+                      onMouseLeave={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }); }}>
+                      <span className="mr-1.5 text-sm">{s.icon}</span>{s.text}
                     </motion.button>
                   ))}
                 </div>
@@ -512,58 +563,60 @@ export default function ChatWithAIPage() {
             )}
           </AnimatePresence>
 
-          {/* Messages */}
-          <div className="py-4 space-y-6">
+          {/* ── Messages ── */}
+          <div className="space-y-4 pt-2">
             <AnimatePresence initial={false}>
-              {messages.map((msg) => {
+              {messages.map((msg, i) => {
                 const isUser = msg.role === "user";
                 const inv = (msg as Message & { toolInvocations?: {toolName: string; args?: {query?: string}}[] }).toolInvocations;
                 const qcmCall = inv?.find(t => t.toolName === "searchQCM");
+                const isLast = i === messages.length - 1;
 
                 return (
                   <motion.div key={msg.id}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
-                    className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
+                    className={cn("flex gap-3", isUser ? "flex-row-reverse msg-user" : "flex-row msg-ai")}>
 
                     {/* Avatar */}
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="flex-shrink-0 mt-0.5">
                       {isUser
-                        ? <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>
+                        ? <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold select-none"
+                            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>
                             {user?.email?.[0]?.toUpperCase() ?? "U"}
                           </div>
                         : <AIAvatar size={7} />}
                     </div>
 
-                    {/* Bubble */}
-                    <div className={cn("flex flex-col gap-1.5 max-w-[82%] md:max-w-[75%]", isUser ? "items-end" : "items-start")}>
-                      {/* Tool call badge */}
+                    <div className={cn("flex flex-col gap-1 max-w-[85%] md:max-w-[78%]", isUser ? "items-end" : "items-start")}>
+                      {/* Tool badge */}
                       {!isUser && qcmCall && (
                         <div className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs w-fit"
-                          style={{ background: "rgba(99,179,237,0.07)", border: "1px solid rgba(99,179,237,0.15)", color: "rgba(99,179,237,0.8)" }}>
+                          style={{ background: "rgba(99,179,237,0.06)", border: "1px solid rgba(99,179,237,0.12)", color: "rgba(99,179,237,0.7)" }}>
                           <Search className="w-3 h-3" />
                           <span>Recherche{qcmCall.args?.query ? ` — ${qcmCall.args.query}` : "…"}</span>
                         </div>
                       )}
 
-                      {/* Message content */}
-                      <div className="relative group">
+                      {/* Message bubble */}
+                      <div className="relative group w-full">
                         {isUser ? (
-                          <div className="px-4 py-2.5 rounded-3xl rounded-tr-md text-sm leading-relaxed whitespace-pre-wrap"
-                            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.9)" }}>
+                          /* User bubble — dark pill */
+                          <div className="px-4 py-2.5 rounded-3xl rounded-tr-sm text-sm leading-relaxed whitespace-pre-wrap select-text"
+                            style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.92)" }}>
                             {msg.content}
                           </div>
                         ) : (
-                          <div className="px-4 py-3 rounded-3xl rounded-tl-md text-sm"
-                            style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.88)" }}>
-                            <div className="space-y-0.5 overflow-x-auto">
+                          /* AI response — flat, no bubble */
+                          <div className="text-sm py-1 select-text">
+                            <div className="space-y-0.5">
                               {renderMarkdown(stripToolCallJson(msg.content))}
                             </div>
                           </div>
                         )}
-                        {/* Actions on hover */}
-                        <div className={cn("absolute -bottom-6 flex items-center gap-1", isUser ? "right-0" : "left-0")}>
+
+                        {/* Action row */}
+                        <div className={cn("msg-actions absolute -bottom-6 flex items-center gap-1 opacity-0 transition-opacity", isUser ? "right-0" : "left-0")}>
                           <CopyButton text={msg.content} />
                         </div>
                       </div>
@@ -577,17 +630,13 @@ export default function ChatWithAIPage() {
             <AnimatePresence>
               {isLoading && (
                 <motion.div key="typing"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   className="flex gap-3 items-start">
                   <AIAvatar size={7} />
-                  <div className="px-4 py-3.5 rounded-3xl rounded-tl-md flex items-center gap-1"
-                    style={{ background: "rgba(255,255,255,0.03)" }}>
-                    {[0, 1, 2].map(k => (
-                      <motion.div key={k} className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.3)" }}
-                        animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
-                        transition={{ duration: 1.2, repeat: Infinity, delay: k * 0.18 }} />
-                    ))}
+                  <div className="px-3 py-2.5 rounded-2xl rounded-tl-sm"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <TypingDots />
                   </div>
                 </motion.div>
               )}
@@ -596,66 +645,86 @@ export default function ChatWithAIPage() {
             {/* Error */}
             <AnimatePresence>
               {error && (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm"
-                  style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171" }}>
+                  style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)", color: "#f87171" }}>
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  Erreur de connexion. Réessaie dans un moment.
+                  Erreur de connexion. Vérifie tes tokens AI dans l&apos;admin.
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div ref={messagesEndRef} className="h-2" />
+            <div ref={messagesEndRef} className="h-8" />
           </div>
         </div>
       </div>
 
-      {/* ─ Input area ───────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-3 pb-3 pt-2" style={{ background: "var(--bg)" }}>
-        <div className="max-w-3xl mx-auto">
+      {/* ─────────────────────── Input ─────────────────────── */}
+      <div className="flex-shrink-0 px-3 pb-safe pb-3 pt-2" style={{ background: "var(--bg)" }}>
+        <div className="max-w-2xl mx-auto">
           <form onSubmit={handleSubmitWithSave}>
-            {/* Input container — the "pill" */}
-            <div className="rounded-3xl transition-all duration-150"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: `1px solid ${inputFocused || canSend ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.09)"}`,
-                boxShadow: inputFocused ? "0 0 0 3px rgba(99,179,237,0.08), 0 8px 32px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.2)",
-              }}>
+            {/* Input container */}
+            <motion.div
+              animate={{
+                borderColor: inputFocused ? "rgba(255,255,255,0.2)" : canSend ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
+                boxShadow: inputFocused
+                  ? "0 0 0 4px rgba(99,179,237,0.06), 0 8px 32px rgba(0,0,0,0.4)"
+                  : "0 2px 16px rgba(0,0,0,0.25)",
+              }}
+              transition={{ duration: 0.15 }}
+              className="rounded-3xl overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
 
               {/* Textarea */}
-              <textarea ref={inputRef} value={input} onChange={handleTextareaChange} onKeyDown={handleKeyDown}
-                onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}
-                placeholder="Pose ta question médicale…" rows={1} disabled={isLoading}
-                className="w-full bg-transparent resize-none outline-none text-sm px-4 pt-3.5 pb-2"
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={handleTextareaChange}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                placeholder="Pose ta question médicale…"
+                rows={1}
+                disabled={isLoading}
+                className="w-full bg-transparent resize-none outline-none text-sm px-4 pt-3.5 pb-2 placeholder:text-white/25"
                 style={{
-                  color: "rgba(255,255,255,0.9)",
-                  caretColor: "var(--accent)",
-                  minHeight: "48px",
-                  maxHeight: "180px",
-                  lineHeight: "1.5",
-                }} />
+                  color: "rgba(255,255,255,0.92)",
+                  caretColor: "#93c5fd",
+                  minHeight: "52px",
+                  maxHeight: "200px",
+                  lineHeight: "1.55",
+                  WebkitAppearance: "none",
+                }}
+              />
 
-              {/* Bottom row: model picker + send */}
-              <div className="flex items-center justify-between px-3 pb-2.5">
+              {/* Bottom row */}
+              <div className="flex items-center justify-between px-3 pb-3 gap-2">
+                {/* Model picker */}
                 <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} />
 
-                <button type="submit" disabled={!canSend}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 flex-shrink-0"
+                {/* Send / Stop button */}
+                <motion.button
+                  type={isLoading ? "button" : "submit"}
+                  onClick={isLoading ? () => stop() : undefined}
+                  disabled={!isLoading && !canSend}
+                  className="send-btn w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                  animate={{
+                    background: isLoading ? "rgba(239,68,68,0.15)" : canSend ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.06)",
+                    scale: canSend || isLoading ? 1 : 0.88,
+                  }}
+                  transition={{ duration: 0.12 }}
                   style={{
-                    background: canSend ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.06)",
-                    boxShadow: canSend ? "0 2px 12px rgba(255,255,255,0.2)" : "none",
-                    transform: canSend ? "scale(1)" : "scale(0.9)",
+                    border: isLoading ? "1px solid rgba(239,68,68,0.3)" : "none",
                   }}>
                   {isLoading
-                    ? <motion.div className="w-3.5 h-3.5 rounded-sm" style={{ background: "#000" }}
-                        animate={{ scale: [1, 0.7, 1] }} transition={{ duration: 1, repeat: Infinity }} />
-                    : <Send className="w-3.5 h-3.5" style={{ color: canSend ? "#000" : "rgba(255,255,255,0.3)" }} />}
-                </button>
+                    ? <Square className="w-3.5 h-3.5" style={{ color: "#f87171" }} />
+                    : <ArrowUp className="w-4 h-4" style={{ color: canSend ? "#000" : "rgba(255,255,255,0.25)" }} />}
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
-            <p className="text-center text-[10px] mt-1.5" style={{ color: "rgba(255,255,255,0.2)" }}>
-              Enter envoyer · Shift+Enter nouvelle ligne
+            <p className="text-center text-[10px] mt-2 opacity-0 pointer-events-none" style={{ color: "rgba(255,255,255,0.2)" }}>
+              Enter · envoyer · Shift+Enter · nouvelle ligne
             </p>
           </form>
         </div>

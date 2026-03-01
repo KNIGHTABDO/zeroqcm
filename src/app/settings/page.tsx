@@ -14,6 +14,7 @@ interface GhModel {
   publisher: string;
   tier?: string;
   is_default?: boolean;
+  is_default?: boolean;
 }
 
 function modelLabel(id: string): string {
@@ -277,7 +278,14 @@ export default function SettingsPage() {
                               {m.name || modelLabel(m.id)}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              {m.publisher && <span className="text-xs" style={{ color: "var(--text-muted)" }}>{m.publisher}</span>}
+                              {m.publisher && (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PROVIDER_COLORS[m.publisher] ?? "rgba(255,255,255,0.3)" }} />
+                                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>{m.publisher}</span>
+                                  {m.tier === "premium" && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.12)", color: "#c084fc" }}>PRO</span>}
+                                  {(m as GhModel & { is_default?: boolean }).is_default && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80" }}>défaut</span>}
+                                </div>
+                              )}
                               {(m as GhModel & { supports_tools?: boolean }).supports_tools && <span className="text-[10px] px-1 rounded" style={{ background: "rgba(99,179,237,0.1)", color: "var(--accent)" }}>tools</span>}
                               {(m as GhModel & { supports_vision?: boolean }).supports_vision && <span className="text-[10px] px-1 rounded" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7" }}>vision</span>}
                             </div>
@@ -299,8 +307,7 @@ export default function SettingsPage() {
               )}
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Alimenté par{" "}
-                <a href="https://github.com/marketplace/models" target="_blank" rel="noopener noreferrer"
-                  className="underline underline-offset-2" style={{ color: "var(--accent)" }}>GitHub Models</a>
+                <span style={{ color: "var(--accent)" }}>Copilot API</span>
                 {" "}— gratuit, aucune clé requise.
               </p>
             </div>
