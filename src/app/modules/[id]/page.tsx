@@ -4,7 +4,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ClipboardList, Dumbbell, ArrowLeft, Clock, Search, Target } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ActivityCardSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
