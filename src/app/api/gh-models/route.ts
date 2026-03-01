@@ -98,14 +98,14 @@ export async function GET() {
         const json = await res.json();
         return (json.data ?? json) as CopilotModel[];
       })(),
-      sb.from("ai_models_config").select("id, is_enabled, is_default, sort_order, custom_label"),
+      sb.from("ai_models_config").select("id, is_enabled, is_default, sort_order, custom_label, premium_multiplier"),
     ]);
 
     if (copilotResult.status === "rejected") {
       // No token configured yet — fall through to DB list
-      const { data: dbModels } = await sb.from("ai_models_config").select("id, label, provider, tier, is_enabled, is_default, sort_order").eq("is_enabled", true).order("sort_order");
+      const { data: dbModels } = await sb.from("ai_models_config").select("id, label, provider, tier, is_enabled, is_default, sort_order, premium_multiplier").eq("is_enabled", true).order("sort_order");
       if (dbModels && dbModels.length > 0) {
-        return NextResponse.json(dbModels.map(m => ({ id: m.id, name: m.label ?? m.id, publisher: m.provider ?? inferProvider(m.id), tier: m.tier ?? "standard", is_default: m.is_default ?? false })));
+        return NextResponse.json(dbModels.map(m => ({ id: m.id, name: m.label ?? m.id, publisher: m.provider ?? inferProvider(m.id), tier: m.tier ?? "standard", is_default: m.is_default ?? false, premium_multiplier: m.premium_multiplier ?? 0 })));
       }
       return NextResponse.json(FALLBACK);
     }
@@ -142,6 +142,7 @@ export async function GET() {
           tier,
           is_default: isDefault,
           is_enabled: isEnabled,
+          premium_multiplier: (ov?.premium_multiplier ?? 0) as number,
           supports_vision: m.capabilities?.supports?.vision ?? false,
           supports_tools: m.capabilities?.supports?.tool_calls ?? false,
           max_tokens: m.capabilities?.limits?.max_context_window_tokens,

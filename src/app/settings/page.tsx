@@ -128,8 +128,8 @@ export default function SettingsPage() {
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
-    const s = (profile?.preferences as Record<string, string> | undefined)?.ai_model ?? "gpt-5-mini";
-    setSelectedModel(s);
+    const s = (profile?.preferences as Record<string, string> | undefined)?.ai_model ?? "";
+    setSelectedModel(s); // empty string = no saved pref → stale guard will set admin default
   }, [profile]);
 
   useEffect(() => {
@@ -141,10 +141,9 @@ export default function SettingsPage() {
         // Stale model guard: if saved preference doesn't exist in live list, reset to default
         setSelectedModel(prev => {
           const ids = new Set(data.map((m: GhModel) => m.id));
-          if (!ids.has(prev)) {
-            const def = data.find((m: GhModel) => m.is_default)?.id ?? data[0]?.id ?? "gpt-5-mini";
-            return def;
-          }
+          const adminDefault = data.find((m: GhModel) => m.is_default)?.id ?? data[0]?.id ?? "";
+          // Empty string = freshly initialized (no saved pref) → use admin default
+          if (!prev || !ids.has(prev)) return adminDefault;
           return prev;
         });
       })

@@ -142,9 +142,22 @@ export async function incrementAiUsage(
   userId: string,
   modelId: string
 ): Promise<void> {
-  const multiplier = getModelMultiplier(modelId);
-  // Always track usage (including free=0) so admin can see real totals
+  // Resolve multiplier: static map first; if map says 0, verify against DB
+  // (admin may have re-tiered a model from the dashboard — static map won't know)
+  let multiplier = getModelMultiplier(modelId);
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb
+      .from("ai_models_config")
+      .select("premium_multiplier")
+      .eq("id", modelId)
+      .maybeSingle();
+    if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
+      multiplier = data.premium_multiplier as 0 | 1 | 3;
+    }
+  } catch { /* fail-open: use static value */ }
 
+  // Always track usage (including free=0) so admin can see real totals
   try {
     const sb = getServiceSupabase();
     const today = new Date().toISOString().split("T")[0];
