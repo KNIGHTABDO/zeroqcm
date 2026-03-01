@@ -163,14 +163,22 @@ function ModelPicker({ models, selected, onSelect, loading }: {
       </button>
 
       <AnimatePresence>
-        {open && (
+        {open && typeof window !== "undefined" && (() => {
+          const rect = ref.current?.querySelector("button")?.getBoundingClientRect();
+          return (
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.12, ease: "easeOut" }}
-            className="absolute left-0 bottom-full mb-2 w-72 rounded-2xl z-[70] overflow-hidden"
-            style={{ background: "#111", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 32px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.03)" }}>
+            className="fixed w-72 rounded-2xl z-[70] overflow-hidden"
+            style={{
+              bottom: rect ? window.innerHeight - rect.top + 8 : 80,
+              left: rect ? rect.left : 16,
+              background: "#111",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.03)"
+            }}>
 
             <div className="p-2 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2 px-2.5 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -217,7 +225,8 @@ function ModelPicker({ models, selected, onSelect, loading }: {
               {models.length} modèles · GitHub Copilot API
             </div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </div>
   );
@@ -616,8 +625,8 @@ export default function ChatWithAIPage() {
                 boxShadow: inputFocused ? "0 0 0 4px rgba(16,163,127,0.05), 0 8px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.3)",
               }}
               transition={{ duration: 0.18 }}
-              className="rounded-3xl"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", overflow: "visible" }}>
+              className="rounded-3xl overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
               <textarea
                 ref={inputRef} value={input}
@@ -625,11 +634,11 @@ export default function ChatWithAIPage() {
                 onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}
                 placeholder="Pose ta question médicale…"
                 rows={1} disabled={isLoading}
-                className="w-full bg-transparent resize-none outline-none px-4 pt-4 pb-2 placeholder:text-white/20 rounded-t-3xl"
+                className="w-full bg-transparent resize-none outline-none px-4 pt-4 pb-2 placeholder:text-white/20"
                 style={{ color: "rgba(255,255,255,0.9)", caretColor: "#10a37f", minHeight: "56px", maxHeight: "220px", lineHeight: "1.6", WebkitAppearance: "none", fontSize: "16px" }}
               />
 
-              <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2 rounded-b-3xl" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2">
                 <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} />
 
                 {/* Thinking mode toggle — only for capable models */}
