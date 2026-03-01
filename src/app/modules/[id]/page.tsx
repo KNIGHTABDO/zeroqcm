@@ -21,7 +21,6 @@ function ModulePageInner({ params }: { params: Promise<{ id: string }> }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [moduleName, setModuleName] = useState("");
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [tab, setTab] = useState<"exercise" | "exam">(() => {
     const t = searchParams.get("tab");
     return t === "exam" ? "exam" : "exercise";
