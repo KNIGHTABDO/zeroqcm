@@ -307,18 +307,20 @@ export default function ChatWithAIPage() {
     onFinish: (message) => {
       // Save assistant message to DB when streaming is complete
       if (!user || message.role !== "assistant") return;
-      supabase.from("chat_messages")
-        .insert({ user_id: user.id, role: "assistant", content: message.content })
-        .then(() => {});
+      fetch("/api/chat/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "assistant", content: message.content }),
+      });
     },
   });
 
-  // Load history
+  // Load history — server-side API (service role, no RLS ambiguity)
   useEffect(() => {
     if (!user || loadedMsgCountRef.current > 0) return;
-    supabase.from("chat_messages").select("id, role, content, created_at")
-      .eq("user_id", user.id).order("created_at", { ascending: true }).limit(60)
-      .then(({ data }) => {
+    fetch("/api/chat/history")
+      .then((r) => r.json())
+      .then(({ messages: data }) => {
         if (data && data.length > 0) {
           const loaded = data.map((r: any) => ({ id: r.id, role: r.role, content: r.content }));
           setMessages(loaded);
@@ -362,16 +364,21 @@ export default function ChatWithAIPage() {
     handleSubmit(e);
     setTimeout(() => { if (inputRef.current) inputRef.current.style.height = "auto"; }, 0);
     if (!user) return;
-    supabase.from("chat_messages")
-      .insert({ user_id: user.id, role: "user", content: userContent })
-      .then(() => {});
+    fetch("/api/chat/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "user", content: userContent }),
+    });
   }, [input, isLoading, handleSubmit, user]);
 
-  const handleClear = useCallback(() => {
+  const handleClear = useCallback(async () => {
+    // Delete from server FIRST (awaited), then clear local state
+    if (user) {
+      await fetch("/api/chat/history", { method: "DELETE" });
+    }
     setMessages([]);
     savedMsgIds.current.clear();
     loadedMsgCountRef.current = 0;
-    if (user) supabase.from("chat_messages").delete().eq("user_id", user.id);
   }, [setMessages, user]);
 
   const handleModelChange = (modelId: string) => {
