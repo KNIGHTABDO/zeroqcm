@@ -129,6 +129,35 @@ const EVEN_SEMESTERS = [
       { id: 118, nom: "Synthèse thérapeutique" },
     ],
   },
+  // ── Pharmacy UM6SS — NOT exposed via /qcm/semesters ──
+  {
+    semestre_id: "S5_PHARMA_UM6", nom: "S5 Pharmacie UM6SS", faculty: "UM6SS",
+    modules: [
+      { id: 158, nom: "Chimie analytique instrumentale" },
+      { id: 159, nom: "Hematologie biologie" },
+      { id: 160, nom: "Microbiologie" },
+      { id: 166, nom: "pharmacie galenique I" },
+      { id: 161, nom: "Pharmacie galenique TP" },
+      { id: 162, nom: "Pharmacognosie speciale" },
+      { id: 167, nom: "pharmacologie speciale I" },
+      { id: 164, nom: "Tp hematologie biologie" },
+      { id: 163, nom: "TP MICROBIOLOGIE" },
+      { id: 165, nom: "Tp pharmacologie speciale I" },
+    ],
+  },
+  {
+    semestre_id: "S7_PHARMA_UM6", nom: "S7 Pharmacie UM6SS", faculty: "UM6SS",
+    modules: [
+      { id: 168, nom: "Biochimie pre-instrumentale" },
+      { id: 169, nom: "Mycologie" },
+      { id: 174, nom: "pharmacotechnie" },
+      { id: 175, nom: "semiologie" },
+      { id: 173, nom: "Tp mycologie" },
+      { id: 170, nom: "TP pharmacotechnie" },
+      { id: 171, nom: "TP toxicologie" },
+      { id: 172, nom: "TP toxicologie 2" },
+    ],
+  },
 ] as const;
 
 type QuestionRow = {
