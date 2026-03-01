@@ -13,12 +13,12 @@ import type { Message } from "ai/react";
 
 // ── Thinking model detection ─────────────────────────────────────────────────
 function isThinkingCapable(modelId: string): boolean {
+  // Gemini excluded: its thinking is always-on internally.
   return (
     modelId.startsWith("claude-") ||
     modelId === "gpt-5.1" ||
     modelId === "gpt-5-mini" ||
-    modelId.startsWith("gpt-5.1-codex") ||
-    modelId.startsWith("gemini-")
+    modelId.startsWith("gpt-5.1-codex")
   );
 }
 

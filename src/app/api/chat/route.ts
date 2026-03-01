@@ -124,12 +124,13 @@ function getThinkingOptions(modelId: string, thinkingMode: boolean): Record<stri
 
 // Detect if a model supports thinking based on its ID
 function isThinkingCapable(modelId: string): boolean {
+  // Gemini excluded: thinking is always-on internally in these models.
+  // We must not explicitly trigger it via providerOptions (causes stream crash).
   return (
     modelId.startsWith("claude-") ||
     modelId === "gpt-5.1" ||
     modelId === "gpt-5-mini" ||
-    modelId.startsWith("gpt-5.1-codex") ||
-    modelId.startsWith("gemini-")
+    modelId.startsWith("gpt-5.1-codex")
   );
 }
 
@@ -146,8 +147,12 @@ export async function POST(req: NextRequest) {
       modelId = getDefaultModel();
     }
 
-    // Thinking mode: explicit from client OR auto-enabled for capable models
-    const thinkingEnabled = thinking === true || (thinking !== false && isThinkingCapable(modelId));
+    // Gemini sends delta.content=null in reasoning frames — @ai-sdk/openai-compatible v0.2.0 throws on this.
+    // Must NOT pass thinkingConfig to Gemini; its thinking is always-on internally.
+    const isGemini = modelId.startsWith("gemini-");
+
+    // Thinking mode: explicit from client OR auto-enabled for capable models (never Gemini)
+    const thinkingEnabled = !isGemini && (thinking === true || (thinking !== false && isThinkingCapable(modelId)));
     const thinkingOpts = getThinkingOptions(modelId, thinkingEnabled);
 
     // Get rotating Copilot inference token
