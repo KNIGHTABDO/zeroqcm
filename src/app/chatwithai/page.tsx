@@ -426,9 +426,9 @@ export default function ChatWithAIPage() {
   const canSend = input.trim().length > 0 && !isLoading;
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 5rem)", background: "#0a0a0a" }}>
+    <div className="flex flex-col" style={{ height: "100dvh", background: "#0a0a0a" }}>
       <style>{`
-        @media (min-width: 1024px) { .chat-root-inner { height: 100dvh !important; } }
+        
         .chat-scroll::-webkit-scrollbar { width: 3px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
@@ -477,7 +477,7 @@ export default function ChatWithAIPage() {
             {isEmpty && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="flex flex-col items-center pt-14 pb-6 gap-10">
+                className="flex flex-col items-center pt-8 pb-4 gap-7">
 
                 {/* Glow + avatar */}
                 <div className="relative">
@@ -616,7 +616,7 @@ export default function ChatWithAIPage() {
       </div>
 
       {/* ── Input bar ── */}
-      <div className="flex-shrink-0 px-3 pb-3 pt-2 sm:pb-4" style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <div className="flex-shrink-0 px-3 pt-2 pb-[4.75rem] lg:pb-4" style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div className="max-w-[760px] mx-auto">
           <form onSubmit={handleSubmitWithSave}>
             <motion.div
