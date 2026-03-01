@@ -161,8 +161,10 @@ export async function POST(req: NextRequest) {
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
+    let quotaInfo: { remaining: number; limit: number; multiplier: number } | null = null;
     if (user) {
       const quota = await checkAiQuota(user.id, modelId, isAdmin);
+      quotaInfo = { remaining: quota.remaining, limit: quota.limit, multiplier: quota.multiplier };
       if (!quota.allowed) {
         const label = quota.multiplier === 3 ? "modèles premium lourds (×3)" : "modèles premium (×1)";
         return new Response(
@@ -286,7 +288,16 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await streamText(streamOpts as Parameters<typeof streamText>[0]);
-    return result.toDataStreamResponse();
+    const streamResp = result.toDataStreamResponse();
+    // Expose remaining quota in headers so the UI can show a badge
+    if (quotaInfo && quotaInfo.multiplier > 0) {
+      // -1 because this request is about to consume one slot (via onFinish)
+      const displayRemaining = Math.max(0, quotaInfo.remaining - 1);
+      streamResp.headers.set("X-Quota-Remaining", String(displayRemaining));
+      streamResp.headers.set("X-Quota-Limit", String(quotaInfo.limit));
+      streamResp.headers.set("X-Quota-Multiplier", String(quotaInfo.multiplier));
+    }
+    return streamResp;
   } catch (err) {
     console.error("[/api/chat] error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {

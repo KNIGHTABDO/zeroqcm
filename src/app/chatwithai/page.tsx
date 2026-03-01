@@ -120,8 +120,9 @@ function AIAvatar({ size = 8 }: { size?: number }) {
 }
 
 // ── Model Picker ───────────────────────────────────────────────────────────────
-function ModelPicker({ models, selected, onSelect, loading }: {
+function ModelPicker({ models, selected, onSelect, loading, quotaRemaining }: {
   models: FetchedModel[]; selected: string; onSelect: (id: string) => void; loading: boolean;
+  quotaRemaining?: { remaining: number; limit: number; multiplier: number } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -223,6 +224,16 @@ function ModelPicker({ models, selected, onSelect, loading }: {
             <div className="px-3 py-2.5 border-t flex items-center gap-1.5 text-[10px]" style={{ borderColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)" }}>
               <Sparkles className="w-2.5 h-2.5" />
               {models.length} modèles · GitHub Copilot API
+              {quotaRemaining && quotaRemaining.multiplier > 0 && (
+                <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-semibold"
+                  style={{
+                    background: quotaRemaining.remaining <= 2 ? "rgba(239,68,68,0.12)" : "rgba(168,85,247,0.1)",
+                    color: quotaRemaining.remaining <= 2 ? "#fca5a5" : "#c084fc",
+                    border: `1px solid ${quotaRemaining.remaining <= 2 ? "rgba(239,68,68,0.2)" : "rgba(168,85,247,0.15)"}`,
+                  }}>
+                  {quotaRemaining.remaining}/{quotaRemaining.limit} restants
+                </span>
+              )}
             </div>
           </motion.div>
           );
@@ -320,6 +331,7 @@ export default function ChatWithAIPage() {
   }, [profile, fetchedModels]);
 
   const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
+  const [quotaRemaining, setQuotaRemaining] = useState<{ remaining: number; limit: number; multiplier: number } | null>(null);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop, reload } = useChat({
     api: "/api/chat",
@@ -337,7 +349,18 @@ export default function ChatWithAIPage() {
         // non-JSON error — ignore
       }
     },
-    onFinish: (message) => {
+    onFinish: (message, options) => {
+      // Read quota headers from the response if present
+      try {
+        const remaining = options?.response?.headers?.get?.("X-Quota-Remaining");
+        const limit = options?.response?.headers?.get?.("X-Quota-Limit");
+        const mult = options?.response?.headers?.get?.("X-Quota-Multiplier");
+        if (remaining !== null && remaining !== undefined && limit && mult && parseInt(mult) > 0) {
+          setQuotaRemaining({ remaining: parseInt(remaining), limit: parseInt(limit), multiplier: parseInt(mult) });
+        } else {
+          setQuotaRemaining(null); // free model — no badge
+        }
+      } catch { /* noop */ }
       // Save assistant message to DB when streaming is complete
       if (!user || message.role !== "assistant") return;
       fetch("/api/chat/history", {
@@ -666,7 +689,7 @@ export default function ChatWithAIPage() {
               />
 
               <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2">
-                <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} />
+                <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} quotaRemaining={quotaRemaining} />
 
                 {/* Thinking mode toggle — only for capable models */}
                 {isThinkingCapable(selectedModel) && (

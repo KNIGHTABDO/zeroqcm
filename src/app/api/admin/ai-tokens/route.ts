@@ -12,17 +12,8 @@ function getServiceSupabase() {
 }
 
 async function verifyAdmin(req: NextRequest): Promise<boolean> {
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-  if (!token) return false;
-  const sb = getServiceSupabase();
-  const { data: { user } } = await sb.auth.getUser(token);
-  if (!user) return false;
-  const { data } = await sb.from("profiles").select("username").eq("id", user.id).maybeSingle();
-  return (
-    data?.username === "knightabdo" ||
-    user.email === "knight007youtu@gmail.com" ||
-    user.email === "aabidaabdessamad@gmail.com"
-  );
+  const { verifyAdmin: _verify } = await import("@/lib/admin");
+  return _verify(req);
 }
 
 // GET: list all tokens (no github_oauth_token in response for security)

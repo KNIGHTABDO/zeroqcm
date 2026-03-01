@@ -24,6 +24,10 @@ interface InferenceTokenCache {
 const CACHE = new Map<string, InferenceTokenCache>();
 let roundRobinIndex = 0;
 
+// Exchange mutex: prevents parallel cold-start requests from thrashing the exchange API
+// for the same token. Only one exchange per token ID at a time.
+const EXCHANGE_LOCKS = new Map<string, Promise<{ token: string; expiresAt: number }>>();
+
 function getServiceSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,8 +101,16 @@ export async function getCopilotToken(): Promise<string> {
 
     // Try to exchange for a fresh inference token
     // ⚡ NEVER mark dead on failure — skip and try next token
+    // Mutex: coalesce parallel cold-start requests so only one exchange fires per token ID
     try {
-      const fresh = await exchangeCopilotToken(row.github_oauth_token);
+      let pending = EXCHANGE_LOCKS.get(row.id);
+      if (!pending) {
+        pending = exchangeCopilotToken(row.github_oauth_token).finally(() => {
+          EXCHANGE_LOCKS.delete(row.id);
+        });
+        EXCHANGE_LOCKS.set(row.id, pending);
+      }
+      const fresh = await pending;
       CACHE.set(row.id, { token: fresh.token, expiresAt: fresh.expiresAt });
       // Update last_used_at — NOT status (only admin test updates status)
       supabase
