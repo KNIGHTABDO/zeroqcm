@@ -37,7 +37,7 @@ export default function SemestresPage() {
     if (!user) return;
     supabase.from("profiles").select("annee_etude").eq("id", user.id).maybeSingle().then(({ data }) => {
       if (data?.annee_etude) {
-        const YEAR_TO_SNUM: Record<number, number> = {1:1, 2:3, 3:5, 4:7, 5:9};
+        const YEAR_TO_SNUM: Record<number, number> = {1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10};
         const n = YEAR_TO_SNUM[data.annee_etude as number] ?? 0;
         setUserSNum(n);
       }
