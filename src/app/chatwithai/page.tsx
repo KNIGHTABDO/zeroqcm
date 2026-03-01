@@ -304,6 +304,13 @@ export default function ChatWithAIPage() {
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop, reload } = useChat({
     api: "/api/chat",
     body: { model: selectedModel, thinking: thinkingMode },
+    onFinish: (message) => {
+      // Save assistant message to DB when streaming is complete
+      if (!user || message.role !== "assistant") return;
+      supabase.from("chat_messages")
+        .insert({ user_id: user.id, role: "assistant", content: message.content })
+        .then(() => {});
+    },
   });
 
   // Load history
@@ -355,8 +362,9 @@ export default function ChatWithAIPage() {
     handleSubmit(e);
     setTimeout(() => { if (inputRef.current) inputRef.current.style.height = "auto"; }, 0);
     if (!user) return;
-    supabase.from("chat_messages").insert({ user_id: user.id, role: "user", content: userContent })
-      .then(({ data }) => { if (data?.[0]?.id) savedMsgIds.current.add(data[0].id); });
+    supabase.from("chat_messages")
+      .insert({ user_id: user.id, role: "user", content: userContent })
+      .then(() => {});
   }, [input, isLoading, handleSubmit, user]);
 
   const handleClear = useCallback(() => {
