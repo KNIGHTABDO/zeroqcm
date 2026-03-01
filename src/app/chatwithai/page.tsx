@@ -321,9 +321,17 @@ export default function ChatWithAIPage() {
       });
   }, [user, setMessages]);
 
-  // Auto-scroll
+  // Auto-scroll — use containerRef.scrollTop (works on mobile Safari)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = containerRef.current;
+    if (!el) return;
+    // Use scrollIntoView for the end marker (works on desktop), and scrollTop fallback for mobile
+    const endEl = messagesEndRef.current;
+    if (endEl) {
+      endEl.scrollIntoView({ behavior: "smooth", block: "end" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages, isLoading]);
 
   // Textarea auto-resize
@@ -418,7 +426,7 @@ export default function ChatWithAIPage() {
               <Trash2 className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.4)" }} />
             </button>
           )}
-          <button type="button" onClick={() => { setMessages([]); savedMsgIds.current.clear(); loadedMsgCountRef.current = 0; }} title="Nouvelle conversation"
+          <button type="button" onClick={handleClear} title="Nouvelle conversation"
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"}
@@ -429,7 +437,7 @@ export default function ChatWithAIPage() {
       </div>
 
       {/* ── Messages ── */}
-      <div className="chat-scroll flex-1 overflow-y-auto overscroll-contain" ref={containerRef} style={{ background: "#0a0a0a" }}>
+      <div className="chat-scroll flex-1 overflow-y-auto overscroll-contain min-h-0" ref={containerRef} style={{ background: "#0a0a0a" }}>
         <div className="max-w-[760px] mx-auto px-4 md:px-8 pb-4">
 
           <AnimatePresence>
