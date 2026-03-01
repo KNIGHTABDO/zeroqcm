@@ -43,16 +43,25 @@ export default function ActivationsPage() {
   const [loading, setLoading]   = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // #37: pagination
+  const [page, setPage]         = useState(1);
+  const [hasMore, setHasMore]   = useState(false);
+  // #38: bulk actions
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
-  const fetchUsers = useCallback(async (status: string, q: string) => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (status: string, q: string, p: number = 1, append = false) => {
+    if (!append) setLoading(true);
     const headers = await authHeader();
-    const params  = new URLSearchParams({ status, limit: "100" });
+    const PAGE_SIZE = 30;
+    const params  = new URLSearchParams({ status, limit: String(PAGE_SIZE), offset: String((p - 1) * PAGE_SIZE) });
     if (q) params.set("search", q);
     const res = await fetch(`/api/admin/users?${params}`, { headers });
     if (res.ok) {
       const data = await res.json();
-      setUsers(data.users ?? []);
+      const newUsers = data.users ?? [];
+      setUsers(prev => append ? [...prev, ...newUsers] : newUsers);
+      setHasMore(newUsers.length === PAGE_SIZE);
     }
     setLoading(false);
   }, []);
@@ -72,9 +81,26 @@ export default function ActivationsPage() {
   }, []);
 
   useEffect(() => {
+    setPage(1);
+    setSelected(new Set());
     fetchCounts();
-    fetchUsers(tab, search);
+    fetchUsers(tab, search, 1, false);
   }, [tab, search, fetchUsers, fetchCounts]);
+
+  async function bulkAction(action: "approve" | "deny") {
+    if (!selected.size) return;
+    setBulkLoading(true);
+    const headers = { ...(await authHeader()), "Content-Type": "application/json" };
+    await Promise.all(
+      [...selected].map(userId =>
+        fetch("/api/admin/activate", { method: "POST", headers, body: JSON.stringify({ userId, action }) })
+      )
+    );
+    setSelected(new Set());
+    await Promise.all([fetchUsers(tab, search, 1, false), fetchCounts()]);
+    setPage(1);
+    setBulkLoading(false);
+  }
 
   async function handleAction(userId: string, action: "approve" | "deny" | "revoke") {
     setActionLoading(userId + action);
@@ -183,6 +209,17 @@ export default function ActivationsPage() {
                 style={{ background: "#111", borderColor: "rgba(255,255,255,0.07)" }}>
 
                 <div className="flex items-start gap-3">
+                  {/* Checkbox for bulk select */}
+                  <button
+                    onClick={() => setSelected(prev => {
+                      const s = new Set(prev);
+                      if (s.has(user.id)) s.delete(user.id); else s.add(user.id);
+                      return s;
+                    })}
+                    className="mt-1 w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-all"
+                    style={{ background: selected.has(user.id) ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    {selected.has(user.id) && <span style={{ color: "#000", fontSize: "10px", fontWeight: 900 }}>✓</span>}
+                  </button>
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
                     style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
@@ -246,8 +283,60 @@ export default function ActivationsPage() {
             );
           })}
           </AnimatePresence>
+
+          {/* Load more */}
+          {hasMore && (
+            <div className="pt-3 pb-2">
+              <button
+                onClick={() => {
+                  const nextPage = page + 1;
+                  setPage(nextPage);
+                  fetchUsers(tab, search, nextPage, true);
+                }}
+                disabled={loading}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                Charger plus
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Bulk action toolbar */}
+      <AnimatePresence>
+        {selected.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl"
+            style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(12px)" }}>
+            <span className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
+              {selected.size} sélectionné{selected.size > 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={() => bulkAction("approve")}
+              disabled={bulkLoading}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}>
+              {bulkLoading ? "…" : "Approuver"}
+            </button>
+            <button
+              onClick={() => bulkAction("deny")}
+              disabled={bulkLoading}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+              {bulkLoading ? "…" : "Refuser"}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{ color: "rgba(255,255,255,0.35)" }}>
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
