@@ -119,6 +119,7 @@ export default function SettingsPage() {
   const [loadingModels, setLoadingModels] = useState(true);
   const [modelOpen, setModelOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const [saved, setSaved] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -262,7 +263,18 @@ export default function SettingsPage() {
                       type="text"
                       placeholder="Rechercher un modèle…"
                       value={modelSearch}
-                      onChange={e => setModelSearch(e.target.value)}
+                      onChange={e => { setModelSearch(e.target.value); setHighlightIdx(0); }}
+                      onKeyDown={e => {
+                        const filtered = models.filter(m => {
+                          if (!modelSearch) return true;
+                          const q = modelSearch.toLowerCase();
+                          return (m.name || m.id).toLowerCase().includes(q) || (m.publisher ?? "").toLowerCase().includes(q);
+                        });
+                        if (e.key === "ArrowDown") { e.preventDefault(); setHighlightIdx(i => Math.min(i + 1, filtered.length - 1)); }
+                        else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightIdx(i => Math.max(i - 1, 0)); }
+                        else if (e.key === "Enter" && filtered[highlightIdx]) { e.preventDefault(); setSelectedModel(filtered[highlightIdx].id); setModelOpen(false); setModelSearch(""); }
+                        else if (e.key === "Escape") { e.preventDefault(); setModelOpen(false); setModelSearch(""); }
+                      }}
                       className="w-full text-xs px-2.5 py-1.5 rounded-lg outline-none"
                       style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text)", caretColor: "var(--accent)" }}
                     />
@@ -279,8 +291,9 @@ export default function SettingsPage() {
                         <button key={m.id} onClick={() => { setSelectedModel(m.id); setModelOpen(false); setModelSearch(""); }}
                           className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors"
                           style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text)", background: selectedModel === m.id ? "var(--surface-active)" : "transparent" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-hover)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}>
+                          onMouseEnter={e => { setHighlightIdx(models.indexOf(m)); e.currentTarget.style.background = "var(--surface-hover)"; }}
+                          onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}
+                          aria-selected={selectedModel === m.id}>
                           <div>
                             <div className="font-medium flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full" style={{ background: PROVIDER_COLORS[m.publisher] ?? "rgba(255,255,255,0.3)" }} />
