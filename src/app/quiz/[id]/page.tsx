@@ -87,6 +87,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   const txRef = useRef<number | null>(null);
   const tyRef = useRef<number | null>(null);
+  // #3: guard against double-submit (rapid click + keyboard combo)
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     async function loadData() {
@@ -136,6 +138,24 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [phase, loading]);
+
+  // #47: Flush session (with current elapsed time) when the user closes/navigates away
+  useEffect(() => {
+    const handleUnload = () => {
+      if (phase !== "result" && questions.length > 0) {
+        // Use sendBeacon for reliable delivery on page unload
+        const payload = {
+          user_id: user?.id,
+          activity_id: activityId,
+          time_elapsed: elapsed,
+        };
+        navigator.sendBeacon("/api/quiz-session-ping", JSON.stringify(payload));
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, elapsed, questions.length, user?.id, activityId]);
 
   useEffect(() => {
     // Abort any in-flight AI request for the previous question
@@ -352,6 +372,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   function handleReveal() {
     if (!q || selected.size === 0) return;
+    if (submittedRef.current) return; // guard double-submit
+    submittedRef.current = true;
     lockAndScore();
     setPhase("revealed");
   }
@@ -416,6 +438,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setSelected(nextSel ? new Set(nextSel) : new Set());
     setPhase(latestHistory.has(nextIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
+    submittedRef.current = false; // reset guard for new question
     // CRITICAL: always save current_idx as nextIdx so session restore lands on the right question.
     // Without this, current_idx stays frozen at the last *answered* question (index from lockAndScore),
     // causing the ← Préc button to be hidden (current===0) after restore.
@@ -430,6 +453,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     setCurrent(prevIdx);
     setPhase(history.has(prevIdx) ? "revealed" : "quiz");
     setAiText(""); setAiParsed(null); setCommentsOpen(false);
+    submittedRef.current = false; // reset guard for returning to previous question
     saveSession(history, prevIdx, elapsed, score, false);
   }
 
