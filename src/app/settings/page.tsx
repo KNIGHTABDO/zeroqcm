@@ -164,7 +164,6 @@ export default function SettingsPage() {
   }, [modelOpen]);
 
   async function save() {
-    localStorage.setItem("fmpc-ai-model", selectedModel);
     if (user) {
       await supabase.from("profiles").upsert({
         id: user.id,
