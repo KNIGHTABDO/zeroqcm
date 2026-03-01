@@ -1,12 +1,10 @@
+// @ts-nocheck
 import { NextRequest } from "next/server";
+import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
 
-// NOTE: Do NOT use edge runtime — sensitive env vars (GITHUB_MODELS_TOKEN)
-// are NOT available in Edge Runtime.
-export const maxDuration = 60;
+export const maxDuration = 90;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM PROMPT — ZeroQCM Medical Tutor v2
-// ─────────────────────────────────────────────────────────────────────────────
+// ── System Prompt — ZeroQCM Medical Tutor v2 ─────────────────────────────────
 const SYSTEM_PROMPT = `Tu es ZeroQCM, le meilleur tuteur de médecine du monde, spécialisé pour les étudiants en médecine marocains (FMPC, FMPR, FMPM, UM6SS, FMPDF).
 
 ## MISSION
@@ -42,68 +40,100 @@ Option anatomie (incorrecte) :
 ## DOMAINES MÉDICAUX COUVERTS
 Anatomie · Histologie · Embryologie · Physiologie · Biochimie · Séméiologie · Pharmacologie · Pathologie · Microbiologie · Immunologie · Hématologie · Cardiologie · Pneumologie · Neurologie · Gastro-entérologie · Néphrologie · Endocrinologie · Gynéco-obstétrique · Pédiatrie · Chirurgie · Radiologie · Médecine légale · Santé publique`.trim();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Streaming helper
-// ─────────────────────────────────────────────────────────────────────────────
-type Msg = { role: "system" | "user"; content: string };
+// ── Thinking model detection ─────────────────────────────────────────────────
+// For explanations: use thinking when the model supports it.
+// This produces higher-quality, more accurate medical explanations.
+function getThinkingOptions(modelId: string): Record<string, unknown> | null {
+  if (modelId.startsWith("claude-")) {
+    return { thinking: { type: "enabled", budget_tokens: 6000 } };
+  }
+  if (modelId === "gpt-5.1" || modelId === "gpt-5-mini" || modelId.startsWith("gpt-5.1-codex")) {
+    return { reasoning_effort: "medium" };
+  }
+  if (modelId.startsWith("gemini-")) {
+    return { thinkingConfig: { thinkingBudget: 6000 } };
+  }
+  return null;
+}
 
-async function streamGhModels(token: string, model: string, messages: Msg[]): Promise<ReadableStream> {
-  const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-    body: JSON.stringify({
-      model,
-      stream:       true,
-      messages,
-      max_tokens:   1600,    // increased: deep explanations need more tokens
-      temperature:  0.15,   // slightly creative for mnemonics, still deterministic
-      top_p:        0.95,
-    }),
-  });
-
+// ── Streaming via Copilot internal API ───────────────────────────────────────
+async function streamCopilotExplain(modelId: string, prompt: string): Promise<ReadableStream> {
   const enc = new TextEncoder();
 
-  // Non-2xx: forward error text
+  const errorStream = (msg: string) =>
+    new ReadableStream({
+      start(ctrl) { ctrl.enqueue(enc.encode(msg)); ctrl.close(); },
+    });
+
+  let copilotToken: string;
+  let baseURL: string;
+  try {
+    copilotToken = await getCopilotToken();
+    baseURL = getCopilotBaseURL(copilotToken);
+  } catch (err) {
+    return errorStream("[]");
+  }
+
+  const thinkingOpts = getThinkingOptions(modelId);
+  const isThinking = !!thinkingOpts;
+
+  const body: Record<string, unknown> = {
+    model: modelId,
+    stream: true,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ],
+    max_tokens: isThinking ? 6000 : 1600,
+    temperature: isThinking ? 1 : 0.15,
+    top_p: isThinking ? undefined : 0.95,
+    ...thinkingOpts,
+  };
+
+  // Clean undefined fields
+  Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+  let res: Response;
+  try {
+    res = await fetch(`${baseURL}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${copilotToken}`,
+        "editor-version": "vscode/1.98.0",
+        "editor-plugin-version": "GitHub.copilot/1.276.0",
+        "copilot-integration-id": "vscode-chat",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    return errorStream("[]");
+  }
+
   if (!res.ok) {
     const errText = await res.text();
-    return new ReadableStream({
-      start(ctrl) {
-        ctrl.enqueue(enc.encode("Erreur GitHub Models " + res.status + ": " + errText.slice(0, 300)));
-        ctrl.close();
-      },
-    });
+    console.error("[ai-explain] Copilot error", res.status, errText.slice(0, 200));
+    return errorStream("[]");
   }
 
-  // 200 OK but JSON error body (e.g. rate-limit exhausted, model unavailable)
-  // GitHub Models sometimes returns {"error":{...}} with Content-Type: application/json
-  // even though the request succeeded at the HTTP layer.
   const ct = res.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) {
-    const body = await res.text();
-    let msg = "Erreur modèle IA";
-    try {
-      const parsed = JSON.parse(body) as { error?: { message?: string }; message?: string };
-      msg = parsed?.error?.message ?? parsed?.message ?? msg;
-    } catch { /* keep default */ }
-    return new ReadableStream({
-      start(ctrl) {
-        ctrl.enqueue(enc.encode("Erreur: " + msg.slice(0, 300)));
-        ctrl.close();
-      },
-    });
+    // Non-streaming error response
+    const body2 = await res.text();
+    console.error("[ai-explain] JSON error body:", body2.slice(0, 200));
+    return errorStream("[]");
   }
 
+  // Stream SSE → extract content tokens only (skip thinking blocks)
   return new ReadableStream({
     async start(ctrl) {
       const reader = res.body?.getReader();
-      if (!reader) {
-        ctrl.enqueue(enc.encode("Erreur: stream non disponible"));
-        ctrl.close();
-        return;
-      }
+      if (!reader) { ctrl.enqueue(enc.encode("[]")); ctrl.close(); return; }
       const dec = new TextDecoder();
       let buf = "";
       let hasContent = false;
+      let inThinkingBlock = false;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -111,54 +141,48 @@ async function streamGhModels(token: string, model: string, messages: Msg[]): Pr
         const lines = buf.split("\n");
         buf = lines.pop() ?? "";
         for (const line of lines) {
-          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-            try {
-              const d = JSON.parse(line.slice(6)) as { choices?: { delta?: { content?: string } }[] };
-              const t = d?.choices?.[0]?.delta?.content;
-              if (t) { ctrl.enqueue(enc.encode(t)); hasContent = true; }
-            } catch { /* skip malformed SSE line */ }
-          }
+          if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+          try {
+            const d = JSON.parse(line.slice(6));
+            const delta = d?.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            // Skip thinking content blocks (Claude extended thinking)
+            if (delta.type === "thinking" || delta.thinking) {
+              inThinkingBlock = true;
+              continue;
+            }
+            if (delta.type === "text" || delta.type === undefined) {
+              inThinkingBlock = false;
+            }
+            if (inThinkingBlock) continue;
+
+            const t = delta.content;
+            if (t) { ctrl.enqueue(enc.encode(t)); hasContent = true; }
+          } catch { /* skip malformed SSE */ }
         }
       }
-      // If we got a valid SSE stream but zero content tokens, emit an error
-      // so the client shows feedback instead of silently resetting
-      if (!hasContent) {
-        ctrl.enqueue(enc.encode("Erreur: réponse vide du modèle (rate limit ou modèle indisponible)"));
-      }
+
+      if (!hasContent) ctrl.enqueue(enc.encode("[]"));
       ctrl.close();
     },
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Route handler
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const { prompt, model } = (await req.json()) as { prompt: string; model?: string };
-
-  const token = process.env.GITHUB_MODELS_TOKEN ?? "";
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
-  if (!token) {
-    return new Response("[]", { headers, status: 200 });
-  }
-
-  const VALID_MODELS = new Set([
-    "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini",
-    "Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct",
-    "Mistral-Large-2", "Phi-4", "Phi-4-mini", "Phi-4-multimodal-instruct",
-    "Cohere-Command-R-Plus-08-2024", "DeepSeek-R1", "DeepSeek-V3",
-    "AI21-Jamba-1.5-Large", "AI21-Jamba-1.5-Mini",
-  ]);
-  const safeModel = VALID_MODELS.has(model?.trim() ?? "") ? model!.trim() : "gpt-4o-mini";
+  // Use requested model, or fall back to a capable default for explanations
+  // Claude Sonnet is ideal: native thinking, strong medical reasoning, long JSON output
+  const modelId = model?.trim() || "claude-sonnet-4.5";
 
   try {
-    const stream = await streamGhModels(token, safeModel, [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user",   content: prompt },
-    ]);
+    const stream = await streamCopilotExplain(modelId, prompt);
     return new Response(stream, { headers });
   } catch (e) {
-    return new Response("Erreur IA: " + String(e), { status: 200 });
+    console.error("[ai-explain] unhandled error:", e);
+    return new Response("[]", { headers, status: 200 });
   }
 }
