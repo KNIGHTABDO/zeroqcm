@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Clock, CheckCircle, XCircle, BookOpen, Activity, ChevronRight, Brain, RefreshCw, Zap, Database } from "lucide-react";
+import { Users, Clock, CheckCircle, XCircle, BookOpen, Activity, ChevronRight, Brain, RefreshCw, Zap, Database, Key, Cpu, Plus, Trash2, ToggleLeft, ToggleRight, Shield, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -514,6 +514,253 @@ function SeedSection() {
 }
 
 // ── Main page ────────────────────────────────────────────────────────────────
+
+// ── AI Tokens & Models Section ───────────────────────────────────────────────
+interface AiToken  { id: string; label: string; status: "alive"|"dead"|"rate_limited"|"unknown"; last_tested_at: string|null; last_used_at: string|null; use_count: number; created_at: string; }
+interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; }
+
+const STATUS_COLOR: Record<string, string> = {
+  alive: "#22c55e", dead: "#ef4444", rate_limited: "#f59e0b", unknown: "rgba(255,255,255,0.25)"
+};
+const STATUS_LABEL: Record<string, string> = {
+  alive: "Alive", dead: "Dead", rate_limited: "Rate limited", unknown: "Not tested"
+};
+const TIER_COLOR: Record<string, string> = { standard: "#60a5fa", premium: "#a78bfa" };
+const PROVIDER_COLORS: Record<string, string> = {
+  OpenAI: "#74aa9c", Anthropic: "#d4a27f", Meta: "#4267B2", Mistral: "#ff7000"
+};
+
+function AiSection() {
+  const [tokens, setTokens]           = useState<AiToken[]>([]);
+  const [models, setModels]           = useState<AiModel[]>([]);
+  const [testingId, setTestingId]     = useState<string|null>(null);
+  const [testingAll, setTestingAll]   = useState(false);
+  const [newLabel, setNewLabel]       = useState("");
+  const [newToken, setNewToken]       = useState("");
+  const [addOpen, setAddOpen]         = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [tab, setTab]                 = useState<"tokens"|"models">("tokens");
+
+  async function authHdr() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" };
+  }
+
+  async function loadTokens() {
+    const h = await authHdr();
+    const r = await fetch("/api/admin/ai-tokens", { headers: h });
+    if (r.ok) setTokens(await r.json());
+  }
+  async function loadModels() {
+    const r = await fetch("/api/admin/ai-models");
+    if (r.ok) setModels(await r.json());
+  }
+
+  useEffect(() => { loadTokens(); loadModels(); }, []); // eslint-disable-line
+
+  async function testToken(id?: string) {
+    const h = await authHdr();
+    if (id) setTestingId(id); else setTestingAll(true);
+    await fetch("/api/admin/ai-tokens/test", { method: "POST", headers: h, body: JSON.stringify(id ? { id } : {}) });
+    await loadTokens();
+    setTestingId(null); setTestingAll(false);
+  }
+
+  async function addToken() {
+    if (!newLabel || !newToken) return;
+    setSaving(true);
+    const h = await authHdr();
+    await fetch("/api/admin/ai-tokens", { method: "POST", headers: h, body: JSON.stringify({ label: newLabel, github_oauth_token: newToken }) });
+    setNewLabel(""); setNewToken(""); setAddOpen(false); setSaving(false);
+    await loadTokens();
+  }
+
+  async function deleteToken(id: string) {
+    const h = await authHdr();
+    await fetch(`/api/admin/ai-tokens?id=${id}`, { method: "DELETE", headers: h });
+    await loadTokens();
+  }
+
+  async function toggleModel(m: AiModel) {
+    const h = await authHdr();
+    await fetch("/api/admin/ai-models", { method: "PATCH", headers: h, body: JSON.stringify({ id: m.id, is_enabled: !m.is_enabled }) });
+    await loadModels();
+  }
+
+  async function setDefault(m: AiModel) {
+    const h = await authHdr();
+    await fetch("/api/admin/ai-models", { method: "PATCH", headers: h, body: JSON.stringify({ id: m.id, is_default: true }) });
+    await loadModels();
+  }
+
+  const aliveCount = tokens.filter(t => t.status === "alive").length;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+      className="rounded-2xl border overflow-hidden"
+      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.2)" }}>
+            <Brain className="w-4 h-4" style={{ color: "#818cf8" }} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>AI Models & Tokens</p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+              {aliveCount}/{tokens.length} tokens alive · {models.filter(m=>m.is_enabled).length} models active
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => testToken()} disabled={testingAll || tokens.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40"
+            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
+            <RefreshCw className={"w-3 h-3 " + (testingAll ? "animate-spin" : "")} />
+            {testingAll ? "Testing…" : "Test all"}
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        {(["tokens", "models"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)}
+            className="flex-1 py-3 text-xs font-semibold uppercase tracking-widest transition-all"
+            style={{ color: tab === t ? "#818cf8" : "rgba(255,255,255,0.3)", borderBottom: tab === t ? "2px solid #818cf8" : "2px solid transparent" }}>
+            {t === "tokens" ? `🔑 Tokens (${tokens.length})` : `🤖 Models (${models.length})`}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4 space-y-3">
+
+        {/* ── TOKENS TAB ── */}
+        {tab === "tokens" && (
+          <>
+            {tokens.length === 0 && !addOpen && (
+              <div className="rounded-xl border py-8 text-center" style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)" }}>
+                <Key className="w-6 h-6 mx-auto mb-2" style={{ color: "rgba(255,255,255,0.2)" }} />
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No tokens yet. Add your GitHub OAuth token below.</p>
+              </div>
+            )}
+
+            {tokens.map((tok) => (
+              <div key={tok.id} className="rounded-xl border px-4 py-3 flex items-center gap-3"
+                style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)" }}>
+                {/* Status dot */}
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLOR[tok.status], boxShadow: tok.status === "alive" ? `0 0 6px ${STATUS_COLOR.alive}` : "none" }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>{tok.label}</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    {STATUS_LABEL[tok.status]} · Used {tok.use_count}x
+                    {tok.last_tested_at ? ` · Tested ${new Date(tok.last_tested_at).toLocaleString("fr-FR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}` : ""}
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => testToken(tok.id)} disabled={testingId === tok.id}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40"
+                    style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.2)", color: "#818cf8" }}>
+                    {testingId === tok.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Test"}
+                  </button>
+                  <button onClick={() => deleteToken(tok.id)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                    style={{ background: "rgba(239,68,68,0.06)", borderColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Add token form */}
+            <AnimatePresence>
+              {addOpen && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  className="rounded-xl border p-4 space-y-3"
+                  style={{ background: "rgba(99,102,241,0.04)", borderColor: "rgba(99,102,241,0.15)" }}>
+                  <p className="text-xs font-semibold" style={{ color: "#818cf8" }}>Add GitHub OAuth Token</p>
+                  <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Label (e.g. KNIGHTABDO account)"
+                    className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
+                    style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
+                  <input value={newToken} onChange={e => setNewToken(e.target.value)} placeholder="gho_xxxxxxxxxxxx"
+                    type="password" className="w-full px-3 py-2 rounded-lg text-xs border font-mono outline-none"
+                    style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+                    Get this from: GitHub Device Flow login or Settings → Developer Settings → Personal Access Tokens (classic) with <code>read:user</code> scope.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={addToken} disabled={saving || !newLabel || !newToken}
+                      className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
+                      style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.25)" }}>
+                      {saving ? "Saving…" : "Save token"}
+                    </button>
+                    <button onClick={() => setAddOpen(false)}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold"
+                      style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!addOpen && (
+              <button onClick={() => setAddOpen(true)}
+                className="w-full py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-80"
+                style={{ background: "rgba(99,102,241,0.06)", borderColor: "rgba(99,102,241,0.15)", color: "#818cf8" }}>
+                <Plus className="w-3.5 h-3.5" />
+                Add Token
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ── MODELS TAB ── */}
+        {tab === "models" && (
+          <>
+            {models.map((m) => (
+              <div key={m.id} className="rounded-xl border px-4 py-3 flex items-center gap-3"
+                style={{ background: "rgba(255,255,255,0.02)", borderColor: m.is_default ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", opacity: m.is_enabled ? 1 : 0.45 }}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>{m.label}</p>
+                    {m.is_default && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>DEFAULT</span>
+                    )}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${TIER_COLOR[m.tier]}14`, color: TIER_COLOR[m.tier] }}>
+                      {m.tier.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: PROVIDER_COLORS[m.provider] ?? "rgba(255,255,255,0.35)" }}>
+                    {m.provider} · <code className="font-mono text-[10px]">{m.id}</code>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {!m.is_default && m.is_enabled && (
+                    <button onClick={() => setDefault(m)}
+                      className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all"
+                      style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.2)", color: "#818cf8" }}>
+                      Set default
+                    </button>
+                  )}
+                  <button onClick={() => toggleModel(m)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all border"
+                    style={{ background: m.is_enabled ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)", borderColor: m.is_enabled ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.08)" }}>
+                    {m.is_enabled
+                      ? <ToggleRight className="w-4 h-4" style={{ color: "#22c55e" }} />
+                      : <ToggleLeft  className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AdminPage() {
   const [stats, setStats]   = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -571,6 +818,8 @@ export default function AdminPage() {
 
       {/* AI Regen section */}
       <RegenSection />
+
+        <AiSection />
 
       {/* Seed section */}
       <SeedSection />

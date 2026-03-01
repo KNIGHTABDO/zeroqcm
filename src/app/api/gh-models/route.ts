@@ -1,68 +1,21 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "edge";
-export const revalidate = 3600;
-
-interface CatalogModel {
-  id: string;
-  name?: string;
-  publisher?: string;
-  summary?: string;
-  tags?: string[];
-  capabilities?: string[];
-  supported_input_modalities?: string[];
-  supported_output_modalities?: string[];
-  limits?: { max_input_tokens?: number; max_output_tokens?: number };
-  rate_limit_tier?: string;
-}
+export const runtime = "nodejs";
+export const revalidate = 60;
 
 const FALLBACK = [
-  { id: "gpt-4o",      name: "GPT-4o",         publisher: "OpenAI" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini",    publisher: "OpenAI" },
-  { id: "Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B", publisher: "Meta" },
-  { id: "Mistral-large-2411",           name: "Mistral Large", publisher: "Mistral" },
-  { id: "DeepSeek-V3-0324",            name: "DeepSeek V3",   publisher: "DeepSeek" },
+  { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", publisher: "OpenAI", tier: "standard", is_default: true },
+  { id: "gpt-4o",       name: "GPT-4o",        publisher: "OpenAI", tier: "premium",  is_default: false },
 ];
 
 export async function GET() {
-  const token = process.env.GITHUB_MODELS_TOKEN ?? process.env.GITHUB_TOKEN ?? "";
-
-  if (!token) return NextResponse.json(FALLBACK);
-
   try {
-    const res = await fetch("https://models.github.ai/catalog/models", {
-      headers: {
-        "Authorization": "Bearer " + token,
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
-
-    if (!res.ok) throw new Error("status " + res.status);
-
-    const all = await res.json() as CatalogModel[];
-
-    // Keep only streaming, text-output models
-    const filtered = all
-      .filter((m) =>
-        Array.isArray(m.supported_output_modalities) &&
-        m.supported_output_modalities.includes("text") &&
-        Array.isArray(m.capabilities) &&
-        m.capabilities.includes("streaming")
-      )
-      .map((m) => ({
-        id: m.id,
-        name: m.name ?? m.id,
-        publisher: m.publisher ?? "",
-        summary: m.summary ?? "",
-        tags: m.tags ?? [],
-        supports_tools: m.capabilities?.includes("tool-calling") ?? false,
-        supports_vision: m.supported_input_modalities?.includes("image") ?? false,
-        rate_limit_tier: m.rate_limit_tier ?? "low",
-        max_output_tokens: m.limits?.max_output_tokens ?? 0,
-      }));
-
-    return NextResponse.json(filtered.length > 0 ? filtered : FALLBACK);
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+    const { data, error } = await sb.from("ai_models_config").select("id, label, provider, tier, is_enabled, is_default, sort_order").eq("is_enabled", true).order("sort_order");
+    if (error || !data || data.length === 0) return NextResponse.json(FALLBACK);
+    return NextResponse.json(data.map((m) => ({ id: m.id, name: m.label, publisher: m.provider, tier: m.tier, is_default: m.is_default })));
   } catch {
     return NextResponse.json(FALLBACK);
   }

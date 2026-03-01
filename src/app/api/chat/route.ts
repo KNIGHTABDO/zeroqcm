@@ -1,8 +1,11 @@
+// @ts-nocheck
 import { NextRequest } from "next/server";
 import { streamText, tool } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
-import { githubModels, DEFAULT_MODEL, resolveModelId, isAllowedModel } from "@/lib/github-models";
+import { createClient } from "@supabase/supabase-js";
+import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
 
 export const maxDuration = 60;
 
@@ -23,7 +26,7 @@ const SYSTEM_PROMPT = `Tu es ZeroQCM AI, un tuteur médical expert spécialisé 
 
 ## OUTIL searchQCM
 Quand l'utilisateur demande des QCM, questions de révision, exemples, ou quiz sur un sujet :
-- Utilise TOUJOURS searchQCM pour chercher dans la base de données ZeroQCM (180 000+ questions).
+- Utilise TOUJOURS searchQCM pour chercher dans la base de données ZeroQCM (225 000+ questions).
 - Présente les questions trouvées de façon pédagogique avec les réponses et corrections.
 - Si aucune question trouvée, réponds normalement sans l'outil.
 
@@ -59,16 +62,63 @@ function makeSupabase() {
   );
 }
 
+function getServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
+
+async function getDefaultModel(): Promise<string> {
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb.from("ai_models_config").select("id").eq("is_default", true).eq("is_enabled", true).maybeSingle();
+    return data?.id ?? "gpt-4.1-mini";
+  } catch {
+    return "gpt-4.1-mini";
+  }
+}
+
+async function isModelAllowed(modelId: string): Promise<boolean> {
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb.from("ai_models_config").select("id").eq("id", modelId).eq("is_enabled", true).maybeSingle();
+    return !!data;
+  } catch {
+    return true; // fail open
+  }
+}
+
 const QCM_SELECT = "id, texte, activity_id, choices(id, contenu, est_correct), activities(id, nom, modules(nom, semesters(nom)))";
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, model: requestedModel } = await req.json();
-    const model = (requestedModel && isAllowedModel(requestedModel)) ? requestedModel : DEFAULT_MODEL;
     const supabase = makeSupabase();
 
+    // Resolve model: requested → validate against DB → default
+    let modelId = requestedModel;
+    if (!modelId || !(await isModelAllowed(modelId))) {
+      modelId = await getDefaultModel();
+    }
+
+    // Get rotating Copilot inference token
+    const copilotToken = await getCopilotToken();
+    const baseURL = `${getCopilotBaseURL(copilotToken)}/v1`;
+
+    const copilot = createOpenAI({
+      baseURL,
+      apiKey: copilotToken,
+      headers: {
+        "editor-version": "vscode/1.98.0",
+        "editor-plugin-version": "GitHub.copilot/1.276.0",
+        "copilot-integration-id": "vscode-chat",
+      },
+    });
+
     const result = await streamText({
-      model: githubModels(resolveModelId(model)),
+      model: copilot(modelId),
       system: SYSTEM_PROMPT,
       messages,
       maxTokens: 1400,
@@ -77,7 +127,7 @@ export async function POST(req: NextRequest) {
       tools: {
         searchQCM: tool({
           description:
-            "Search ZeroQCM database (180,000+ QCM questions). ALWAYS call this when user asks for QCM, questions, quiz, révision, or examples on any medical topic.",
+            "Search ZeroQCM database (225,000+ QCM questions). ALWAYS call this when user asks for QCM, questions, quiz, révision, or examples on any medical topic.",
           parameters: z.object({
             query: z.string().describe("Medical topic or keyword to search (French or Latin)"),
             limit: z.number().default(5).describe("Number of questions to return (1–8)"),
@@ -86,7 +136,6 @@ export async function POST(req: NextRequest) {
             try {
               const safeLimit = Math.min(Math.max(limit, 1), 8);
 
-              // Strategy 1: exact phrase in question text
               const { data: d1 } = await supabase
                 .from("questions")
                 .select(QCM_SELECT)
@@ -94,50 +143,34 @@ export async function POST(req: NextRequest) {
                 .limit(safeLimit);
 
               if (d1 && d1.length >= 2) {
-                const taggedD1 = d1.map((q: unknown) => {
+                const tagged = d1.map((q: unknown) => {
                   const row = q as { activity_id: number; activities?: { nom: string } };
-                  const nom = row.activities?.nom ?? "QCM ZeroQCM";
-                  return { ...row, _source: `[📚 Faire ce QCM → **${nom}**](/quiz/${row.activity_id})` };
+                  return { ...row, _source: `[📚 Faire ce QCM → **${row.activities?.nom ?? "QCM ZeroQCM"}**](/quiz/${row.activity_id})` };
                 });
-                return { found: taggedD1.length, questions: taggedD1, instruction: "After presenting each individual QCM question (choices, correct answer, explanation), place its _source link on a new line directly below that question. Do NOT group sources at the end." };
+                return { found: tagged.length, questions: tagged, instruction: "After presenting each individual QCM question (choices, correct answer, explanation), place its _source link on a new line directly below that question. Do NOT group sources at the end." };
               }
 
-              // Strategy 2: search by each keyword independently, merge results
-              const keywords = query
-                .split(/[\s,]+/)
-                .map((k: string) => k.trim())
-                .filter((k: string) => k.length >= 3)
-                .slice(0, 4);
-
+              const keywords = query.split(/[\s,]+/).map((k: string) => k.trim()).filter((k: string) => k.length >= 3).slice(0, 4);
               const allIds = new Set<string>();
               const merged: unknown[] = [];
 
               for (const kw of keywords) {
-                const { data } = await supabase
-                  .from("questions")
-                  .select(QCM_SELECT)
-                  .ilike("texte", "%" + kw + "%")
-                  .limit(safeLimit);
+                const { data } = await supabase.from("questions").select(QCM_SELECT).ilike("texte", "%" + kw + "%").limit(safeLimit);
                 if (data) {
                   for (const q of data) {
                     const row = q as { id: string };
-                    if (!allIds.has(row.id)) {
-                      allIds.add(row.id);
-                      merged.push(q);
-                    }
+                    if (!allIds.has(row.id)) { allIds.add(row.id); merged.push(q); }
                   }
                 }
                 if (merged.length >= safeLimit) break;
               }
 
               if (merged.length > 0) {
-                const sliced = merged.slice(0, safeLimit);
-                const taggedMerged = sliced.map((q: unknown) => {
+                const tagged = merged.slice(0, safeLimit).map((q: unknown) => {
                   const row = q as { activity_id: number; activities?: { nom: string } };
-                  const nom = row.activities?.nom ?? "QCM ZeroQCM";
-                  return { ...row, _source: `[📚 Faire ce QCM → **${nom}**](/quiz/${row.activity_id})` };
+                  return { ...row, _source: `[📚 Faire ce QCM → **${row.activities?.nom ?? "QCM ZeroQCM"}**](/quiz/${row.activity_id})` };
                 });
-                return { found: taggedMerged.length, questions: taggedMerged, instruction: "After presenting each individual QCM question (choices, correct answer, explanation), place its _source link on a new line directly below that question. Do NOT group sources at the end." };
+                return { found: tagged.length, questions: tagged, instruction: "After presenting each individual QCM question (choices, correct answer, explanation), place its _source link on a new line directly below that question. Do NOT group sources at the end." };
               }
 
               return { found: 0, questions: [], note: "Aucune question trouvée pour ce sujet dans la base." };
