@@ -545,7 +545,7 @@ function AiSection() {
   const pollRef                       = useRef<ReturnType<typeof setTimeout>|null>(null);
   const [tab, setTab]                 = useState<"tokens"|"models"|"limits">("tokens");
   const [limits, setLimits]           = useState<{multiplier:number;daily_limit:number;label:string}[]>([]);
-  const [usageToday, setUsageToday]   = useState<{multiplier:number;count:number}[]>([]);
+  const [usageToday, setUsageToday]   = useState<{multiplier:number;user_count:number;total_requests:number;top_users:{uid:string;count:number}[]}[]>([]);
   const [editLimit, setEditLimit]     = useState<Record<number,string>>({});
   const [savingLimit, setSavingLimit] = useState<number|null>(null);
   const [editMult, setEditMult]       = useState<Record<string,string>>({});
@@ -923,8 +923,10 @@ function AiSection() {
                   const row = limits.find(l => l.multiplier === mult);
                   const usage = usageToday.find(u => u.multiplier === mult);
                   const currentLimit = row?.daily_limit ?? (mult === 0 ? 0 : mult === 1 ? 10 : 5);
-                  const used = usage?.count ?? 0;
-                  const pct  = currentLimit > 0 ? Math.min(100, Math.round(used / currentLimit * 100)) : 0;
+                  const userCount = usage?.user_count ?? 0;
+                  const totalReqs = usage?.total_requests ?? 0;
+                  // Progress shows no single-user percentage — limits are per-user not global
+                  const pct = 0; // Not shown for global view
                   const isEditing = mult in editLimit;
                   return (
                     <div key={mult} className="rounded-xl border px-4 py-3 space-y-2"
@@ -972,8 +974,12 @@ function AiSection() {
                       {mult !== 0 && currentLimit > 0 && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-                            <span>Today: {used} used</span>
-                            <span>{pct}%</span>
+                            <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                              {userCount > 0
+                                ? <>{userCount} user{userCount > 1 ? "s" : ""} · {totalReqs} req{totalReqs !== 1 ? "s" : ""} total today</>
+                                : "No usage today"}
+                            </span>
+                            <span style={{ color: "rgba(255,255,255,0.25)" }}>per-user limit</span>
                           </div>
                           <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
@@ -984,6 +990,15 @@ function AiSection() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* ─ Per-user clarification ─ */}
+            <div className="rounded-xl border px-4 py-3" style={{ background: "rgba(59,130,246,0.04)", borderColor: "rgba(59,130,246,0.18)" }}>
+              <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ color: "#60a5fa", fontWeight: 600 }}>ℹ️ Limits are per-user, not global.</span>
+                {" "}A 1× quota of 10/day means each individual user gets 10 requests — not 10 shared across everyone.
+                The usage counter above shows how many distinct users sent requests today, not a shared pool.
+              </p>
             </div>
 
             {/* ─ Per-model multiplier assignment ─ */}
