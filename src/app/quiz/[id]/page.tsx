@@ -508,7 +508,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <p className="text-base font-semibold mt-2" style={{ color: "var(--text)" }}>{activityName}</p>
         <div className="flex gap-3 w-full max-w-xs mt-4">
           <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); setHistory(new Map()); setAiCached(null); if (user) supabase.from("quiz_sessions").delete().eq("user_id", user.id).eq("activity_id", activityId).then(() => {}); }}
-            className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-white/[0.04]"
+            className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-[var(--surface)]"
             style={{ borderColor: "var(--border)", color: "var(--text)" }}>Recommencer</button>
           <button onClick={() => router.back()} className="flex-1 py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">Terminer</button>
         </div>
@@ -523,7 +523,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         {/* Header */}
         <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
           <div className="flex items-center gap-3 mb-1">
-            <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/[0.06] transition-colors" style={{ color: "var(--text-muted)" }}>
+            <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-[var(--surface-alt)] transition-colors" style={{ color: "var(--text-muted)" }}>
               <ArrowLeft size={18} />
             </button>
             <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{activityName}</p>
@@ -533,7 +533,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <div className="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-4">
           {/* Notice */}
           <div className="rounded-2xl border px-5 py-6 text-center space-y-2"
-            style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)" }}>
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <p className="text-2xl">📝</p>
             <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Questions rédactionnelles</p>
             <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -546,10 +546,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-3">
               {openQuestions.map((oq, idx) => (
                 <div key={oq.id} className="rounded-xl border px-4 py-3 space-y-1.5 transition-all"
-                  style={{ background: "var(--surface)", borderColor: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.06)", opacity: readOpenQIds.has(oq.id) ? 0.6 : 1 }}>
+                  style={{ background: "var(--surface)", borderColor: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "var(--surface-active)", opacity: readOpenQIds.has(oq.id) ? 0.6 : 1 }}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
                       {oq.source_question && (
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{oq.source_question}</span>
                       )}
@@ -562,9 +562,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                       })}
                       className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-all flex-shrink-0"
                       style={{
-                        background: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                        color: readOpenQIds.has(oq.id) ? "#22c55e" : "rgba(255,255,255,0.3)",
-                        border: `1px solid ${readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.06)"}`,
+                        background: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.12)" : "var(--surface-alt)",
+                        color: readOpenQIds.has(oq.id) ? "#22c55e" : "var(--text-muted)",
+                        border: `1px solid ${readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "var(--surface-active)"}`,
                       }}>
                       {readOpenQIds.has(oq.id) ? "✓ Lu" : "Marquer lu"}
                     </button>
@@ -572,7 +572,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{oq.texte}</p>
                   <QuizImage src={oq.image_url} className="mt-2" />
                   {oq.correction && (
-                    <div className="mt-2 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    <div className="mt-2 pt-2 border-t" style={{ borderColor: "var(--surface-alt)" }}>
                       <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Correction</p>
                       <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{oq.correction}</p>
                     </div>
@@ -584,7 +584,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         </div>
 
         {/* Back button */}
-        <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "var(--surface-active)" }}>
           <button onClick={() => router.back()} className="w-full max-w-lg mx-auto flex items-center justify-center py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
             Retour
           </button>
@@ -601,7 +601,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
       <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
         <div className="flex items-center justify-between mb-2">
-          <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/[0.06] transition-colors" style={{ color: "var(--text-muted)" }}>
+          <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-[var(--surface-alt)] transition-colors" style={{ color: "var(--text-muted)" }}>
             <ArrowLeft size={18} />
           </button>
           {score.total > 0 && (
@@ -615,8 +615,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{mins}:{secs.toString().padStart(2, "0")}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <motion.div className="h-full rounded-full bg-blue-500" animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
+          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--surface-active)" }}>
+            <motion.div className="h-full rounded-full" style={{ background: "var(--accent)" }} animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
           </div>
           <span className="text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>{answeredCount}/{questions.length}</span>
         </div>
@@ -624,7 +624,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
       <div className="flex-1 overflow-y-auto px-4 pt-2 space-y-3">
 
-        <div className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "var(--surface-active)" }}>
           {q.source_question && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{q.source_question}</span>
@@ -639,7 +639,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <button
                 onClick={handleBookmark}
                 disabled={bookmarkLoading}
-                className="flex-shrink-0 p-1.5 rounded-lg transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                className="flex-shrink-0 p-1.5 rounded-lg transition-all hover:bg-[var(--surface-alt)] disabled:opacity-50"
                 title={bookmarked ? "Retirer des favoris" : "Ajouter aux favoris"}
               >
                 {bookmarked
@@ -656,8 +656,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           {q.choices.map((choice, idx) => {
             const isSel = selected.has(choice.id);
             const letter = String.fromCharCode(65 + idx);
-            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.4)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.4)" : isSel ? "var(--accent, rgba(255,255,255,0.6))" : "rgba(255,255,255,0.06)";
-            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.02)";
+            const borderColor = rev && choice.est_correct ? "rgba(16,185,129,0.4)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.4)" : isSel ? "var(--accent, rgba(255,255,255,0.6))" : "var(--surface-active)";
+            const bg = rev && choice.est_correct ? "rgba(16,185,129,0.07)" : rev && isSel && !choice.est_correct ? "rgba(239,68,68,0.07)" : isSel ? "var(--border)" : "var(--surface)";
             const optWhy = aiParsed?.find((o) => o.letter === letter)?.why;
             const showSkeleton = rev && aiLoading && !aiParsed;
             return (
@@ -670,8 +670,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               >
                 <div className="flex items-start gap-3">
                   <span className="text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border" style={{
-                    background: rev ? (choice.est_correct ? "rgba(16,185,129,0.2)" : isSel ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.06)") : isSel ? "rgba(255,255,255,0.12)" : "transparent",
-                    borderColor: rev ? (choice.est_correct ? "rgba(16,185,129,0.4)" : isSel ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)") : isSel ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
+                    background: rev ? (choice.est_correct ? "rgba(16,185,129,0.2)" : isSel ? "rgba(239,68,68,0.2)" : "var(--surface-active)") : isSel ? "var(--surface-active)" : "transparent",
+                    borderColor: rev ? (choice.est_correct ? "rgba(16,185,129,0.4)" : isSel ? "rgba(239,68,68,0.4)" : "var(--border)") : isSel ? "var(--text-muted)" : "var(--border)",
                     color: rev ? (choice.est_correct ? "rgb(16,185,129)" : isSel ? "rgb(239,68,68)" : "var(--text-muted)") : "var(--text)",
                   }}>{letter}</span>
                   <div className="flex-1 min-w-0">
@@ -679,7 +679,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     {rev && (
                       <div className="mt-2">
                         {showSkeleton ? (
-                          <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.06)" }} />
+                          <div className="h-2.5 rounded animate-pulse w-3/4" style={{ background: "var(--surface-active)" }} />
                         ) : rev && !aiLoading && !aiParsed && aiText.startsWith("Erreur") && idx === 0 ? (
                           <p className="text-[10px]" style={{ color: "rgba(239,68,68,0.8)" }}>⚠ {aiText.slice(0, 80)}</p>
                         ) : optWhy ? (
@@ -694,8 +694,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     )}
                     {rev && (
                       <div className="mt-1.5 flex items-center gap-2">
-                        <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                          <div className="h-full rounded-full bg-blue-500/50" style={{ width: `${choice.pourcentage}%` }} />
+                        <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: "var(--surface-active)" }}>
+                          <div className="h-full rounded-full" style={{ background: "var(--accent)" }} style={{ width: `${choice.pourcentage}%` }} />
                         </div>
                         <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>{choice.pourcentage}%</span>
                       </div>
@@ -713,12 +713,12 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             {/* Error banner — shown when aiText starts with Erreur */}
             {!aiLoading && aiText && aiText.startsWith("Erreur") && (
               <div className="flex items-center gap-2 w-full rounded-xl px-3 py-2"
-                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                style={{ background: "var(--error-subtle)", border: "1px solid rgba(239,68,68,0.15)" }}>
                 <XCircle size={12} className="flex-shrink-0 text-red-400" />
                 <p className="text-[11px] leading-snug" style={{ color: "#f87171" }}>{aiText.replace(/^Erreur: ?/, "")}</p>
                 <button onClick={() => { setAiText(""); setAiParsed(null); }}
                   className="ml-auto flex-shrink-0 text-[10px] px-2 py-0.5 rounded-md hover:opacity-80"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}>Réessayer</button>
+                  style={{ background: "var(--error-subtle)", color: "#f87171" }}>Réessayer</button>
               </div>
             )}
             {/* Not yet triggered → primary CTA button */}
@@ -726,9 +726,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <button
                 onClick={() => doFetchAI(false)}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all w-full justify-center"
-                style={{ background: "rgba(99,179,237,0.1)", border: "1px solid rgba(99,179,237,0.2)", color: "var(--accent)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,179,237,0.18)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,179,237,0.1)"; }}>
+                style={{ background: "var(--accent-subtle)", border: "1px solid rgba(99,179,237,0.2)", color: "var(--accent)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-subtle)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-subtle)"; }}>
                 <Brain size={13} />
                 Expliquer avec l&apos;IA
               </button>
@@ -754,7 +754,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   onClick={() => doFetchAI(true)}
                   title="Régénérer et écraser l'explication sauvegardée"
                   className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:text-zinc-200"
-                  style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  style={{ color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <RefreshCw size={9} /> Régénérer
                 </button>
               </>
@@ -763,9 +763,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {rev && (
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--surface-active)" }}>
             <button onClick={() => { setCommentsOpen(!commentsOpen); if (!commentsOpen) loadComments(); }}
-              className="flex items-center gap-2 w-full px-4 py-3 text-sm transition-all hover:bg-white/[0.04]"
+              className="flex items-center gap-2 w-full px-4 py-3 text-sm transition-all hover:bg-[var(--surface)]"
               style={{ color: "var(--text-muted)" }}>
               <MessageCircle size={13} />
               {commentsOpen ? "Masquer les commentaires" : "Commentaires"}
@@ -776,12 +776,12 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             <AnimatePresence>
               {commentsOpen && (
                 <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                  <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                  <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: "var(--surface-alt)" }}>
                     {user && (
                       <div className="pt-3 space-y-2">
                         <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Votre commentaire..." rows={2}
                           className="w-full text-sm rounded-xl px-3 py-2 border resize-none focus:outline-none"
-                          style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "var(--text)" }} />
+                          style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text)" }} />
                         <div className="flex items-center justify-between">
                           <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
                             <input type="checkbox" checked={commentAnon} onChange={(e) => setCommentAnon(e.target.checked)} className="w-3 h-3" /> Anonyme
@@ -813,25 +813,25 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "var(--surface-active)" }}>
         <div className="flex gap-2.5 max-w-lg mx-auto">
           {phase === "quiz" ? (
             <>
               {current > 0 && (
                 <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrev}
                   className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all"
-                  style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                  style={{ borderColor: "var(--surface-active)", color: "var(--text)", background: "var(--surface-alt)" }}>
                   ← Préc.
                 </motion.button>
               )}
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleReveal} disabled={selected.size === 0}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold border transition-all disabled:opacity-30"
-                style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                style={{ borderColor: "var(--surface-active)", color: "var(--text)", background: "var(--surface-alt)" }}>
                 Voir correction
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext} disabled={selected.size === 0}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold transition-all disabled:opacity-30"
-                style={{ background: selected.size > 0 ? "white" : "rgba(255,255,255,0.04)", color: selected.size > 0 ? "black" : "var(--text-muted)" }}>
+                style={{ background: selected.size > 0 ? "white" : "var(--surface-alt)", color: selected.size > 0 ? "black" : "var(--text-muted)" }}>
                 {isLast ? "Résultats" : "Suivant →"}
               </motion.button>
             </>
@@ -840,7 +840,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               {current > 0 && (
                 <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrev}
                   className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all"
-                  style={{ borderColor: "rgba(255,255,255,0.12)", color: "var(--text)", background: "rgba(255,255,255,0.04)" }}>
+                  style={{ borderColor: "var(--surface-active)", color: "var(--text)", background: "var(--surface-alt)" }}>
                   ← Préc.
                 </motion.button>
               )}
