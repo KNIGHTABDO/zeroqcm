@@ -11,6 +11,17 @@ import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import type { Message } from "ai/react";
 
+// ── Thinking model detection ─────────────────────────────────────────────────
+function isThinkingCapable(modelId: string): boolean {
+  return (
+    modelId.startsWith("claude-") ||
+    modelId === "gpt-5.1" ||
+    modelId === "gpt-5-mini" ||
+    modelId.startsWith("gpt-5.1-codex") ||
+    modelId.startsWith("gemini-")
+  );
+}
+
 // ── Provider brand colors ──────────────────────────────────────────────────────
 const PROVIDER_COLORS: Record<string, string> = {
   OpenAI: "#10a37f", Anthropic: "#d4a27f", Meta: "#60a5fa",
@@ -24,7 +35,7 @@ const PROVIDER_BG: Record<string, string> = {
   AI21: "rgba(255,107,107,0.12)", Other: "rgba(255,255,255,0.05)",
 };
 
-interface FetchedModel { id: string; name: string; publisher: string; tier?: string; is_default?: boolean; }
+interface FetchedModel { id: string; name: string; publisher: string; tier?: string; is_default?: boolean; supports_thinking?: boolean; supports_vision?: boolean; }
 
 // ── Markdown renderer ──────────────────────────────────────────────────────────
 function stripToolCallJson(text: string): string {
@@ -256,6 +267,7 @@ export default function ChatWithAIPage() {
   const [fetchedModels, setFetchedModels] = useState<FetchedModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(true);
   const [inputFocused, setInputFocused] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -291,7 +303,7 @@ export default function ChatWithAIPage() {
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop } = useChat({
     api: "/api/chat",
-    body: { model: selectedModel },
+    body: { model: selectedModel, thinking: thinkingMode },
   });
 
   // Load history
@@ -348,6 +360,10 @@ export default function ChatWithAIPage() {
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
+    // Auto-enable thinking mode for capable models, disable for others
+    const m = fetchedModels.find(f => f.id === modelId);
+    const capable = isThinkingCapable(modelId);
+    setThinkingMode(capable);
     if (user && profile) {
       const prefs = { ...(profile.preferences ?? {}), ai_model: modelId };
       supabase.from("profiles").update({ preferences: prefs }).eq("id", user.id).then(() => {});
@@ -517,9 +533,16 @@ export default function ChatWithAIPage() {
                 <motion.div key="typing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }} className="flex gap-4 items-start">
                   <AIAvatar size={7} />
-                  <div className="px-3.5 py-2.5 rounded-3xl rounded-tl-sm"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <TypingDots />
+                  <div className="flex flex-col gap-1.5">
+                    <div className="px-3.5 py-2.5 rounded-3xl rounded-tl-sm"
+                      style={{ background: thinkingMode ? "rgba(139,92,246,0.06)" : "rgba(255,255,255,0.04)", border: `1px solid ${thinkingMode ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.06)"}` }}>
+                      {thinkingMode
+                        ? <div className="flex items-center gap-2">
+                            <Zap className="w-3 h-3 flex-shrink-0" style={{ color: "#a78bfa" }} />
+                            <span className="text-xs" style={{ color: "rgba(139,92,246,0.8)" }}>En réflexion…</span>
+                          </div>
+                        : <TypingDots />}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -567,6 +590,23 @@ export default function ChatWithAIPage() {
 
               <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2">
                 <ModelPicker models={fetchedModels} selected={selectedModel} onSelect={handleModelChange} loading={loadingModels} />
+
+                {/* Thinking mode toggle — only for capable models */}
+                {isThinkingCapable(selectedModel) && (
+                  <button
+                    type="button"
+                    onClick={() => setThinkingMode(v => !v)}
+                    title={thinkingMode ? "Désactiver le mode réflexion" : "Activer le mode réflexion"}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium transition-all active:scale-95 flex-shrink-0"
+                    style={{
+                      background: thinkingMode ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${thinkingMode ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.08)"}`,
+                      color: thinkingMode ? "#a78bfa" : "rgba(255,255,255,0.35)",
+                    }}>
+                    <Zap className="w-3 h-3" style={{ fill: thinkingMode ? "#a78bfa" : "none" }} />
+                    <span className="hidden sm:inline">{thinkingMode ? "Réflexion" : "Réflexion"}</span>
+                  </button>
+                )}
 
                 <motion.button
                   type={isLoading ? "button" : "submit"}
