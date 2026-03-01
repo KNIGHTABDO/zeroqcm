@@ -22,7 +22,9 @@ interface InferenceTokenCache {
 // In-memory cache: oauthTokenRowId → { token, expiresAt }
 // Wiped on cold start but populated on first successful exchange.
 const CACHE = new Map<string, InferenceTokenCache>();
-let roundRobinIndex = 0;
+// NOTE: No roundRobinIndex needed — rows are sorted by use_count ASC (LRU),
+// so iteration naturally picks the least-recently-used token first.
+// This works correctly across multiple serverless instances.
 
 // Exchange mutex: prevents parallel cold-start requests from thrashing the exchange API
 // for the same token. Only one exchange per token ID at a time.
@@ -82,10 +84,9 @@ export async function getCopilotToken(): Promise<string> {
   const now = Date.now();
   const MARGIN = 5 * 60 * 1000; // 5-minute expiry margin
 
+  // FIX #10: iterate in DB order (use_count ASC = LRU) — no round-robin variable needed
   for (let attempt = 0; attempt < rows.length; attempt++) {
-    const idx = roundRobinIndex % rows.length;
-    roundRobinIndex = (roundRobinIndex + 1) % rows.length;
-    const row = rows[idx];
+    const row = rows[attempt];
 
     // Check in-memory cache first
     const cached = CACHE.get(row.id);

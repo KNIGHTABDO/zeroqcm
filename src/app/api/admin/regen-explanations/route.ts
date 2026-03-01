@@ -56,9 +56,10 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { batch = 20, offset = 0, force = false, model = "gpt-4o-mini" } = await req.json().catch(() => ({})) as {
-    batch?: number; offset?: number; force?: boolean; model?: string;
-  };
+  const rawBody = await req.json().catch(() => ({})) as { batch?: number; offset?: number; force?: boolean; model?: string; };
+  const { offset = 0, force = false, model = "gpt-4o-mini" } = rawBody;
+  // FIX #27: Cap batch size to prevent quota exhaustion
+  const batch = Math.min(rawBody.batch ?? 20, 200);
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 

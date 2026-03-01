@@ -59,11 +59,14 @@ function getServiceSupabase() {
   );
 }
 
-/** Get the premium multiplier for a model ID.
- *  Returns 0 for free/unknown (fail-open: unknown models are not blocked). */
-export function getModelMultiplier(modelId: string): 0 | 1 | 3 {
-  if (!modelId) return 0;
-  return MODEL_MULTIPLIER[modelId.toLowerCase()] ?? MODEL_MULTIPLIER[modelId] ?? 0;
+/** Get the premium multiplier for a model ID from the static map.
+ *  Returns null if the model is not in the static map (requires DB lookup). */
+export function getModelMultiplier(modelId: string): 0 | 1 | 3 | null {
+  if (!modelId) return null;
+  const lower = modelId.toLowerCase();
+  if (lower in MODEL_MULTIPLIER) return MODEL_MULTIPLIER[lower];
+  if (modelId in MODEL_MULTIPLIER) return MODEL_MULTIPLIER[modelId];
+  return null; // Unknown — must look up in DB
 }
 
 /** Fetch the category daily limit from ai_rate_limits table.
@@ -98,7 +101,8 @@ export async function checkAiQuota(
 
   // Resolve multiplier: in-memory first, then DB fallback (so admin edits take effect immediately)
   let multiplier = getModelMultiplier(modelId);
-  if (multiplier === 0 && modelId) {
+  // Always try DB to pick up admin tier changes — also resolves null (unknown static) models
+  if (modelId) {
     try {
       const sb = getServiceSupabase();
       const { data } = await sb
@@ -109,7 +113,12 @@ export async function checkAiQuota(
       if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
         multiplier = data.premium_multiplier as 0 | 1 | 3;
       }
-    } catch { /* fail-open */ }
+    } catch { /* fail-open: use static fallback */ }
+  }
+
+  // FIX #29: If multiplier still null after DB lookup, model is unknown — reject
+  if (multiplier === null) {
+    return { allowed: false, remaining: 0, limit: 0, multiplier: -1 as any };
   }
 
   // Free/standard models: always allowed
@@ -142,9 +151,9 @@ export async function incrementAiUsage(
   userId: string,
   modelId: string
 ): Promise<void> {
-  // Resolve multiplier: static map first; if map says 0, verify against DB
+  // Resolve multiplier: static map first, then always verify against DB
   // (admin may have re-tiered a model from the dashboard — static map won't know)
-  let multiplier = getModelMultiplier(modelId);
+  let multiplier: 0 | 1 | 3 = getModelMultiplier(modelId) ?? 0;
   try {
     const sb = getServiceSupabase();
     const { data } = await sb

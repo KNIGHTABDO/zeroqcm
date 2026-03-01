@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, ArrowRight } from "lucide-react";
+import { Lock, ArrowRight, LogOut } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { OnboardingTour } from "./OnboardingTour";
@@ -10,7 +10,8 @@ import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
 // Pages with no sidebar/nav (full viewport layout)
-const FULLSCREEN_PATHS = ["/quiz/", "/auth", "/admin"];
+// FIX #33: use startsWith prefixes without trailing slash to match /quiz/abc properly
+const FULLSCREEN_PREFIXES = ["/quiz", "/auth", "/admin"];
 
 // Pages that are fully public — no activation check needed
 const PUBLIC_PATHS = ["/", "/auth", "/activate", "/admin"];
@@ -24,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [activated, setActivated] = useState<boolean | null>(null);
   const lastCheckedUser = useRef<string | null>(null);
 
-  const isFullscreen   = FULLSCREEN_PATHS.some((r) => path.startsWith(r));
+  const isFullscreen   = FULLSCREEN_PREFIXES.some((r) => path.startsWith(r));
   const needsLockCheck = PUBLIC_PATHS.every((p) => path !== p && !path.startsWith(p + "/"));
 
   useEffect(() => {
@@ -60,6 +61,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLocked   = needsLockCheck && !authLoading && !!user && activated === false;
   const hideContent = isChecking || isLocked;
 
+  // FIX #32: logout handler for the lock overlay
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.replace("/auth");
+  };
+
   if (isFullscreen) {
     return (
       <>
@@ -75,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }} />
             </motion.div>
           )}
-          {isLocked && <LockOverlay onActivate={() => router.push("/activate")} />}
+          {isLocked && <LockOverlay onActivate={() => router.push("/activate")} onSignOut={handleSignOut} />}
         </AnimatePresence>
       </>
     );
@@ -102,13 +109,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               style={{ borderColor: "var(--border)", borderTopColor: "var(--text)" }} />
           </motion.div>
         )}
-        {isLocked && <LockOverlay onActivate={() => router.push("/activate")} />}
+        {isLocked && <LockOverlay onActivate={() => router.push("/activate")} onSignOut={handleSignOut} />}
       </AnimatePresence>
     </div>
   );
 }
 
-function LockOverlay({ onActivate }: { onActivate: () => void }) {
+function LockOverlay({ onActivate, onSignOut }: { onActivate: () => void; onSignOut: () => void }) {
   return (
     <motion.div key="lock-overlay"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -143,6 +150,13 @@ function LockOverlay({ onActivate }: { onActivate: () => void }) {
           style={{ background: "white", color: "black" }}>
           Activer mon compte
           <ArrowRight className="w-4 h-4" />
+        </motion.button>
+        {/* FIX #32: Logout button so users aren't stuck */}
+        <motion.button whileTap={{ scale: 0.97 }} onClick={onSignOut}
+          className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <LogOut className="w-4 h-4" />
+          Se déconnecter
         </motion.button>
       </motion.div>
     </motion.div>

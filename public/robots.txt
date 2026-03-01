@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Block admin from indexing
+Disallow: /admin/
+Disallow: /api/
+
+# ZeroQCM sitemap
+Sitemap: https://zeroqcm.me/sitemap.xml
