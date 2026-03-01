@@ -8,14 +8,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 
 // S-number from semestre_id (e.g. "s3", "S3_FMPM" → 3)
 function parseSNum(id: string): number {
-  const m = id.match(/[sS](\d)/);
+  const m = id.match(/[sS](\d+)/);
   return m ? parseInt(m[1]) : 0;
 }
 
 // Faculty icon uses CSS vars — no hardcoded colors, works in dark+light mode
 
 const SEMESTER_LABELS: Record<number, string> = {
-  1: "S1", 3: "S3", 5: "S5", 7: "S7", 9: "S9",
+  1: "S1", 2: "S2", 3: "S3", 4: "S4", 5: "S5", 6: "S6", 7: "S7", 8: "S8", 9: "S9", 10: "S10",
 };
 
 type SemRow = {
