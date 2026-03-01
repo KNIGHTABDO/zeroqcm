@@ -185,12 +185,18 @@ export default function ProfilPage() {
 
   const initials   = (profile?.full_name ?? user.email ?? "?")[0].toUpperCase();
   const curFac     = profile?.faculty ?? "FMPC";
+  // SINGLE source of truth: year N → semester N (1:1 direct mapping)
   const YEAR_SEM: Record<number, Record<string, string>> = {
-    1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM", FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
-    2: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM", FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
-    3: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM", FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
-    4: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM", FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
-    5: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+     1: { FMPC: "s1",  FMPDF: "s1_FMPDF", FMPM: "S1_FMPM",  FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+     2: { FMPC: "s2",  FMPDF: "s1_FMPDF", FMPM: "S2_FMPM",  FMPR: "S1_FMPR", UM6SS: "S1_UM6" },
+     3: { FMPC: "s3",  FMPDF: "s1_FMPDF", FMPM: "S3_FMPM",  FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+     4: { FMPC: "s4",  FMPDF: "s1_FMPDF", FMPM: "S4_FMPM",  FMPR: "S3_FMPR", UM6SS: "S3_UM6" },
+     5: { FMPC: "s5",  FMPDF: "s1_FMPDF", FMPM: "S5_FMPM",  FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+     6: { FMPC: "s6",  FMPDF: "s1_FMPDF", FMPM: "S6_FMPM",  FMPR: "S5_FMPR", UM6SS: "S5_UM6" },
+     7: { FMPC: "s7",  FMPDF: "s1_FMPDF", FMPM: "S7_FMPM",  FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+     8: { FMPC: "s8",  FMPDF: "s1_FMPDF", FMPM: "S8_FMPM",  FMPR: "S7_FMPR", UM6SS: "S7_UM6" },
+     9: { FMPC: "s9",  FMPDF: "s1_FMPDF", FMPM: "S9_FMPM",  FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
+    10: { FMPC: "s10", FMPDF: "s1_FMPDF", FMPM: "S10_FMPM", FMPR: "S9_FMPR", UM6SS: "S9_UM6" },
   };
   const curYear    = profile?.annee_etude ?? 1;
   const activeSemId    = getActiveSemId(curFac, YEAR_SEM[curYear]?.[curFac]);
