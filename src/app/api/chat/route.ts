@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
+import { checkAiQuota, incrementAiUsage } from "@/lib/ai-rate-limit";
 
 export const maxDuration = 90;
 
@@ -141,10 +142,32 @@ export async function POST(req: NextRequest) {
     const { messages, model: requestedModel, thinking } = await req.json();
     const supabase = makeSupabase();
 
+    // ── User auth ──
+    const { data: { user } } = await supabase.auth.getUser();
+    const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
+    const isAdmin = user?.email === ADMIN_EMAIL;
+
     // Resolve model: requested → validate (not a codex-only) → default
     let modelId = requestedModel;
     if (!modelId || !isModelAllowed(modelId)) {
       modelId = getDefaultModel();
+    }
+
+    // ── Rate limit check ──
+    if (user) {
+      const quota = await checkAiQuota(user.id, modelId, isAdmin);
+      if (!quota.allowed) {
+        const label = quota.multiplier === 3 ? "modèles premium lourds (×3)" : "modèles premium (×1)";
+        return new Response(
+          JSON.stringify({
+            error: "rate_limited",
+            message: `Limite journalière atteinte pour les ${label} (${quota.limit}/jour). Réessaie demain ou utilise un modèle plus léger.`,
+            remaining: 0,
+            limit: quota.limit,
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Gemini sends delta.content=null in reasoning frames — @ai-sdk/openai-compatible v0.2.0 throws on this.
@@ -175,7 +198,7 @@ export async function POST(req: NextRequest) {
       model: copilot(modelId),
       system: SYSTEM_PROMPT,
       messages,
-      maxTokens: thinkingEnabled ? 8000 : 1400,
+      maxTokens: thinkingEnabled ? 8000 : 900,  // 900 covers 95% of medical explanations, saves tokens
       temperature: thinkingEnabled ? 1 : 0.2, // thinking models require temp=1
       maxSteps: 3,
       tools: {
@@ -240,6 +263,13 @@ export async function POST(req: NextRequest) {
     // Pass thinking provider options if applicable
     if (thinkingOpts) {
       streamOpts.providerOptions = { openaicompatible: thinkingOpts };
+    }
+
+    // Increment usage counter (non-blocking — don't await in hot path)
+    if (user) {
+      incrementAiUsage(user.id, modelId).catch(err =>
+        console.error("[chat] usage increment failed (non-fatal):", err)
+      );
     }
 
     const result = await streamText(streamOpts as Parameters<typeof streamText>[0]);

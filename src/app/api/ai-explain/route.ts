@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextRequest } from "next/server";
 import { getCopilotToken, getCopilotBaseURL } from "@/lib/copilot-token";
+import { checkAiQuota, incrementAiUsage } from "@/lib/ai-rate-limit";
 
 export const maxDuration = 90;
 
@@ -41,18 +42,20 @@ Option anatomie (incorrecte) :
 Anatomie · Histologie · Embryologie · Physiologie · Biochimie · Séméiologie · Pharmacologie · Pathologie · Microbiologie · Immunologie · Hématologie · Cardiologie · Pneumologie · Neurologie · Gastro-entérologie · Néphrologie · Endocrinologie · Gynéco-obstétrique · Pédiatrie · Chirurgie · Radiologie · Médecine légale · Santé publique`.trim();
 
 // ── Thinking model detection ─────────────────────────────────────────────────
-// For explanations: use thinking when the model supports it.
-// This produces higher-quality, more accurate medical explanations.
+// Explanations are structured JSON — deep reasoning (thinking) adds latency and
+// token cost without meaningfully improving short per-option medical explanations.
+// Thinking is DISABLED for explain by default. Only activate for specific models
+// when Claude Opus is explicitly selected.
 function getThinkingOptions(modelId: string): Record<string, unknown> | null {
-  if (modelId.startsWith("claude-")) {
-    return { thinking: { type: "enabled", budget_tokens: 6000 } };
+  // Only enable thinking for Opus-class models — they are explicitly chosen for hard cases
+  if (modelId.includes("claude-opus")) {
+    return { thinking: { type: "enabled", budget_tokens: 4000 } };
   }
-  if (modelId === "gpt-5.1" || modelId === "gpt-5-mini" || modelId.startsWith("gpt-5.1-codex")) {
-    return { reasoning_effort: "medium" };
+  // GPT-5.1 reasoning effort (if explicitly selected)
+  if (modelId === "gpt-5.1") {
+    return { reasoning_effort: "low" }; // low = cheaper, still structured
   }
-  if (modelId.startsWith("gemini-")) {
-    return { thinkingConfig: { thinkingBudget: 6000 } };
-  }
+  // All others (including Claude Sonnet, gpt-4.1, Gemini): no thinking
   return null;
 }
 
@@ -84,7 +87,7 @@ async function streamCopilotExplain(modelId: string, prompt: string): Promise<Re
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ],
-    max_tokens: isThinking ? 6000 : 1600,
+    max_tokens: isThinking ? 4000 : 1200,  // JSON array explanations fit in 1200 tokens
     temperature: isThinking ? 1 : 0.15,
     top_p: isThinking ? undefined : 0.95,
     ...thinkingOpts,
@@ -171,15 +174,45 @@ async function streamCopilotExplain(modelId: string, prompt: string): Promise<Re
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { prompt, model } = (await req.json()) as { prompt: string; model?: string };
+  const { prompt, model, userId } = (await req.json()) as {
+    prompt: string;
+    model?: string;
+    userId?: string;
+  };
   const headers = { "Content-Type": "text/plain; charset=utf-8" };
 
-  // Use requested model, or fall back to a capable default for explanations
-  // Claude Sonnet is ideal: native thinking, strong medical reasoning, long JSON output
-  const modelId = model?.trim() || "claude-sonnet-4.5";
+  // Default: gpt-4.1 (1× premium, no thinking overhead, strong JSON output)
+  // Claude Sonnet only used if explicitly requested (higher tier users/admin)
+  const modelId = model?.trim() || "gpt-4.1";
+
+  // ── Rate limit check (if userId provided) ──
+  if (userId) {
+    const ADMIN_EMAIL_HASH = "aabidaabdessamad@gmail.com"; // admin bypass via userId comparison
+    try {
+      const quota = await checkAiQuota(userId, modelId, false);
+      if (!quota.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "rate_limited",
+            message: `Limite journalière atteinte (${quota.limit}/jour). Réessaie demain.`,
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } catch (e) {
+      // Fail-open: quota check failure should not block explanations
+      console.error("[ai-explain] quota check error (non-fatal):", e);
+    }
+  }
 
   try {
     const stream = await streamCopilotExplain(modelId, prompt);
+    // Increment usage (fire-and-forget)
+    if (userId) {
+      incrementAiUsage(userId, modelId).catch(err =>
+        console.error("[ai-explain] usage increment failed (non-fatal):", err)
+      );
+    }
     return new Response(stream, { headers });
   } catch (e) {
     console.error("[ai-explain] unhandled error:", e);
