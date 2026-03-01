@@ -61,6 +61,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [openQuestions, setOpenQuestions] = useState<Question[]>([]);
+  const [readOpenQIds, setReadOpenQIds] = useState<Set<string>>(new Set());
   const [activityName, setActivityName] = useState("");
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
@@ -520,13 +521,29 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           {openQuestions.length > 0 && (
             <div className="space-y-3">
               {openQuestions.map((oq, idx) => (
-                <div key={oq.id} className="rounded-xl border px-4 py-3 space-y-1.5"
-                  style={{ background: "var(--surface)", borderColor: "rgba(255,255,255,0.06)" }}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
-                    {oq.source_question && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{oq.source_question}</span>
-                    )}
+                <div key={oq.id} className="rounded-xl border px-4 py-3 space-y-1.5 transition-all"
+                  style={{ background: "var(--surface)", borderColor: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.06)", opacity: readOpenQIds.has(oq.id) ? 0.6 : 1 }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
+                      {oq.source_question && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{oq.source_question}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setReadOpenQIds(prev => {
+                        const next = new Set(prev);
+                        next.has(oq.id) ? next.delete(oq.id) : next.add(oq.id);
+                        return next;
+                      })}
+                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-all flex-shrink-0"
+                      style={{
+                        background: readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+                        color: readOpenQIds.has(oq.id) ? "#22c55e" : "rgba(255,255,255,0.3)",
+                        border: `1px solid ${readOpenQIds.has(oq.id) ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.06)"}`,
+                      }}>
+                      {readOpenQIds.has(oq.id) ? "✓ Lu" : "Marquer lu"}
+                    </button>
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{oq.texte}</p>
                   <QuizImage src={oq.image_url} className="mt-2" />
@@ -611,17 +628,6 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           <QuizImage src={q.image_url} />
         </div>
 
-        {/* Multi-answer hint */}
-        {(() => {
-          const numCorrect = q.choices.filter(c => c.est_correct).length;
-          return numCorrect > 1 ? (
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium px-1"
-              style={{ color: "rgba(251,191,36,0.8)" }}>
-              <span>⚡</span>
-              <span>Sélectionne {numCorrect} bonnes réponses</span>
-            </div>
-          ) : null;
-        })()}
         <div className="space-y-2">
           {q.choices.map((choice, idx) => {
             const isSel = selected.has(choice.id);
