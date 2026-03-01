@@ -535,10 +535,12 @@ function AiSection() {
   const [models, setModels]           = useState<AiModel[]>([]);
   const [testingId, setTestingId]     = useState<string|null>(null);
   const [testingAll, setTestingAll]   = useState(false);
-  const [newLabel, setNewLabel]       = useState("");
-  const [newToken, setNewToken]       = useState("");
+  const [flowLabel, setFlowLabel]     = useState("");
   const [addOpen, setAddOpen]         = useState(false);
-  const [saving, setSaving]           = useState(false);
+  const [flowState, setFlowState]     = useState<"idle"|"starting"|"code_shown"|"polling"|"success"|"error">("idle");
+  const [flowData, setFlowData]       = useState<{device_code:string;user_code:string;verification_uri:string;interval:number;expires_at:number}|null>(null);
+  const [flowError, setFlowError]     = useState("");
+  const pollRef                       = useRef<ReturnType<typeof setTimeout>|null>(null);
   const [tab, setTab]                 = useState<"tokens"|"models">("tokens");
 
   async function authHdr() {
@@ -566,13 +568,51 @@ function AiSection() {
     setTestingId(null); setTestingAll(false);
   }
 
-  async function addToken() {
-    if (!newLabel || !newToken) return;
-    setSaving(true);
-    const h = await authHdr();
-    await fetch("/api/admin/ai-tokens", { method: "POST", headers: h, body: JSON.stringify({ label: newLabel, github_oauth_token: newToken }) });
-    setNewLabel(""); setNewToken(""); setAddOpen(false); setSaving(false);
-    await loadTokens();
+  async function startDeviceFlow() {
+    if (!flowLabel.trim()) return;
+    setFlowState("starting"); setFlowError("");
+    try {
+      const h = await authHdr();
+      const r = await fetch("/api/admin/ai-tokens/device-flow", { method: "POST", headers: h });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      const expiresAt = Date.now() + d.expires_in * 1000;
+      setFlowData({ device_code: d.device_code, user_code: d.user_code, verification_uri: d.verification_uri, interval: d.interval ?? 5, expires_at: expiresAt });
+      setFlowState("code_shown");
+      schedulePoll(d.device_code, d.interval ?? 5, expiresAt);
+    } catch (e: any) { setFlowError(e.message || "Failed to start flow"); setFlowState("error"); }
+  }
+
+  function schedulePoll(device_code: string, interval: number, expiresAt: number) {
+    if (pollRef.current) clearTimeout(pollRef.current);
+    pollRef.current = setTimeout(() => pollDeviceFlow(device_code, interval, expiresAt), interval * 1000);
+  }
+
+  async function pollDeviceFlow(device_code: string, interval: number, expiresAt: number) {
+    if (Date.now() >= expiresAt) { setFlowState("error"); setFlowError("Code expired — try again"); return; }
+    try {
+      const h = await authHdr();
+      const r = await fetch(`/api/admin/ai-tokens/device-flow?device_code=${device_code}&label=${encodeURIComponent(flowLabel)}`, { headers: h });
+      const d = await r.json();
+      if (d.status === "authorized") {
+        setFlowState("success");
+        pollRef.current = null;
+        await loadTokens();
+        setTimeout(() => { setAddOpen(false); setFlowState("idle"); setFlowLabel(""); setFlowData(null); }, 2200);
+      } else if (d.status === "pending") {
+        schedulePoll(device_code, interval, expiresAt);
+      } else if (d.status === "slow_down") {
+        schedulePoll(device_code, interval + 5, expiresAt);
+      } else {
+        setFlowState("error"); setFlowError(d.error || "Unknown error");
+      }
+    } catch (e: any) { schedulePoll(device_code, interval, expiresAt); }
+  }
+
+  function cancelFlow() {
+    if (pollRef.current) clearTimeout(pollRef.current);
+    pollRef.current = null;
+    setFlowState("idle"); setFlowData(null); setFlowLabel(""); setFlowError(""); setAddOpen(false);
   }
 
   async function deleteToken(id: string) {
@@ -677,36 +717,97 @@ function AiSection() {
             <AnimatePresence>
               {addOpen && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                  className="rounded-xl border p-4 space-y-3"
-                  style={{ background: "rgba(99,102,241,0.04)", borderColor: "rgba(99,102,241,0.15)" }}>
-                  <p className="text-xs font-semibold" style={{ color: "#818cf8" }}>Add GitHub OAuth Token</p>
-                  <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Label (e.g. KNIGHTABDO account)"
-                    className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
-                    style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
-                  <input value={newToken} onChange={e => setNewToken(e.target.value)} placeholder="gho_xxxxxxxxxxxx"
-                    type="password" className="w-full px-3 py-2 rounded-lg text-xs border font-mono outline-none"
-                    style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-                    Get this from: GitHub Device Flow login or Settings → Developer Settings → Personal Access Tokens (classic) with <code>read:user</code> scope.
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={addToken} disabled={saving || !newLabel || !newToken}
-                      className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
-                      style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.25)" }}>
-                      {saving ? "Saving…" : "Save token"}
-                    </button>
-                    <button onClick={() => setAddOpen(false)}
-                      className="px-4 py-2 rounded-lg text-xs font-semibold"
-                      style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      Cancel
-                    </button>
-                  </div>
+                  className="rounded-xl border p-4 space-y-4"
+                  style={{ background: "rgba(34,197,94,0.03)", borderColor: "rgba(34,197,94,0.15)" }}>
+
+                  {/* Idle / start state */}
+                  {(flowState === "idle" || flowState === "starting") && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
+                        <span>🔗</span> Connect GitHub Account
+                      </p>
+                      <input value={flowLabel} onChange={e => setFlowLabel(e.target.value)}
+                        placeholder="Nickname (e.g. KNIGHTABDO)"
+                        className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
+                        style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        GitHub will show you a one-time code to enter at github.com/activate
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={startDeviceFlow} disabled={!flowLabel.trim() || flowState === "starting"}
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                          style={{ background: flowLabel.trim() && flowState !== "starting" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.04)", color: flowLabel.trim() && flowState !== "starting" ? "#4ade80" : "rgba(255,255,255,0.3)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                          {flowState === "starting" ? <><span className="animate-spin">⟳</span> Starting…</> : <>🐙 Authorize with GitHub</>}
+                        </button>
+                        <button onClick={cancelFlow} className="px-3 py-2 rounded-lg text-xs"
+                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Code shown + polling */}
+                  {(flowState === "code_shown" || flowState === "polling") && flowData && (
+                    <div className="space-y-4">
+                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
+                        <span>📋</span> Enter this code at GitHub
+                      </p>
+
+                      {/* Big code display */}
+                      <div className="rounded-2xl p-5 text-center space-y-2" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                        <div className="text-3xl font-mono font-bold tracking-[0.25em] select-all" style={{ color: "#4ade80", letterSpacing: "0.3em" }}>
+                          {flowData.user_code}
+                        </div>
+                        <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                          Copy this code, then click the link below
+                        </p>
+                      </div>
+
+                      <a href={flowData.verification_uri} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                        style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textDecoration: "none" }}>
+                        🌐 Open {flowData.verification_uri}
+                      </a>
+
+                      <div className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        <span className="inline-block w-3 h-3 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
+                          style={{ borderColor: "rgba(34,197,94,0.4)", borderTopColor: "transparent" }} />
+                        Waiting for you to authorize… auto-detecting
+                      </div>
+
+                      <button onClick={cancelFlow} className="w-full py-1.5 rounded-lg text-xs"
+                        style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)" }}>Cancel</button>
+                    </div>
+                  )}
+
+                  {/* Success */}
+                  {flowState === "success" && (
+                    <div className="text-center py-4 space-y-2">
+                      <div className="text-4xl">✅</div>
+                      <p className="text-sm font-semibold" style={{ color: "#4ade80" }}>GitHub account connected!</p>
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Token saved — closing in a moment</p>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {flowState === "error" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171" }}>
+                        ⚠️ {flowError}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setFlowState("idle"); setFlowError(""); }} className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                          style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.15)" }}>Try again</button>
+                        <button onClick={cancelFlow} className="px-3 py-2 rounded-lg text-xs"
+                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
 
             {!addOpen && (
-              <button onClick={() => setAddOpen(true)}
+              <button onClick={() => setAddOpen(true); setFlowState('idle'); setFlowLabel(''); setFlowError(''); setFlowData(null)}
                 className="w-full py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-80"
                 style={{ background: "rgba(99,102,241,0.06)", borderColor: "rgba(99,102,241,0.15)", color: "#818cf8" }}>
                 <Plus className="w-3.5 h-3.5" />
