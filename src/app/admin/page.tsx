@@ -517,7 +517,7 @@ function SeedSection() {
 
 // ── AI Tokens & Models Section ───────────────────────────────────────────────
 interface AiToken  { id: string; label: string; status: "alive"|"dead"|"rate_limited"|"unknown"; last_tested_at: string|null; last_used_at: string|null; use_count: number; created_at: string; }
-interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; }
+interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; supports_vision?: boolean; supports_tools?: boolean; max_context?: number; billing_plan?: string; }
 
 const STATUS_COLOR: Record<string, string> = {
   alive: "#22c55e", dead: "#ef4444", rate_limited: "#f59e0b", unknown: "rgba(255,255,255,0.25)"
@@ -609,7 +609,7 @@ function AiSection() {
           <div>
             <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>AI Models & Tokens</p>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-              {aliveCount}/{tokens.length} tokens alive · {models.filter(m=>m.is_enabled).length} models active
+              {aliveCount}/{tokens.length} tokens alive · {models.filter(m=>m.is_enabled).length}/{models.length} models active · live
             </p>
           </div>
         </div>
@@ -629,7 +629,7 @@ function AiSection() {
           <button key={t} onClick={() => setTab(t)}
             className="flex-1 py-3 text-xs font-semibold uppercase tracking-widest transition-all"
             style={{ color: tab === t ? "#818cf8" : "rgba(255,255,255,0.3)", borderBottom: tab === t ? "2px solid #818cf8" : "2px solid transparent" }}>
-            {t === "tokens" ? `🔑 Tokens (${tokens.length})` : `🤖 Models (${models.length})`}
+            {t === "tokens" ? `🔑 Tokens (${tokens.length})` : `🤖 Models (${models.length} live)`}
           </button>
         ))}
       </div>
@@ -732,9 +732,12 @@ function AiSection() {
                       {m.tier.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: PROVIDER_COLORS[m.provider] ?? "rgba(255,255,255,0.35)" }}>
-                    {m.provider} · <code className="font-mono text-[10px]">{m.id}</code>
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-xs" style={{ color: PROVIDER_COLORS[m.provider] ?? "rgba(255,255,255,0.35)" }}>{m.provider}</span>
+                    {(m as any).supports_vision && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc" }}>👁 vision</span>}
+                    {(m as any).supports_tools && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(99,179,237,0.1)", color: "#93c5fd" }}>🔧 tools</span>}
+                    {(m as any).max_context && <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>{Math.round((m as any).max_context / 1000)}k ctx</span>}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!m.is_default && m.is_enabled && (
