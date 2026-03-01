@@ -70,24 +70,25 @@ function getServiceSupabase() {
   );
 }
 
-async function getDefaultModel(): Promise<string> {
-  try {
-    const sb = getServiceSupabase();
-    const { data } = await sb.from("ai_models_config").select("id").eq("is_default", true).eq("is_enabled", true).maybeSingle();
-    return data?.id ?? "gpt-4.1-mini";
-  } catch {
-    return "gpt-4.1-mini";
-  }
+// Working models confirmed via direct API test (2026-03-01)
+// DO NOT use gpt-4.1-mini — it doesn't exist in the Copilot API
+const COPILOT_DEFAULT_MODEL = "gpt-4.1";
+
+// These models show in the picker but are NOT accessible via /chat/completions
+const CODEX_ONLY_MODELS = new Set([
+  "gpt-5.2-codex", "gpt-5.3-codex",
+  "gpt-5.1-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max",
+]);
+
+function getDefaultModel(): string {
+  return COPILOT_DEFAULT_MODEL;
 }
 
-async function isModelAllowed(modelId: string): Promise<boolean> {
-  try {
-    const sb = getServiceSupabase();
-    const { data } = await sb.from("ai_models_config").select("id").eq("id", modelId).eq("is_enabled", true).maybeSingle();
-    return !!data;
-  } catch {
-    return true; // fail open
-  }
+function isModelAllowed(modelId: string): boolean {
+  // Block codex-only models that aren't accessible via /chat/completions
+  if (CODEX_ONLY_MODELS.has(modelId)) return false;
+  // All other models: allow (the Copilot API is the authority, not our DB)
+  return true;
 }
 
 // ── Thinking model detection ─────────────────────────────────────────────────
@@ -139,10 +140,10 @@ export async function POST(req: NextRequest) {
     const { messages, model: requestedModel, thinking } = await req.json();
     const supabase = makeSupabase();
 
-    // Resolve model: requested → validate against DB → default
+    // Resolve model: requested → validate (not a codex-only) → default
     let modelId = requestedModel;
-    if (!modelId || !(await isModelAllowed(modelId))) {
-      modelId = await getDefaultModel();
+    if (!modelId || !isModelAllowed(modelId)) {
+      modelId = getDefaultModel();
     }
 
     // Thinking mode: explicit from client OR auto-enabled for capable models

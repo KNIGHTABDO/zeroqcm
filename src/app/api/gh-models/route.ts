@@ -72,7 +72,7 @@ function inferTier(m: CopilotModel): "standard" | "premium" {
 }
 
 const FALLBACK = [
-  { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", publisher: "OpenAI", tier: "standard", is_default: true, supports_vision: false, supports_tools: true },
+  { id: "gpt-4.1", name: "GPT-4.1", publisher: "OpenAI", tier: "standard", is_default: true, supports_vision: false, supports_tools: true },
   { id: "gpt-4o",       name: "GPT-4o",        publisher: "OpenAI", tier: "premium",  is_default: false, supports_vision: true, supports_tools: true },
 ];
 
@@ -114,9 +114,13 @@ export async function GET() {
     const overrides: ModelOverride[] = dbResult.status === "fulfilled" ? (dbResult.value.data ?? []) : [];
     const overrideMap = new Map(overrides.map(o => [o.id, o]));
 
-    // Filter to chat-capable models and model_picker_enabled
+    // Models that show in the picker but are NOT accessible via /chat/completions
+    const CODEX_ONLY = new Set(["gpt-5.2-codex", "gpt-5.3-codex", "gpt-5.1-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max"]);
+
+    // Filter to chat-capable models and model_picker_enabled; exclude codex-only
     const chatModels = liveModels.filter(m =>
       m.id &&
+      !CODEX_ONLY.has(m.id) &&
       (m.capabilities?.type === "chat" || !m.capabilities?.type) &&
       m.model_picker_enabled !== false &&
       m.object !== "model_deprecated"

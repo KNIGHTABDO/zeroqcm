@@ -429,7 +429,7 @@ export default function ChatWithAIPage() {
       </div>
 
       {/* ── Messages ── */}
-      <div className="chat-scroll flex-1 overflow-y-auto" ref={containerRef} style={{ background: "#0a0a0a" }}>
+      <div className="chat-scroll flex-1 overflow-y-auto overscroll-contain" ref={containerRef} style={{ background: "#0a0a0a" }}>
         <div className="max-w-[760px] mx-auto px-4 md:px-8 pb-4">
 
           <AnimatePresence>
@@ -560,7 +560,7 @@ export default function ChatWithAIPage() {
                     Erreur de connexion — réessaie ou change de modèle.
                   </span>
                   <button type="button"
-                    onClick={() => { if (input.trim()) handleSubmit({ preventDefault: () => {} } as any); }}
+                    onClick={() => reload()}
                     className="flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg font-medium transition-all active:scale-95"
                     style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
                     Réessayer
@@ -593,8 +593,8 @@ export default function ChatWithAIPage() {
                 onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}
                 placeholder="Pose ta question médicale…"
                 rows={1} disabled={isLoading}
-                className="w-full bg-transparent resize-none outline-none text-sm px-4 pt-4 pb-2 placeholder:text-white/20"
-                style={{ color: "rgba(255,255,255,0.9)", caretColor: "#10a37f", minHeight: "56px", maxHeight: "220px", lineHeight: "1.6", WebkitAppearance: "none" }}
+                className="w-full bg-transparent resize-none outline-none px-4 pt-4 pb-2 placeholder:text-white/20"
+                style={{ color: "rgba(255,255,255,0.9)", caretColor: "#10a37f", minHeight: "56px", maxHeight: "220px", lineHeight: "1.6", WebkitAppearance: "none", fontSize: "16px" }}
               />
 
               <div className="flex items-center justify-between px-3 pb-3 pt-1 gap-2">
