@@ -70,7 +70,7 @@ export default function VoicePage() {
               className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center"
               style={{ background: "var(--accent)" }}
             >
-              <Mic size={28} color="white" />
+              <Mic size={28} color="var(--bg)" />
             </div>
           </div>
 
