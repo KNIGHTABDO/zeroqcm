@@ -204,8 +204,16 @@ async function seedModule(
 
     // Fetch back DB UUIDs
     const idQs = questions.map((q) => q.id_question);
-    const { data: qRows } = await supabase.from("questions").select("id,id_question").in("id_question", idQs);
+    const { data: qRows } = await supabase.from("questions").select("id,id_question").in("id_question", idQs).eq("module_id", moduleId);
     const qidMap = Object.fromEntries((qRows ?? []).map((r) => [r.id_question, r.id]));
+
+    // Clear existing choices before inserting to prevent accumulation from re-scrapes
+    if (qRows && qRows.length > 0) {
+      const existingUids = qRows.map((r) => r.id);
+      for (let i = 0; i < existingUids.length; i += 200) {
+        await supabase.from("choices").delete().in("question_id", existingUids.slice(i, i + 200));
+      }
+    }
 
     // Build + upsert choices in batches of 500
     const choiceRows: Record<string, unknown>[] = [];
