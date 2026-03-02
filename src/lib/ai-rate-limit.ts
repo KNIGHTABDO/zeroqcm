@@ -93,12 +93,10 @@ export async function checkAiQuota(
   if (isAdmin) return { allowed: true, remaining: 999, limit: 999, multiplier: 0, resolvedMultiplier: 0 };
 
   // Always resolve from DB — zero tolerance for stale static values
-  const multiplier = await resolveModelMultiplier(modelId);
-
-  if (multiplier === null) {
-    // Model not in DB — block it
-    return { allowed: false, remaining: 0, limit: 0, multiplier: -1 as any, resolvedMultiplier: 0 };
-  }
+  const rawMultiplier = await resolveModelMultiplier(modelId);
+  // Unknown models (not in ai_models_config): treat as 1× premium instead of blocking.
+  // Consistent with incrementAiUsage default. Allows any Copilot model from the picker to work.
+  const multiplier: 0 | 1 | 3 = rawMultiplier ?? 1;
 
   // Free/standard models: always allowed
   if (multiplier === 0) {
