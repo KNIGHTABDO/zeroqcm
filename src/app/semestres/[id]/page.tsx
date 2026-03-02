@@ -57,7 +57,7 @@ export default function SemestreModulesPage({ params }: { params: Promise<{ id: 
       const { data: mods } = await supabase
         .from("modules")
         .select("id, nom, total_activities, total_questions")
-        .eq("semestre_id", id)
+        .eq("semester_id", id)
         .order("id");
 
       const modList = (mods ?? []) as Module[];
@@ -301,8 +301,8 @@ export default function SemestreModulesPage({ params }: { params: Promise<{ id: 
                                 {answered}/{mod.total_questions} répondues
                               </span>
                               <span className="text-[10px] font-medium" style={{ color: pct > 0 ? "var(--text-secondary)" : "var(--text-disabled)" }}>
-                               {pct}%
-                               </span>
+                                {pct}%
+                              </span>
                             </div>
                           </div>
                         )}
