@@ -695,7 +695,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     {rev && (
                       <div className="mt-1.5 flex items-center gap-2">
                         <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: "var(--surface-active)" }}>
-                          <div className="h-full rounded-full" style={{ background: "var(--accent)" }} style={{ width: `${choice.pourcentage}%` }} />
+                          <div className="h-full rounded-full" style={{ background: "var(--accent)", width: `${choice.pourcentage}%` }} />
                         </div>
                         <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>{choice.pourcentage}%</span>
                       </div>
