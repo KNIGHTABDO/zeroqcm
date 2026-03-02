@@ -5,7 +5,7 @@ import { Search, Users, CheckCircle, Clock, XCircle, Minus, RefreshCw,
          TrendingUp, BookOpen, MessageSquare, Calendar, X, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-const SEM_MAP: Record<number,string> = {1:'S1',2:'S3',3:'S5',4:'S7',5:'S9'};
+const SEM_MAP: Record<number,string> = {1:'S1',2:'S2',3:'S3',4:'S4',5:'S5',6:'S6',7:'S7',8:'S8',9:'S9'};
 
 const STATUS_ICON = {
   approved: { Icon: CheckCircle, color: "var(--success)", label: "Approuvé" },
