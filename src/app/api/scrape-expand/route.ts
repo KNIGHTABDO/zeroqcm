@@ -84,8 +84,17 @@ async function scrapeActivity(act: Activity, jwt: string, key: Buffer, moduleId:
 
   // Fetch back DB IDs
   const idQuestions = questions.map(q => q.id_question);
-  const { data: qRows } = await supabase.from("questions").select("id,id_question").in("id_question", idQuestions);
+  const { data: qRows } = await supabase.from("questions").select("id,id_question").in("id_question", idQuestions).eq("activity_id", act.id_activite);
   const qidMap = Object.fromEntries((qRows ?? []).map(r => [r.id_question, r.id]));
+
+  // Clear existing choices for this activity before inserting fresh ones
+  // Prevents accumulation of mislinked choices across re-scrapes
+  if (qRows && qRows.length > 0) {
+    const existingUids = qRows.map(r => r.id);
+    for (let i = 0; i < existingUids.length; i += 200) {
+      await supabase.from("choices").delete().in("question_id", existingUids.slice(i, i + 200));
+    }
+  }
 
   // Build choices
   const choiceRows: object[] = [];
