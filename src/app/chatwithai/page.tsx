@@ -617,7 +617,7 @@ export default function ChatWithAIPage() {
               key="hbdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-30 lg:hidden"
+              className="fixed inset-0 z-30"
               style={{ background: "rgba(0,0,0,0.5)" }}
               onClick={() => setSidebarOpen(false)}
             />
@@ -709,11 +709,12 @@ export default function ChatWithAIPage() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            {/* Mobile: sidebar toggle */}
+            {/* History toggle — all screen sizes */}
             <button
               onClick={() => { setSidebarOpen(true); fetchDbHistory(); }}
-              className="lg:hidden p-1.5 rounded-lg transition-all"
+              className="p-1.5 rounded-lg transition-all"
               style={{ color: "var(--text-muted)" }}
+              title="Historique"
             >
               <SidebarOpen className="w-4 h-4" />
             </button>
