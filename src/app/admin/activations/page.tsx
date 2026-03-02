@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Clock, CheckCircle, XCircle, User, RefreshCw, ChevronDown } from "lucide-react";
+import { Search, Clock, CheckCircle, XCircle, User, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const SEMESTER_MAP: Record<number, string> = { 1:"S1", 2:"S3", 3:"S5", 4:"S7", 5:"S9" };
@@ -18,9 +18,9 @@ type ActivationUser = {
 };
 
 const STATUS_CFG = {
-  pending:  { label: "En attente", color: "#fbbf24", bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.2)",  Icon: Clock },
-  approved: { label: "Approuvé",   color: "#22c55e", bg: "rgba(34,197,94,0.08)",   border: "rgba(34,197,94,0.2)",   Icon: CheckCircle },
-  denied:   { label: "Refusé",     color: "#ef4444", bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.15)",  Icon: XCircle },
+  pending:  { label: "En attente", color: "var(--warning)", bg: "var(--warning-subtle)",  border: "var(--warning-border)",  Icon: Clock },
+  approved: { label: "Approuvé",   color: "var(--success)", bg: "var(--success-subtle)",   border: "var(--success-border)",   Icon: CheckCircle },
+  denied:   { label: "Refusé",     color: "var(--error)", bg: "var(--error-subtle)",   border: "var(--error-border)",  Icon: XCircle },
 };
 
 const TABS = [
@@ -119,13 +119,13 @@ export default function ActivationsPage() {
     : users;
 
   return (
-    <div className="min-h-screen px-5 py-8 lg:px-8" style={{ background: "#080808" }}>
+    <div className="min-h-screen px-5 py-8 lg:px-8" style={{ background: "var(--bg)" }}>
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <p className="text-xs font-medium uppercase tracking-widest mb-1"
-          style={{ color: "rgba(255,255,255,0.3)" }}>Gestion</p>
-        <h1 className="text-2xl font-bold" style={{ color: "rgba(255,255,255,0.95)" }}>Activations</h1>
+          style={{ color: "var(--text-muted)" }}>Gestion</p>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Activations</h1>
       </motion.div>
 
       {/* Tabs */}
@@ -134,16 +134,16 @@ export default function ActivationsPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all"
             style={{
-              background: tab === t.key ? "rgba(255,255,255,0.08)" : "transparent",
-              color:      tab === t.key ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.38)",
-              border: tab === t.key ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
+              background: tab === t.key ? "var(--border)" : "transparent",
+              color:      tab === t.key ? "var(--text)"  : "var(--text-muted)",
+              border: tab === t.key ? "1px solid var(--border)" : "1px solid transparent",
             }}>
             {t.label}
             {counts[t.key] !== undefined && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold tabular-nums"
                 style={{
-                  background: tab === t.key ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)",
-                  color:      tab === t.key ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)",
+                  background: tab === t.key ? "var(--border)" : "var(--surface-alt)",
+                  color:      tab === t.key ? "var(--text-secondary)" : "var(--text-muted)",
                 }}>
                 {counts[t.key]}
               </span>
@@ -152,7 +152,7 @@ export default function ActivationsPage() {
         ))}
         <button onClick={() => fetchUsers(tab, search)} disabled={loading}
           className="ml-auto p-2 rounded-xl flex-shrink-0 transition-all"
-          style={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
@@ -160,16 +160,16 @@ export default function ActivationsPage() {
       {/* Search */}
       <div className="relative mb-5">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
-          style={{ color: "rgba(255,255,255,0.25)" }} />
+          style={{ color: "var(--text-disabled)" }} />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher par nom, email…"
           className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border:     "1px solid rgba(255,255,255,0.08)",
-            color:      "rgba(255,255,255,0.8)",
+            background: "var(--surface-alt)",
+            border:     "1px solid var(--border)",
+            color:      "var(--text)",
           }}
         />
       </div>
@@ -178,14 +178,14 @@ export default function ActivationsPage() {
       {loading ? (
         <div className="space-y-2">
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "var(--surface-alt)" }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border py-16 text-center"
-          style={{ background: "#111", borderColor: "rgba(255,255,255,0.06)" }}>
-          <User className="w-8 h-8 mx-auto mb-3" style={{ color: "rgba(255,255,255,0.15)" }} />
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>Aucun résultat</p>
+          style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          <User className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-disabled)" }} />
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Aucun résultat</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -206,7 +206,7 @@ export default function ActivationsPage() {
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ delay: Math.min(i * 0.03, 0.3) }}
                 className="rounded-2xl border p-4 lg:p-5 transition-all"
-                style={{ background: "#111", borderColor: "rgba(255,255,255,0.07)" }}>
+                style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
 
                 <div className="flex items-start gap-3">
                   {/* Checkbox for bulk select */}
@@ -217,19 +217,19 @@ export default function ActivationsPage() {
                       return s;
                     })}
                     className="mt-1 w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-all"
-                    style={{ background: selected.has(user.id) ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                    {selected.has(user.id) && <span style={{ color: "#000", fontSize: "10px", fontWeight: 900 }}>✓</span>}
+                    style={{ background: selected.has(user.id) ? "var(--text)" : "var(--border)", border: "1px solid var(--border)" }}>
+                    {selected.has(user.id) && <span style={{ color: "var(--bg)", fontSize: "10px", fontWeight: 900 }}>✓</span>}
                   </button>
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
+                    style={{ background: "var(--border)", color: "var(--text-secondary)" }}>
                     {name[0].toUpperCase()}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>{name}</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{name}</p>
                       {cfg && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg"
                           style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
@@ -238,19 +238,19 @@ export default function ActivationsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                       {user.email ?? "—"}
                     </p>
                     <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                       <span className="text-[11px] px-2 py-0.5 rounded-md"
-                        style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
+                        style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>
                         {user.faculty}
                       </span>
                       <span className="text-[11px] px-2 py-0.5 rounded-md"
-                        style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
+                        style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>
                         {sem}
                       </span>
-                      <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>{date}</span>
+                      <span className="text-[11px]" style={{ color: "var(--text-disabled)" }}>{date}</span>
                     </div>
                   </div>
                 </div>
@@ -260,21 +260,21 @@ export default function ActivationsPage() {
                   {status !== "approved" && (
                     <button onClick={() => handleAction(user.id, "approve")} disabled={!!actionLoading}
                       className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-40"
-                      style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>
+                      style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
                       {actionLoading === user.id+"approve" ? "…" : "✓ Approuver"}
                     </button>
                   )}
                   {status !== "denied" && (
                     <button onClick={() => handleAction(user.id, "deny")} disabled={!!actionLoading}
                       className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-40"
-                      style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)" }}>
+                      style={{ background: "var(--error-subtle)", color: "var(--error)", border: "1px solid var(--error-border)" }}>
                       {actionLoading === user.id+"deny" ? "…" : "✗ Refuser"}
                     </button>
                   )}
                   {status === "approved" && (
                     <button onClick={() => handleAction(user.id, "revoke")} disabled={!!actionLoading}
                       className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-40"
-                      style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      style={{ background: "var(--surface-alt)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                       {actionLoading === user.id+"revoke" ? "…" : "Révoquer"}
                     </button>
                   )}
@@ -295,7 +295,7 @@ export default function ActivationsPage() {
                 }}
                 disabled={loading}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                style={{ background: "var(--border)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
                 Charger plus
               </button>
@@ -310,28 +310,28 @@ export default function ActivationsPage() {
           <motion.div
             initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl"
-            style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(12px)" }}>
-            <span className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", backdropFilter: "blur(12px)" }}>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
               {selected.size} sélectionné{selected.size > 1 ? "s" : ""}
             </span>
             <button
               onClick={() => bulkAction("approve")}
               disabled={bulkLoading}
               className="px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-              style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}>
+              style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
               {bulkLoading ? "…" : "Approuver"}
             </button>
             <button
               onClick={() => bulkAction("deny")}
               disabled={bulkLoading}
               className="px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-              style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+              style={{ background: "var(--error-subtle)", color: "var(--error)", border: "1px solid var(--error-border)" }}>
               {bulkLoading ? "…" : "Refuser"}
             </button>
             <button
               onClick={() => setSelected(new Set())}
               className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{ color: "rgba(255,255,255,0.35)" }}>
+              style={{ color: "var(--text-muted)" }}>
               ✕
             </button>
           </motion.div>
