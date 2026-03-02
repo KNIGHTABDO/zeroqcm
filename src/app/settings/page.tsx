@@ -32,11 +32,10 @@ const PROVIDER_COLORS: Record<string, string> = {
   Cohere: "#39594D", AI21: "#7c3aed", xAI: "#1da1f2", DeepSeek: "#3b82f6",
 };
 
-// ── Confirmation Modal ─────────────────────────────────────────────────────
+// ── Confirmation Modal ────────────────────────────────────────────────────────
 function ResetConfirmModal({
   open, onClose, onConfirm, loading,
 }: { open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean }) {
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -111,7 +110,7 @@ function ResetConfirmModal({
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { theme, toggle } = useTheme();
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -142,14 +141,23 @@ export default function SettingsPage() {
     fetch("/api/gh-models")
       .then(r => r.json())
       .then((data: GhModel[]) => {
-        // Admin-curated from ai_models_config — order preserved
+        // Admin-curated from ai_models_config – order preserved
         setModels(data);
         // Stale model guard: if saved preference doesn't exist in live list, reset to default
         setSelectedModel(prev => {
           const ids = new Set(data.map((m: GhModel) => m.id));
           const adminDefault = data.find((m: GhModel) => m.is_default)?.id ?? data[0]?.id ?? "";
           // Empty string = freshly initialized (no saved pref) → use admin default
-          if (!prev || !ids.has(prev)) return adminDefault;
+          if (!prev || !ids.has(prev)) {
+            // Auto-persist corrected model so DB matches what UI shows
+            if (user?.id) {
+              supabase.from("profiles").upsert({
+                id: user.id,
+                preferences: { ...(profile?.preferences as Record<string, unknown> | undefined), ai_model: adminDefault },
+              }).then(() => refreshProfile?.());
+            }
+            return adminDefault;
+          }
           return prev;
         });
       })
