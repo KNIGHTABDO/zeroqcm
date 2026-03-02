@@ -45,7 +45,7 @@ function AnimatedCounter({ value, label }: { value: number; label: string }) {
   const count = useCounter(value, 2200, inView);
   return (
     <div ref={ref} className="text-center">
-      <p className="text-2xl font-bold tabular-nums" style={{ color: "var(--text)" }}>
+      <p className="text-[22px] font-bold tabular-nums" style={{ color: "var(--text)" }}>
         {count.toLocaleString("fr-FR")}
       </p>
       <p className="text-[10px] mt-1 uppercase tracking-[0.15em]" style={{ color: "var(--text-muted)" }}>{label}</p>
@@ -77,7 +77,7 @@ function FeatureCard({ icon: Icon, num, title, desc, index }: {
         {num}
       </span>
       {/* icon */}
-      <div className="w-8 h-8 flex items-center justify-center rounded-xl"
+      <div className="w-9 h-9 flex items-center justify-center rounded-xl"
         style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
         <Icon className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
       </div>
@@ -161,7 +161,7 @@ function LoggedInHome({ name }: { name: string }) {
         {/* Quick-link cards */}
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5 }}
-          className="space-y-2.5">
+          className="space-y-2">
           {quickLinks.map(({ href, icon: Icon, label, sublabel }, i) => (
             <motion.div
               key={href}
@@ -173,7 +173,7 @@ function LoggedInHome({ name }: { name: string }) {
                   className="group flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLDivElement).style.background = "var(--surface-hover)";
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--surface-alt)";
                     (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)";
                   }}
                   onMouseLeave={e => {
@@ -225,29 +225,27 @@ export default function LandingPage() {
             className="object-cover object-center"
             style={{ opacity: 0.08, filter: "saturate(0) brightness(0.5)" }} />
           <div className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.8) 100%)" }} />
+            style={{ background: "linear-gradient(to bottom, var(--hero-overlay-top, rgba(0,0,0,0.65)) 0%, transparent 50%, var(--hero-overlay-bottom, rgba(0,0,0,0.8)) 100%)" }} />
         </div>
 
         <div className="relative z-10 w-full max-w-lg mx-auto space-y-7">
           {/* Logo mark */}
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
             className="flex justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <Image src="/logo.jpg" alt="ZeroQCM" width={44} height={44}
               className="h-11 w-11 rounded-xl object-cover"
-              style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.1)" }} />
+              style={{ boxShadow: "0 0 0 1px var(--border-strong)" }} />
           </motion.div>
 
           <>
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.55, ease: [0.22,1,0.36,1] }}>
-              <h1 className="text-[32px] sm:text-[44px] font-bold tracking-tight leading-[1.1]" style={{ color: "rgba(255,255,255,0.95)" }}>
+              <h1 className="text-[32px] sm:text-[44px] font-bold tracking-tight leading-[1.1] text-white">
                 La révision médicale,<br />
-                <span style={{ color: "rgba(255,255,255,0.4)" }}>réinventée.</span>
+                <span className="opacity-40">réinventée.</span>
               </h1>
             </motion.div>
             <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
-              className="text-sm max-w-xs mx-auto leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.45)" }}>
+              className="text-sm max-w-xs mx-auto leading-relaxed text-white opacity-45">
               180 000 questions. 5 facultés. IA à chaque étape.
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
@@ -257,22 +255,19 @@ export default function LandingPage() {
                 Commencer <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <Link href="/auth"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
-                style={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.8)" }}>
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white border border-white/15 hover:border-white/30 transition-all">
                 Créer un compte
               </Link>
             </motion.div>
           </>
 
-          {(
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
-              className="rounded-2xl grid grid-cols-3 divide-x px-2 py-4"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(12px)" }}>
-              <AnimatedCounter value={180650} label="Questions" />
-              <AnimatedCounter value={6369} label="Activités" />
-              <AnimatedCounter value={5} label="Facultés" />
-            </motion.div>
-          )}
+          {/* Stats counter */}
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
+            className="rounded-2xl grid grid-cols-3 divide-x divide-white/10 px-2 py-4 bg-white/6 border border-white/10 backdrop-blur-md">
+            <AnimatedCounter value={180650} label="Questions" />
+            <AnimatedCounter value={6369} label="Activités" />
+            <AnimatedCounter value={5} label="Facultés" />
+          </motion.div>
         </div>
       </section>
 
@@ -337,6 +332,33 @@ export default function LandingPage() {
             <FeatureCard key={f.title} {...f} index={i} />
           ))}
         </div>
+      </section>
+
+      {/* ── Bottom CTA band ── */}
+      <section className="px-4 pb-14 max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-2xl px-6 py-10 text-center overflow-hidden"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          <div className="absolute top-0 left-1/4 right-1/4 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, var(--accent-border), transparent)" }} />
+          <p className="text-[11px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--text-muted)" }}>Prêt à commencer?</p>
+          <h2 className="text-xl font-bold tracking-tight mb-2" style={{ color: "var(--text)" }}>
+            Rejoignez les étudiants qui révisent avec ZeroQCM
+          </h2>
+          <p className="text-xs leading-relaxed mb-6 max-w-xs mx-auto" style={{ color: "var(--text-secondary)" }}>
+            Accès immédiat à 180 000 questions. Sans carte bancaire.
+          </p>
+          <Link href="/auth"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
+            style={{ background: "var(--accent)", color: "var(--bg)" }}>
+            Créer un compte gratuit <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </motion.div>
       </section>
 
     </main>
