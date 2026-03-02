@@ -2,54 +2,20 @@
 /**
  * ZeroQCM — AI Usage Rate Limiter
  *
- * CATEGORY-BASED shared quotas (not per-model):
- *   - multiplier 0 (standard/free): unlimited
- *     → gemini-3-flash-preview, gpt-5-mini, claude-haiku-4.5, oswe-vscode-prime
- *   - multiplier 1 (1× premium): shared 10 req/user/day across ALL 1× models
- *     → gpt-4.1, gpt-4o, claude-sonnet-4/4.5/4.6, gemini-3-pro-preview, grok-code-fast-1
- *   - multiplier 3 (3× heavy): shared 5 req/user/day across ALL 3× models
- *     → gpt-5.2, gpt-5.1, gemini-2.5-pro, gemini-3.1-pro-preview, claude-opus-4.5/4.6
+ * CATEGORY-BASED shared quotas (not per-model).
+ * Multiplier is ALWAYS resolved from DB (ai_models_config.premium_multiplier).
+ * No static map — admin changes take effect immediately, zero stale data.
  *
- * Limits are stored in ai_rate_limits table (admin-editable, no redeploy).
+ *   - multiplier 0 (standard/free): unlimited, but tracked for admin visibility
+ *   - multiplier 1 (1× premium): shared 10 req/user/day
+ *   - multiplier 3 (3× heavy): shared 5 req/user/day
+ *
+ * Limits stored in ai_rate_limits table (admin-editable, no redeploy).
  * ai_usage tracks (user_id, multiplier, usage_date) — one row per category per day.
  * Admin always bypasses all limits.
  */
 
 import { createClient } from "@supabase/supabase-js";
-
-// Hardcoded fallback defaults (used if ai_rate_limits table is unavailable)
-const DEFAULT_LIMITS: Record<number, number> = {
-  0: 0,   // free: unlimited (0 = no limit)
-  1: 10,  // 1× premium: 10/day shared
-  3: 5,   // 3× heavy: 5/day shared
-};
-
-// Multiplier lookup per model ID — mirrors ai_models_config.premium_multiplier
-// Used as fast in-memory lookup to avoid a DB round-trip for every request
-const MODEL_MULTIPLIER: Record<string, 0 | 1 | 3> = {
-  // Standard/free (0)
-  "gemini-3-flash-preview":    0,
-  "gpt-5-mini":                0,
-  "claude-haiku-4.5":          0,
-  "oswe-vscode-prime":         0,
-
-  // 1× premium (1)
-  "gpt-4.1":                   1,
-  "gpt-4o":                    1,
-  "claude-sonnet-4":           1,
-  "claude-sonnet-4.5":         1,
-  "claude-sonnet-4.6":         1,
-  "gemini-3-pro-preview":      1,
-  "grok-code-fast-1":          1,
-
-  // 3× heavy (3)
-  "gpt-5.2":                   3,
-  "gpt-5.1":                   3,
-  "gemini-2.5-pro":            3,
-  "gemini-3.1-pro-preview":    3,
-  "claude-opus-4.5":           3,
-  "claude-opus-4.6":           3,
-};
 
 function getServiceSupabase() {
   return createClient(
@@ -59,19 +25,49 @@ function getServiceSupabase() {
   );
 }
 
-/** Get the premium multiplier for a model ID from the static map.
- *  Returns null if the model is not in the static map (requires DB lookup). */
-export function getModelMultiplier(modelId: string): 0 | 1 | 3 | null {
+/**
+ * Resolve a model's multiplier from DB.
+ * Returns the DB value, or null if model is unknown/not in config.
+ * NEVER returns a stale hardcoded value.
+ */
+export async function resolveModelMultiplier(modelId: string): Promise<0 | 1 | 3 | null> {
   if (!modelId) return null;
-  const lower = modelId.toLowerCase();
-  if (lower in MODEL_MULTIPLIER) return MODEL_MULTIPLIER[lower];
-  if (modelId in MODEL_MULTIPLIER) return MODEL_MULTIPLIER[modelId];
-  return null; // Unknown — must look up in DB
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb
+      .from("ai_models_config")
+      .select("premium_multiplier")
+      .eq("id", modelId)
+      .maybeSingle();
+    if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
+      return data.premium_multiplier as 0 | 1 | 3;
+    }
+  } catch { /* fail-open */ }
+  return null;
+}
+
+/**
+ * Synchronous fallback used only in the unauthenticated gate check in route.ts.
+ * Returns 0 for known-free models, 1 for anything else (safer: blocks anon access).
+ * NOT used for actual usage tracking or quota enforcement.
+ */
+export function getModelMultiplierSync(modelId: string): 0 | 1 | 3 {
+  // Only models that are definitively free get 0 here
+  // This list is intentionally minimal — auth gate is not the billing system
+  const FREE_MODELS = new Set(["gpt-5-mini", "oswe-vscode-prime"]);
+  if (FREE_MODELS.has(modelId)) return 0;
+  return 1; // Conservative: treat unknown as premium for auth gating
+}
+
+// Keep old export name for backward compat with route.ts unauthenticated check
+export function getModelMultiplier(modelId: string): 0 | 1 | 3 | null {
+  return getModelMultiplierSync(modelId);
 }
 
 /** Fetch the category daily limit from ai_rate_limits table.
- *  Falls back to DEFAULT_LIMITS if DB unavailable. */
+ *  Falls back to hardcoded defaults only if DB is unavailable. */
 async function getCategoryLimit(multiplier: number): Promise<number> {
+  const FALLBACK: Record<number, number> = { 0: 0, 1: 10, 3: 5 };
   try {
     const sb = getServiceSupabase();
     const { data } = await sb
@@ -82,54 +78,38 @@ async function getCategoryLimit(multiplier: number): Promise<number> {
     if (data?.daily_limit !== undefined && data.daily_limit !== null) {
       return data.daily_limit;
     }
-  } catch {
-    // fall through to default
-  }
-  return DEFAULT_LIMITS[multiplier] ?? 0;
+  } catch { /* fall through */ }
+  return FALLBACK[multiplier] ?? 0;
 }
 
 /** Check if user has category quota remaining for a model.
- *  Returns { allowed, remaining, limit, multiplier }.
+ *  Returns { allowed, remaining, limit, multiplier, resolvedMultiplier }.
  *  Admin (isAdmin=true) always allowed. */
 export async function checkAiQuota(
   userId: string,
   modelId: string,
   isAdmin = false
-): Promise<{ allowed: boolean; remaining: number; limit: number; multiplier: number }> {
-  // Admin: always allowed (check before any DB work)
-  if (isAdmin) return { allowed: true, remaining: 999, limit: 999, multiplier: 0 };
+): Promise<{ allowed: boolean; remaining: number; limit: number; multiplier: number; resolvedMultiplier: 0 | 1 | 3 }> {
+  if (isAdmin) return { allowed: true, remaining: 999, limit: 999, multiplier: 0, resolvedMultiplier: 0 };
 
-  // Resolve multiplier: in-memory first, then DB fallback (so admin edits take effect immediately)
-  let multiplier = getModelMultiplier(modelId);
-  // Always try DB to pick up admin tier changes — also resolves null (unknown static) models
-  if (modelId) {
-    try {
-      const sb = getServiceSupabase();
-      const { data } = await sb
-        .from("ai_models_config")
-        .select("premium_multiplier")
-        .eq("id", modelId)
-        .maybeSingle();
-      if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
-        multiplier = data.premium_multiplier as 0 | 1 | 3;
-      }
-    } catch { /* fail-open: use static fallback */ }
-  }
+  // Always resolve from DB — zero tolerance for stale static values
+  const multiplier = await resolveModelMultiplier(modelId);
 
-  // FIX #29: If multiplier still null after DB lookup, model is unknown — reject
   if (multiplier === null) {
-    return { allowed: false, remaining: 0, limit: 0, multiplier: -1 as any };
+    // Model not in DB — block it
+    return { allowed: false, remaining: 0, limit: 0, multiplier: -1 as any, resolvedMultiplier: 0 };
   }
 
   // Free/standard models: always allowed
-  if (multiplier === 0) return { allowed: true, remaining: 999, limit: 0, multiplier: 0 };
+  if (multiplier === 0) {
+    return { allowed: true, remaining: 999, limit: 0, multiplier: 0, resolvedMultiplier: 0 };
+  }
 
-  // Get category limit (from DB or fallback)
   const limit = await getCategoryLimit(multiplier);
-  if (limit === 0) return { allowed: true, remaining: 999, limit: 0, multiplier };
+  if (limit === 0) return { allowed: true, remaining: 999, limit: 0, multiplier, resolvedMultiplier: multiplier };
 
   const sb = getServiceSupabase();
-  const today = new Date().toISOString().split("T")[0]; // UTC date
+  const today = new Date().toISOString().split("T")[0];
 
   const { data, error } = await sb
     .from("ai_usage")
@@ -139,34 +119,38 @@ export async function checkAiQuota(
     .eq("multiplier", multiplier)
     .maybeSingle();
 
-  if (error) return { allowed: true, remaining: limit, limit, multiplier }; // fail-open
+  if (error) return { allowed: true, remaining: limit, limit, multiplier, resolvedMultiplier: multiplier };
 
   const used = data?.count ?? 0;
   const remaining = Math.max(0, limit - used);
-  return { allowed: remaining > 0, remaining, limit, multiplier };
+  return { allowed: remaining > 0, remaining, limit, multiplier, resolvedMultiplier: multiplier };
 }
 
-/** Atomically increment the category usage bucket for a user. */
+/**
+ * Atomically increment the category usage bucket.
+ * Accepts pre-resolved multiplier to avoid a second DB call.
+ * If multiplier not provided, resolves from DB (never falls back to 0 for unknowns).
+ */
 export async function incrementAiUsage(
   userId: string,
-  modelId: string
+  modelId: string,
+  resolvedMultiplier?: 0 | 1 | 3
 ): Promise<void> {
-  // Resolve multiplier: static map first, then always verify against DB
-  // (admin may have re-tiered a model from the dashboard — static map won't know)
-  let multiplier: 0 | 1 | 3 = getModelMultiplier(modelId) ?? 0;
-  try {
-    const sb = getServiceSupabase();
-    const { data } = await sb
-      .from("ai_models_config")
-      .select("premium_multiplier")
-      .eq("id", modelId)
-      .maybeSingle();
-    if (data?.premium_multiplier !== undefined && data.premium_multiplier !== null) {
-      multiplier = data.premium_multiplier as 0 | 1 | 3;
-    }
-  } catch { /* fail-open: use static value */ }
+  let multiplier: 0 | 1 | 3;
 
-  // Always track usage (including free=0) so admin can see real totals
+  if (resolvedMultiplier !== undefined) {
+    multiplier = resolvedMultiplier;
+  } else {
+    // Resolve from DB — if lookup fails, DO NOT default to 0 (would under-count)
+    const resolved = await resolveModelMultiplier(modelId);
+    if (resolved === null) {
+      // Unknown model — still track as 1 so admin can investigate
+      multiplier = 1;
+    } else {
+      multiplier = resolved;
+    }
+  }
+
   try {
     const sb = getServiceSupabase();
     const today = new Date().toISOString().split("T")[0];
@@ -176,6 +160,6 @@ export async function incrementAiUsage(
       p_multiplier: multiplier,
     });
   } catch {
-    // Non-fatal
+    // Non-fatal — log but don't crash the response
   }
 }
