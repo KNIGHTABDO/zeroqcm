@@ -81,18 +81,43 @@ function SemestresPageInner() {
       });
   }, [user]);
 
-  // Load stats
+  // Load stats — with fallback to user_answers if user_stats row is missing
   useEffect(() => {
     if (!user) return;
     supabase.from("user_stats").select("streak,total_answers,correct_answers")
       .eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
+      .then(async ({ data }) => {
+        if (data && (data.total_answers ?? 0) > 0) {
           setStats({
             streak: data.streak ?? 0,
             total: data.total_answers ?? 0,
             correct: data.correct_answers ?? 0,
           });
+        } else {
+          // Fallback: aggregate directly from user_answers
+          const { data: answers } = await supabase
+            .from("user_answers")
+            .select("is_correct, answered_at")
+            .eq("user_id", user.id);
+          if (answers && answers.length > 0) {
+            const total = answers.length;
+            const correct = answers.filter((a: any) => a.is_correct).length;
+            // Compute streak from answered_at dates
+            const days = new Set(answers.map((a: any) => a.answered_at?.slice(0, 10)));
+            const sorted = [...days].sort().reverse();
+            const today = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            let streak = 0;
+            let cur = sorted[0] === today || sorted[0] === yesterday ? sorted[0] : null;
+            if (cur) {
+              for (const d of sorted) {
+                const expected = new Date(new Date(cur).getTime() - streak * 86400000).toISOString().slice(0, 10);
+                if (d === expected) { streak++; cur = expected; }
+                else if (d < expected) break;
+              }
+            }
+            setStats({ streak, total, correct });
+          }
         }
       });
   }, [user]);

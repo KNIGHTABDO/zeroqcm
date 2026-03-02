@@ -10,6 +10,7 @@ import {
 import { Marquee } from "@/components/ui/Marquee";
 import { useCounter } from "@/hooks/useCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/lib/supabase";
 
 const HERO_IMG = "/images/hero.jpg";
 
@@ -132,6 +133,24 @@ function IslamicBlock({ ar, src, fr }: { ar: string; src: string; fr?: string })
 // ── Logged-in view ────────────────────────────────────────────────────────
 function LoggedInHome({ name }: { name: string }) {
   const firstName = name?.split(" ")[0] ?? "Étudiant";
+  const { user } = useAuth();
+  const [stats, setStats] = useState<{ streak: number; total: number; correct: number } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("user_stats").select("streak,total_answers,correct_answers")
+      .eq("user_id", user.id).maybeSingle()
+      .then(async ({ data }) => {
+        if (data && (data.total_answers ?? 0) > 0) {
+          setStats({ streak: data.streak ?? 0, total: data.total_answers ?? 0, correct: data.correct_answers ?? 0 });
+        } else {
+          const { data: ans } = await supabase.from("user_answers").select("is_correct").eq("user_id", user.id);
+          if (ans && ans.length > 0) {
+            setStats({ streak: 0, total: ans.length, correct: ans.filter((a: any) => a.is_correct).length });
+          }
+        }
+      });
+  }, [user]);
 
   const quickLinks = [
     { href: "/semestres",  icon: BookOpen,    label: "Reprendre la révision",  sublabel: "Continuez là où vous vous êtes arrêté" },
@@ -152,6 +171,25 @@ function LoggedInHome({ name }: { name: string }) {
             {firstName}
           </h1>
         </motion.div>
+
+        {/* Stats row */}
+        {stats && stats.total > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13, duration: 0.5 }}
+            className="grid grid-cols-3 divide-x rounded-2xl border overflow-hidden"
+            style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            {[
+              { label: "Précision",  value: stats.total > 0 ? `${Math.round((stats.correct / stats.total) * 100)}%` : "—" },
+              { label: "Réponses",   value: stats.total.toLocaleString() },
+              { label: "Série",      value: `${stats.streak}j` },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex flex-col items-center py-3 px-2"
+                style={{ borderColor: "var(--border)" }}>
+                <span className="text-[17px] font-bold tabular-nums" style={{ color: "var(--text)" }}>{value}</span>
+                <span className="text-[10px] mt-0.5 uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{label}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
 
         {/* Morning duaa */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}>

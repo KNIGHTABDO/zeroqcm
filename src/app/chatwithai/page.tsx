@@ -5,13 +5,14 @@ import { useChat } from "ai/react";
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowUp, Square, SquarePen, Trash2, ChevronDown,
+  ArrowLeft, ArrowUp, Square, SquarePen, Trash2, ChevronDown,
   AlertCircle, Search, Copy, Check, X, Sparkles, Zap, MessageSquare, SidebarOpen, SidebarClose
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
+import Link from "next/link";
 import type { Message } from "ai/react";
 
 // ── Thinking model detection ────────────────────────────────────────
@@ -239,7 +240,7 @@ function ModelPicker({
         disabled={loading}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all active:scale-95 select-none"
         style={{
-          background: open ? "var(--surface-active)" : "var(--surface-alt)",
+          background: open ? "var(--surface-alt)" : "var(--surface-alt)",
           border: `1px solid ${open ? "var(--border-strong)" : "var(--border)"}`,
           color: "var(--text-secondary)",
         }}
@@ -269,7 +270,7 @@ function ModelPicker({
               style={{
                 bottom: rect ? window.innerHeight - rect.top + 8 : 80,
                 left: Math.min(rect?.left ?? 16, window.innerWidth - 296),
-                background: "var(--bg-secondary)",
+                background: "var(--surface)",
                 border: "1px solid var(--border-strong)",
                 boxShadow: "var(--shadow)",
               }}
@@ -310,22 +311,39 @@ function ModelPicker({
                           onClick={() => { onSelect(m.id); setOpen(false); setSearch(""); }}
                           className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-all duration-100"
                           style={{
-                            background: isSelected ? "var(--surface-active)" : "transparent",
+                            background: isSelected ? "var(--surface-alt)" : "transparent",
                             color: "var(--text)",
                           }}
                         >
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-medium truncate">{m.name}</p>
                             {m.tier && m.tier !== "standard" && (
                               <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{m.tier}</p>
                             )}
                           </div>
-                          {isSelected && (
-                            <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ml-2"
-                              style={{ background: "var(--accent)" }}>
-                              <Check className="w-2.5 h-2.5 text-white" />
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                            {(() => {
+                              const mult = (m as any).premium_multiplier ?? 0;
+                              if (mult === 0) return (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
+                                  style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
+                                  FREE
+                                </span>
+                              );
+                              return (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums"
+                                  style={{ background: "var(--accent-subtle)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
+                                  ×{mult}
+                                </span>
+                              );
+                            })()}
+                            {isSelected && (
+                              <div className="w-4 h-4 rounded-full flex items-center justify-center"
+                                style={{ background: "var(--accent)" }}>
+                                <Check className="w-2.5 h-2.5" style={{ color: "var(--bg)" }} />
+                              </div>
+                            )}
+                          </div>
                         </button>
                       );
                     })}
@@ -535,7 +553,7 @@ export default function ChatWithAIPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               className="fixed inset-0 z-30 lg:hidden"
-              style={{ background: "var(--overlay)" }}
+              style={{ background: "rgba(0,0,0,0.5)" }}
               onClick={() => setSidebarOpen(false)}
             />
             <motion.div
@@ -544,7 +562,7 @@ export default function ChatWithAIPage() {
               transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
               className="fixed left-0 top-0 bottom-0 w-72 z-40 lg:hidden flex flex-col"
               style={{
-                background: "var(--nav-bg)",
+                background: "var(--surface)",
                 borderRight: "1px solid var(--border)",
                 paddingTop: "max(16px, env(safe-area-inset-top))",
               }}
@@ -559,7 +577,7 @@ export default function ChatWithAIPage() {
                 {messages.filter(m => m.role === "user").slice(0, 20).map((m, i) => (
                   <div key={i} className="px-3 py-2.5 rounded-lg mb-0.5 cursor-pointer transition-all"
                     style={{ background: "transparent", color: "var(--text-secondary)" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "var(--nav-item-hover)")}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-alt)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                     <p className="text-[13px] truncate">{m.content.slice(0, 60)}</p>
                   </div>
@@ -600,6 +618,14 @@ export default function ChatWithAIPage() {
           }}
         >
           <div className="flex items-center gap-2.5">
+            {/* Back to app */}
+            <Link href="/semestres"
+              className="flex items-center gap-1.5 p-1.5 rounded-lg transition-all"
+              style={{ color: "var(--text-muted)" }}
+              title="Retour à l'application"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
             {/* Mobile: sidebar toggle */}
             <button
               onClick={() => setSidebarOpen(true)}
@@ -765,7 +791,7 @@ export default function ChatWithAIPage() {
                     <div
                       className="px-3.5 py-2.5 rounded-2xl rounded-tr-sm text-[14px] leading-relaxed"
                       style={{
-                        background: "var(--surface-active)",
+                        background: "var(--surface-alt)",
                         color: "var(--text)",
                         border: "1px solid var(--border)",
                       }}
@@ -840,7 +866,7 @@ export default function ChatWithAIPage() {
             <motion.div
               animate={{
                 borderColor: inputFocused ? "var(--border-strong)" : "var(--border)",
-                boxShadow: inputFocused ? "0 0 0 3px var(--input-focus)" : "none",
+                borderColor: inputFocused ? "var(--border-strong)" : "var(--border)",
               }}
               transition={{ duration: 0.15 }}
               className="rounded-2xl overflow-hidden"
@@ -906,7 +932,7 @@ export default function ChatWithAIPage() {
                   animate={{
                     background: isLoading ? "var(--error-subtle)"
                               : canSend ? "var(--accent)"
-                              : "var(--surface-active)",
+                              : "var(--surface-alt)",
                     scale: canSend || isLoading ? 1 : 0.88,
                   }}
                   transition={{ duration: 0.12 }}
