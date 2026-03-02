@@ -482,7 +482,7 @@ export default function ChatWithAIPage() {
 
   const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
   const [quotaRemaining, setQuotaRemaining] = useState<{ remaining: number; limit: number; multiplier: number } | null>(null);
-  type QuotaCategory = { multiplier: number; label: string; color: string; used: number; limit: number; remaining: number | null; unlimited: boolean };
+  type QuotaCategory = { multiplier: number; label: string; colorKey: string; used: number; limit: number; usedAlltime: number; remaining: number | null; unlimited: boolean };
   const [quotaCategories, setQuotaCategories] = useState<QuotaCategory[]>([]);
   const [quotaLoaded, setQuotaLoaded] = useState(false);
 
@@ -742,6 +742,7 @@ export default function ChatWithAIPage() {
             {quotaCategories.filter(c => !c.unlimited).map(cat => {
               const pct = cat.limit > 0 ? Math.round((cat.used / cat.limit) * 100) : 0;
               const isAtLimit = cat.remaining === 0;
+              const barColor = isAtLimit ? "var(--error)" : pct >= 70 ? "var(--warning)" : "var(--accent)";
               return (
                 <div key={cat.multiplier} className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
@@ -753,12 +754,14 @@ export default function ChatWithAIPage() {
                   </div>
                   <div className="h-[2px] rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                     <div className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, pct)}%`,
-                        background: isAtLimit ? "var(--error)" : pct >= 70 ? "var(--warning)" : "var(--accent)",
-                      }}
+                      style={{ width: `${Math.min(100, pct)}%`, background: barColor }}
                     />
                   </div>
+                  {cat.usedAlltime > 0 && (
+                    <p className="text-[9px] mt-0.5 tabular-nums" style={{ color: "var(--text-disabled)" }}>
+                      {cat.usedAlltime} total
+                    </p>
+                  )}
                 </div>
               );
             })}
