@@ -19,6 +19,9 @@ interface LeaderEntry {
   rank: number;
 }
 
+// Intentional semantic rank colors (gold / silver / bronze) — not rainbow styling
+const MEDAL_COLORS = ["#D4A017", "#8A9BA8", "#A0714F"] as const;
+
 function daysAgo(dateStr: string | null): string {
   if (!dateStr) return "";
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
@@ -55,38 +58,43 @@ export default function LeaderboardPage() {
     tab === "streak" ? b.active_days - a.active_days || b.correct - a.correct : b.correct - a.correct
   );
 
-  const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen pb-28" style={{ background: "var(--bg)" }}>
       <div className="max-w-lg mx-auto px-4 pt-8 space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Classement</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text)" }}>Classement</h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {loading ? "Chargement…" : `${entries.length} Étudiant${entries.length !== 1 ? "s" : ""}`}
+              {loading ? "Chargement…" : `${entries.length} étudiant${entries.length !== 1 ? "s" : ""}`}
             </p>
           </div>
+          {/* Trophy icon — decorative, neutral */}
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <Trophy size={18} style={{ color: "#FFD700" }} />
+            <Trophy size={18} style={{ color: "var(--text-muted)" }} />
           </div>
         </div>
 
         {/* My rank banner */}
         {!loading && user && myRank && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className="flex items-center justify-between px-4 py-3 rounded-2xl border"
-            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>Votre rang</span>
-            <span className="text-lg font-bold tabular-nums" style={{ color: "var(--text)" }}>#{myRank}</span>
+            style={{
+              background: "var(--surface)",
+              borderColor: "var(--accent-border)",
+              borderLeftWidth: "3px",
+              borderLeftColor: "var(--accent)",
+            }}>
+            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>Votre rang</span>
+            <span className="text-lg font-bold tabular-nums" style={{ color: "var(--accent)" }}>#{myRank}</span>
           </motion.div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 p-1 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex gap-1.5 p-1 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           {([
             ["score", "Réponses correctes", CheckCircle],
             ["streak", "Jours actifs", Flame],
@@ -105,22 +113,34 @@ export default function LeaderboardPage() {
 
         {/* Podium top 3 */}
         {!loading && sorted.length >= 3 && (
-          <div className="flex items-end justify-center gap-3 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-end justify-center gap-3 pt-2 pb-4"
+          >
             {[sorted[1], sorted[0], sorted[2]].map((e, i) => {
               const heights = ["h-20", "h-28", "h-16"];
               const podiumRanks = [2, 1, 3];
               const isMe = e.user_id === user?.id;
+              const medalColor = MEDAL_COLORS[podiumRanks[i] - 1];
               return (
-                <motion.div key={e.user_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                  className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{
-                    background: isMe ? "var(--accent)" : "var(--surface-active)",
+                <motion.div
+                  key={e.user_id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex-1 flex flex-col items-center gap-1.5"
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{
+                    background: isMe ? "var(--accent)" : "var(--surface-alt)",
                     color: isMe ? "var(--bg)" : "var(--text)",
-                    border: `2px solid ${medalColors[podiumRanks[i] - 1]}`,
+                    border: `2px solid ${medalColor}`,
                   }}>
                     {e.display_name.charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-[10px] font-medium text-center truncate w-full" style={{ color: "var(--text)" }}>
+                  <p className="text-[10px] font-semibold text-center truncate w-full" style={{ color: "var(--text)" }}>
                     {e.display_name.split(" ")[0]}
                   </p>
                   {e.faculty && (
@@ -128,11 +148,13 @@ export default function LeaderboardPage() {
                       {e.faculty}{e.annee_etude ? ` S${e.annee_etude}` : ""}
                     </p>
                   )}
+                  {/* Podium block */}
                   <div className={`w-full ${heights[i]} rounded-t-xl flex items-center justify-center flex-col gap-0.5`}
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none" }}>
-                    <Medal size={14} style={{ color: medalColors[podiumRanks[i] - 1] }} />
+                    {/* Medal icon — intentional rank color */}
+                    <Medal size={14} style={{ color: medalColor }} />
                     <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                      {tab === "streak" ? `${e.active_days}🔥` : e.correct}
+                      {tab === "streak" ? `${e.active_days}` : e.correct}
                     </span>
                     <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
                       {tab === "streak" ? "jours" : `${e.rate}%`}
@@ -141,18 +163,23 @@ export default function LeaderboardPage() {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
+        )}
+
+        {/* Separator */}
+        {!loading && sorted.length >= 3 && (
+          <div className="h-px" style={{ background: "var(--border)" }} />
         )}
 
         {/* Full list */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} />
+            <Loader2 size={20} className="animate-spin" style={{ color: "var(--text-muted)" }} />
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
-            <Trophy size={40} style={{ color: "var(--border-strong)", margin: "0 auto" }} />
-            <p className="text-sm mt-3 font-medium" style={{ color: "var(--text)" }}>Pas encore de données</p>
+            <Trophy size={36} className="mx-auto mb-3" style={{ color: "var(--border-strong)" }} />
+            <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Pas encore de données</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Commencez à réviser pour apparaître ici</p>
           </div>
         ) : (
@@ -161,24 +188,35 @@ export default function LeaderboardPage() {
               const isMe = e.user_id === user?.id;
               const displayRank = i + 1;
               const medals = ["🥇", "🥈", "🥉"];
+              const rankColor = displayRank <= 3 ? MEDAL_COLORS[displayRank - 1] : "var(--text-muted)";
               return (
-                <motion.div key={e.user_id}
-                  initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.025 }}
-                  className="px-4 py-3 rounded-2xl border transition-all"
+                <motion.div
+                  key={e.user_id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.025, duration: 0.3 }}
+                  className="px-4 py-3 rounded-2xl border transition-colors"
                   style={{
                     background: isMe ? "var(--surface-active)" : "var(--surface)",
                     borderColor: isMe ? "var(--border-strong)" : "var(--border)",
-                  }}>
+                  }}
+                >
                   {/* Top row */}
                   <div className="flex items-center gap-3">
+                    {/* Rank */}
                     <span className="w-6 text-center text-sm font-bold tabular-nums flex-shrink-0"
-                      style={{ color: displayRank <= 3 ? medalColors[displayRank - 1] : "var(--text-muted)" }}>
+                      style={{ color: rankColor }}>
                       {displayRank <= 3 ? medals[displayRank - 1] : displayRank}
                     </span>
+                    {/* Avatar initial */}
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: isMe ? "var(--accent)" : "var(--surface-active)", color: isMe ? "var(--bg)" : "var(--text)" }}>
+                      style={{
+                        background: isMe ? "var(--accent)" : "var(--surface-alt)",
+                        color: isMe ? "var(--bg)" : "var(--text)",
+                      }}>
                       {e.display_name.charAt(0).toUpperCase()}
                     </div>
+                    {/* Name + meta */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <Link href={`/profil?id=${e.user_id}`}
@@ -186,9 +224,11 @@ export default function LeaderboardPage() {
                           style={{ color: "var(--text)" }}>
                           {e.display_name}
                         </Link>
-                        {isMe && <span className="text-[10px] font-normal flex-shrink-0" style={{ color: "var(--text-muted)" }}>· vous</span>}
+                        {isMe && (
+                          <span className="text-[10px] font-normal flex-shrink-0" style={{ color: "var(--text-muted)" }}>· vous</span>
+                        )}
                       </div>
-                      {/* Faculty + year + last active */}
+                      {/* Faculty + last active */}
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         {(e.faculty || e.annee_etude) && (
                           <span className="text-[10px] flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
@@ -204,10 +244,10 @@ export default function LeaderboardPage() {
                         )}
                       </div>
                     </div>
-                    {/* Score column */}
+                    {/* Score */}
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
-                        {tab === "streak" ? `${e.active_days}🔥` : e.correct}
+                        {tab === "streak" ? e.active_days : e.correct}
                       </p>
                       <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                         {tab === "streak" ? "jours" : "correct"}
@@ -230,7 +270,7 @@ export default function LeaderboardPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-1 flex-1">
-                      <span className="text-[10px]">🔥</span>
+                      <Flame size={10} style={{ color: "var(--text-muted)" }} />
                       <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
                         {e.active_days}j actifs
                       </span>
@@ -242,6 +282,7 @@ export default function LeaderboardPage() {
             })}
           </div>
         )}
+
       </div>
     </div>
   );
