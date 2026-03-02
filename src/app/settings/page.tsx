@@ -2,11 +2,14 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Brain, Sun, Moon, Check, LogOut, ChevronDown, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Settings, Brain, Sun, Moon, Check, LogOut, ChevronDown, Loader2, Trash2, AlertTriangle, Shield } from "lucide-react";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+const ADMIN_EMAIL = "aabidaabdessamad@gmail.com";
 
 interface GhModel {
   id: string;
@@ -289,10 +292,9 @@ export default function SettingsPage() {
                       })
                       .map(m => (
                         <button key={m.id} onClick={() => { setSelectedModel(m.id); setModelOpen(false); setModelSearch(""); }}
-                          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors"
-                          style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text)", background: selectedModel === m.id ? "var(--surface-active)" : "transparent" }}
-                          onMouseEnter={e => { setHighlightIdx(models.indexOf(m)); e.currentTarget.style.background = "var(--surface-hover)"; }}
-                          onMouseLeave={e => (e.currentTarget.style.background = selectedModel === m.id ? "var(--surface-active)" : "transparent")}
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors hover:bg-white/5"
+                          style={{ borderBottom: "1px solid var(--border)", color: "var(--text)", background: selectedModel === m.id ? "var(--surface-alt)" : "transparent" }}
+                          onMouseEnter={e => setHighlightIdx(models.indexOf(m))}
                           aria-selected={selectedModel === m.id}>
                           <div>
                             <div className="font-medium flex items-center gap-2">
@@ -358,7 +360,7 @@ export default function SettingsPage() {
               style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text)" }}>
               <span>{theme === "dark" ? "Mode clair" : "Mode sombre"}</span>
               <div className="relative w-10 h-5 rounded-full transition-colors"
-                style={{ background: theme === "dark" ? "var(--accent)" : "var(--surface-active)" }}>
+                style={{ background: theme === "dark" ? "var(--accent)" : "var(--surface-alt)" }}>
                 <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
                   style={{ transform: theme === "dark" ? "translateX(20px)" : "translateX(2px)" }} />
               </div>
@@ -379,14 +381,13 @@ export default function SettingsPage() {
                   Supprimez toutes vos réponses, votre progression et votre série de révision. Cette action est permanente.
                 </p>
               </div>
-              <button onClick={() => setResetOpen(true)}
-                className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all"
-                style={{ borderColor: "var(--error-border)", color: "var(--error)", background: "var(--error-subtle)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--error-subtle)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--error)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--error-subtle)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--error-border)"; }}>
+              <motion.button onClick={() => setResetOpen(true)}
+                whileHover={{ opacity: 0.8 }} whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium"
+                style={{ borderColor: "var(--error-border)", color: "var(--error)", background: "var(--error-subtle)" }}>
                 <Trash2 size={14} />
                 Réinitialiser les statistiques
-              </button>
+              </motion.button>
             </motion.div>
           )}
 
@@ -412,6 +413,27 @@ export default function SettingsPage() {
             </motion.div>
           )}
 
+
+          {/* ── Admin Panel ── */}
+          {user?.email === ADMIN_EMAIL && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+              className="rounded-2xl border p-4 space-y-3"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <Shield size={15} style={{ color: "var(--accent)" }} />
+                <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Administration</span>
+              </div>
+              <p className="text-xs px-1" style={{ color: "var(--text-muted)" }}>
+                Accès au panneau de gestion de la plateforme.
+              </p>
+              <Link href="/admin"
+                className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all"
+                style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "var(--surface-alt)" }}>
+                <Shield size={14} />
+                Panneau Admin
+              </Link>
+            </motion.div>
+          )}
           {!user && (
             <div className="text-center">
               <a href="/auth" className="text-sm underline underline-offset-2" style={{ color: "var(--accent)" }}>
