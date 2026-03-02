@@ -1,24 +1,17 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, ChevronRight, Loader2, CheckCircle, Clock, Play } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { ClipboardList, Dumbbell, ArrowLeft, Clock, Search, Target, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { ActivityCardSkeleton } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
 
-type Activity = {
-  id: number;
-  nom: string;
-  total_questions: number;
-  chapitre?: string;
-};
-
-type ModuleInfo = {
-  id: number;
-  nom: string;
-  semester_id: string;
-};
+interface Activity {
+  id: number; nom: string; type_activite: "exam" | "exercise"; total_questions: number; chapitre?: string;
+}
 
 type Progress = {
   activity_id: number;
@@ -26,34 +19,45 @@ type Progress = {
   correct: number;
 };
 
-export default function ModuleActivitiesPage({
-  params,
-}: {
-  params: Promise<{ id: string; moduleId: string }>;
-}) {
+function ModuleActivitiesPageInner({ params }: { params: Promise<{ id: string; moduleId: string }> }) {
   const { id: semId, moduleId } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [moduleInfo, setModuleInfo] = useState<ModuleInfo | null>(null);
+  const modId = parseInt(moduleId);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [moduleName, setModuleName] = useState("");
   const [progress, setProgress] = useState<Record<number, Progress>>({});
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<"exercise" | "exam">(() => {
+    const t = searchParams.get("tab");
+    return t === "exam" ? "exam" : "exercise";
+  });
+
+  function switchTab(t: "exercise" | "exam") {
+    setTab(t);
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("tab", t);
+    router.replace(`/semestres/${semId}/${moduleId}?${p.toString()}`, { scroll: false });
+  }
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [weakCount, setWeakCount] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const modId = parseInt(moduleId);
 
       const [{ data: mod }, { data: acts }] = await Promise.all([
-        supabase.from("modules").select("id, nom, semester_id").eq("id", modId).maybeSingle(),
-        supabase.from("activities").select("id, nom, total_questions, chapitre").eq("module_id", modId).order("id"),
+        supabase.from("modules").select("nom").eq("id", modId).maybeSingle(),
+        supabase.from("activities").select("id, nom, type_activite, total_questions, chapitre").eq("module_id", modId).order("id"),
       ]);
 
-      setModuleInfo(mod);
-      setActivities((acts ?? []) as Activity[]);
+      setModuleName(mod?.nom ?? `Module ${modId}`);
+      const actList = (acts ?? []) as Activity[];
+      setActivities(actList);
 
-      if (user && acts?.length) {
-        const actIds = acts.map((a: Activity) => a.id);
+      if (user && actList.length > 0) {
+        const actIds = actList.map((a) => a.id);
         const { data: ans } = await supabase
           .from("user_answers")
           .select("is_correct, questions!inner(activities!inner(id))")
@@ -70,197 +74,174 @@ export default function ModuleActivitiesPage({
         });
         setProgress(prog);
       }
+
       setLoading(false);
     }
     load();
   }, [semId, moduleId, user]);
 
-  const totalAnswered = Object.values(progress).reduce((s, p) => s + p.answered, 0);
-  const totalQ = activities.reduce((s, a) => s + a.total_questions, 0);
-  const overallPct = totalQ > 0 ? Math.round((totalAnswered / totalQ) * 100) : 0;
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/weak-questions?userId=${user.id}&moduleId=${modId}`)
+      .then((r) => r.json())
+      .then((d) => setWeakCount(d.count ?? 0))
+      .catch(() => setWeakCount(0));
+  }, [user, modId]);
+
+  const filtered = activities
+    .filter((a) => a.type_activite === tab)
+    .filter((a) => !search || a.nom.toLowerCase().includes(search.toLowerCase()));
+
+  const exams = activities.filter((a) => a.type_activite === "exam").length;
+  const exercises = activities.filter((a) => a.type_activite === "exercise").length;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <div className="max-w-2xl mx-auto px-4">
+    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
+      <div className="max-w-md mx-auto px-4 pt-6 space-y-4 md:max-w-2xl">
+        <button onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm transition-colors"
+          style={{ color: "var(--text-muted)" }}>
+          <ArrowLeft className="w-4 h-4" /> Retour
+        </button>
 
-        {/* Sticky header */}
-        <div className="sticky top-0 z-20 pt-4 pb-3" style={{ background: "var(--bg)" }}>
-          <div className="flex items-center gap-3 mb-3">
-            <button
-              onClick={() => router.back()}
-              className="p-2 rounded-xl flex-shrink-0 transition-all"
-              style={{ color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid var(--border)" }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[15px] font-bold truncate" style={{ color: "var(--text)" }}>
-                {loading ? "Chargement…" : moduleInfo?.nom ?? "Module"}
-              </h1>
-              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                {activities.length} activité{activities.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-            {totalQ > 0 && !loading && (
-              <div className="flex-shrink-0 text-right">
-                <p className="text-[13px] font-bold tabular-nums" style={{ color: "var(--accent)" }}>
-                  {overallPct}%
-                </p>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                  {totalAnswered}/{totalQ}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Progress bar */}
-          {!loading && totalQ > 0 && (
-            <div className="h-1 rounded-full overflow-hidden mb-2" style={{ background: "var(--border)" }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: "var(--accent)" }}
-                initial={{ width: 0 }}
-                animate={{ width: `${overallPct}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-xl font-bold">{moduleName}</h1>
+          {!loading && (
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {exercises} cours · {exams} examens
+            </p>
           )}
+        </motion.div>
+
+        {/* Révision ciblée CTA */}
+        {user && weakCount !== null && weakCount > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Link href={`/revision/${modId}`}>
+              <div className="rounded-2xl border px-5 py-4 flex items-center gap-4 transition-all hover:bg-orange-500/10 cursor-pointer"
+                style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.25)" }}>
+                <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
+                  <Target className="w-5 h-5 text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-orange-400">Révision ciblée</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {weakCount} question{weakCount > 1 ? "s" : ""} ratée{weakCount > 1 ? "s" : ""} 2× ou plus
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-lg flex-shrink-0">
+                  COMMENCER
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+        )}
+
+        {/* Tabs: Par cours | Par exam */}
+        <div className="flex rounded-2xl border p-1 gap-1" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          {(["exercise", "exam"] as const).map((t) => (
+            <button key={t} onClick={() => switchTab(t)}
+              className={cn("flex-1 py-2 rounded-xl text-xs font-semibold transition-all",
+                tab === t ? "bg-blue-600 text-white shadow" : "hover:bg-white/[0.04]")}
+              style={{ color: tab === t ? "white" : "var(--text-secondary)" }}>
+              {t === "exercise" ? `Par cours (${exercises})` : `Par exam (${exams})`}
+            </button>
+          ))}
         </div>
 
-        {/* Content */}
-        <div className="pb-24 space-y-2 pt-2">
-          {loading && (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--text-muted)" }} />
-            </div>
-          )}
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={tab === "exercise" ? "Chercher un cours..." : "Chercher un examen..."}
+            className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-sm border focus:outline-none transition-colors"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+        </div>
 
-          {!loading && activities.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-[14px]" style={{ color: "var(--text-muted)" }}>
-                Aucune activité disponible pour ce module.
-              </p>
-            </div>
-          )}
-
-          <AnimatePresence>
-            {!loading && activities.map((activity, i) => {
-              const prog = progress[activity.id];
+        {loading ? (
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} />)}</div>
+        ) : (
+          <motion.div initial="hidden" animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
+            className="space-y-2">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>Aucun résultat</p>
+            ) : filtered.map((act) => {
+              const prog = progress[act.id];
               const answered = prog?.answered ?? 0;
               const correct = prog?.correct ?? 0;
-              const pct = activity.total_questions > 0
-                ? Math.round((answered / activity.total_questions) * 100)
-                : 0;
+              const pct = act.total_questions > 0 ? Math.round((answered / act.total_questions) * 100) : 0;
               const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : null;
               const isComplete = pct >= 100;
-              const isStarted = answered > 0 && !isComplete;
 
               return (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.3 }}
-                >
-                  <Link
-                    href={`/quiz/${activity.id}`}
-                    className="block rounded-xl p-4 transition-all duration-150 group"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.background = "var(--surface-alt)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)";
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.background = "var(--surface)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Status icon */}
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{
-                          background: isComplete
-                            ? "var(--success-subtle)"
-                            : isStarted
-                            ? "var(--accent-subtle)"
-                            : "var(--surface-alt)",
-                          border: `1px solid ${isComplete ? "var(--success-border)" : isStarted ? "var(--accent-border)" : "var(--border)"}`,
-                        }}
-                      >
-                        {isComplete ? (
-                          <CheckCircle className="w-4 h-4" style={{ color: "var(--success)" }} />
-                        ) : isStarted ? (
-                          <Clock className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                        ) : (
-                          <Play className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text)" }}>
-                            {activity.nom}
-                          </p>
-                          <ChevronRight
-                            className="w-4 h-4 flex-shrink-0 mt-0.5 transition-transform duration-150 group-hover:translate-x-0.5"
-                            style={{ color: "var(--text-muted)" }}
-                          />
+                <motion.div key={act.id} variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
+                  <Link href={`/quiz/${act.id}`}>
+                    <div className="rounded-2xl border px-5 py-4 transition-all cursor-pointer hover:bg-white/[0.06]"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
+                          act.type_activite === "exam" ? "bg-blue-500/10 border border-blue-500/20" : "bg-emerald-500/10 border border-emerald-500/20")}>
+                          {act.type_activite === "exam"
+                            ? <ClipboardList className="w-4 h-4 text-blue-400" />
+                            : <Dumbbell className="w-4 h-4 text-emerald-400" />}
                         </div>
-
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                            {activity.total_questions} question{activity.total_questions !== 1 ? "s" : ""}
-                          </span>
-                          {activity.chapitre && (
-                            <span
-                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                              style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}
-                            >
-                              {activity.chapitre}
-                            </span>
-                          )}
-                          {accuracy !== null && (
-                            <span
-                              className="text-[11px] font-semibold"
-                              style={{ color: accuracy >= 70 ? "var(--success)" : accuracy >= 50 ? "var(--warning)" : "var(--error)" }}
-                            >
-                              {accuracy}% juste
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Progress bar */}
-                        {activity.total_questions > 0 && (
-                          <div className="mt-2.5">
-                            <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                              <motion.div
-                                className="h-full rounded-full"
-                                style={{ background: isComplete ? "var(--success)" : "var(--accent)" }}
-                                initial={{ width: 0 }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ delay: i * 0.04 + 0.1, duration: 0.7, ease: "easeOut" }}
-                              />
-                            </div>
-                            <div className="flex justify-between mt-1">
-                              <span className="text-[10px]" style={{ color: "var(--text-disabled)" }}>
-                                {answered}/{activity.total_questions}
-                              </span>
-                              <span className="text-[10px] font-medium" style={{ color: pct > 0 ? "var(--text-secondary)" : "var(--text-disabled)" }}>
-                                {pct > 0 ? (isComplete ? "✓ Terminé" : `${pct}%`) : "Non commencé"}
-                              </span>
-                            </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>{act.nom}</p>
+                            {isComplete && <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--success)" }} />}
                           </div>
-                        )}
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-lg",
+                              act.type_activite === "exam" ? "text-blue-400 bg-blue-500/10" : "text-emerald-400 bg-emerald-500/10")}>
+                              {act.type_activite === "exam" ? "Examen" : "Exercice"}
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{act.total_questions} q</span>
+                            {act.chapitre && <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>· {act.chapitre}</span>}
+                            {accuracy !== null && (
+                              <span className="text-[11px] font-semibold"
+                                style={{ color: accuracy >= 70 ? "var(--success)" : accuracy >= 50 ? "var(--warning)" : "var(--error)" }}>
+                                {accuracy}% juste
+                              </span>
+                            )}
+                          </div>
+                          {act.total_questions > 0 && answered > 0 && (
+                            <div className="mt-2">
+                              <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                                <motion.div className="h-full rounded-full"
+                                  style={{ background: isComplete ? "var(--success)" : "var(--accent)" }}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ duration: 0.6, ease: "easeOut" }}
+                                />
+                              </div>
+                              <div className="flex justify-between mt-1">
+                                <span className="text-[10px]" style={{ color: "var(--text-disabled)" }}>{answered}/{act.total_questions}</span>
+                                <span className="text-[10px] font-medium" style={{ color: pct > 0 ? "var(--text-secondary)" : "var(--text-disabled)" }}>
+                                  {isComplete ? "✓ Terminé" : `${pct}%`}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {!isComplete && <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />}
                       </div>
                     </div>
                   </Link>
                 </motion.div>
               );
             })}
-          </AnimatePresence>
-        </div>
+          </motion.div>
+        )}
       </div>
-    </div>
+    </main>
+  );
+}
+
+import { Suspense } from "react";
+export default function ModuleActivitiesPage({ params }: { params: Promise<{ id: string; moduleId: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <ModuleActivitiesPageInner params={params} />
+    </Suspense>
   );
 }
