@@ -47,12 +47,12 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
     <motion.div
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl p-5 border relative overflow-hidden"
-      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ background: `radial-gradient(circle at 80% 20%, ${color}, transparent 60%)` }} />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
             {label}
           </p>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -60,10 +60,10 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
             <Icon className="w-4 h-4" style={{ color }} />
           </div>
         </div>
-        <p className="text-3xl font-bold tabular-nums" style={{ color: "rgba(255,255,255,0.95)" }}>
+        <p className="text-3xl font-bold tabular-nums" style={{ color: "var(--text)" }}>
           <AnimatedNumber value={value} />
         </p>
-        {sub && <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>{sub}</p>}
+        {sub && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{sub}</p>}
       </div>
     </motion.div>
   );
@@ -136,28 +136,28 @@ function RegenSection() {
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
       className="rounded-2xl border overflow-hidden mb-8"
-      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
 
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between"
-        style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+        style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)" }}>
-            <Brain className="w-4 h-4" style={{ color: "#a78bfa" }} />
+            style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
+            <Brain className="w-4 h-4" style={{ color: "var(--accent)" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
               Régénération des explications IA
             </p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               ZeroQCM Tutor v2 — profondeur pédagogique maximale
             </p>
           </div>
         </div>
         {phase === "idle" && regenStats && (
           <button onClick={fetchStats} className="p-2 rounded-lg transition-opacity hover:opacity-70"
-            style={{ color: "rgba(255,255,255,0.3)" }}>
+            style={{ color: "var(--text-muted)" }}>
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         )}
@@ -170,29 +170,29 @@ function RegenSection() {
           <div className="grid grid-cols-3 gap-3">
             {/* Total questions — no action */}
             <div className="rounded-xl p-3 text-center"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-lg font-bold tabular-nums" style={{ color: "rgba(255,255,255,0.5)" }}>{regenStats.total_questions.toLocaleString()}</p>
-              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Total questions</p>
+              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: "var(--text-muted)" }}>{regenStats.total_questions.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Total questions</p>
             </div>
 
             {/* Expliquées — Régénérer button */}
             <div className="rounded-xl p-3 text-center relative group"
-              style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.15)" }}>
-              <p className="text-lg font-bold tabular-nums" style={{ color: "#22c55e" }}>{regenStats.total_explained.toLocaleString()}</p>
-              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Expliquées</p>
+              style={{ background: "var(--success-subtle)", border: "1px solid var(--success-border)" }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: "var(--success)" }}>{regenStats.total_explained.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Expliquées</p>
               {phase === "idle" && regenStats.total_explained > 0 && (
                 <button
                   onClick={() => startRegen(true)}
                   title="Régénérer toutes les explications existantes"
                   className="mt-2 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-md text-[9px] font-semibold transition-all"
-                  style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>
+                  style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
                   <RefreshCw size={8} /> Régénérer
                 </button>
               )}
               {phase === "running" && (
                 <div className="mt-2 flex items-center gap-1 mx-auto justify-center">
                   <div className="w-2 h-2 rounded-full border border-green-400 border-t-transparent animate-spin" />
-                  <span className="text-[9px]" style={{ color: "#22c55e" }}>{pct}%</span>
+                  <span className="text-[9px]" style={{ color: "var(--success)" }}>{pct}%</span>
                 </div>
               )}
             </div>
@@ -200,22 +200,22 @@ function RegenSection() {
             {/* Manquantes — Compléter button */}
             <div className="rounded-xl p-3 text-center"
               style={{
-                background: regenStats.missing > 0 ? "rgba(251,191,36,0.04)" : "rgba(255,255,255,0.03)",
-                border: regenStats.missing > 0 ? "1px solid rgba(251,191,36,0.15)" : "1px solid rgba(255,255,255,0.06)"
+                background: regenStats.missing > 0 ? "var(--warning-subtle)" : "var(--surface-alt)",
+                border: regenStats.missing > 0 ? "1px solid var(--warning-border)" : "1px solid var(--border)"
               }}>
-              <p className="text-lg font-bold tabular-nums" style={{ color: regenStats.missing > 0 ? "#fbbf24" : "#22c55e" }}>{regenStats.missing.toLocaleString()}</p>
-              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Manquantes</p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: regenStats.missing > 0 ? "var(--warning)" : "var(--success)" }}>{regenStats.missing.toLocaleString()}</p>
+              <p className="text-[10px] mt-0.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Manquantes</p>
               {phase === "idle" && regenStats.missing > 0 && (
                 <button
                   onClick={() => startRegen(false)}
                   title="Générer les explications manquantes"
                   className="mt-2 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-md text-[9px] font-semibold transition-all"
-                  style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
+                  style={{ background: "var(--warning-subtle)", color: "var(--warning)", border: "1px solid var(--warning-border)" }}>
                   <Zap size={8} /> Compléter
                 </button>
               )}
               {phase === "idle" && regenStats.missing === 0 && (
-                <p className="text-[9px] mt-1.5" style={{ color: "rgba(34,197,94,0.5)" }}>✓ Complet</p>
+                <p className="text-[9px] mt-1.5" style={{ color: "var(--success)" }}>✓ Complet</p>
               )}
             </div>
           </div>
@@ -225,17 +225,17 @@ function RegenSection() {
         {regenStats && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Couverture</span>
-              <span className="text-xs font-semibold tabular-nums" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Couverture</span>
+              <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-secondary)" }}>
                 {regenStats.coverage_pct}%
               </span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
               <motion.div className="h-full rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${regenStats.coverage_pct}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                style={{ background: regenStats.coverage_pct === 100 ? "#22c55e" : "linear-gradient(90deg,#a78bfa,#60a5fa)" }}
+                style={{ background: regenStats.coverage_pct === 100 ? "var(--success)" : "var(--accent)" }}
               />
             </div>
           </div>
@@ -244,13 +244,13 @@ function RegenSection() {
         {/* Config row — model picker */}
         {phase === "idle" && (
           <div>
-            <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
               Modèle
             </label>
             <select value={model} onChange={e => setModel(e.target.value)}
               className="rounded-lg px-3 py-2 text-xs font-medium appearance-none outline-none"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", minWidth: "220px" }}>
-              {VALID_MODELS.map(m => <option key={m} value={m} style={{ background: "#111" }}>{m}</option>)}
+              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text-secondary)", minWidth: "220px" }}>
+              {VALID_MODELS.map(m => <option key={m} value={m} style={{ background: "var(--surface)" }}>{m}</option>)}
             </select>
           </div>
         )}
@@ -260,22 +260,22 @@ function RegenSection() {
           {phase === "running" && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   Progression — {progress.done.toLocaleString()} / {progress.total.toLocaleString()}
-                  {progress.errors > 0 && <span style={{ color: "#f87171" }}> · {progress.errors} erreurs</span>}
+                  {progress.errors > 0 && <span style={{ color: "var(--error)" }}> · {progress.errors} erreurs</span>}
                 </span>
-                <span className="text-xs font-bold tabular-nums" style={{ color: "#a78bfa" }}>{pct}%</span>
+                <span className="text-xs font-bold tabular-nums" style={{ color: "var(--accent)" }}>{pct}%</span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden mb-1" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className="h-2 rounded-full overflow-hidden mb-1" style={{ background: "var(--border)" }}>
                 <motion.div className="h-full rounded-full relative overflow-hidden"
                   animate={{ width: `${pct}%` }}
                   transition={{ duration: 0.3 }}
-                  style={{ background: "linear-gradient(90deg,#a78bfa,#60a5fa)" }}>
+                  style={{ background: "var(--accent)" }}>
                   <div className="absolute inset-0 opacity-40"
-                    style={{ background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)", animation: "shimmer 1.5s infinite" }} />
+                    style={{ background: "linear-gradient(90deg,transparent,var(--border),transparent)", animation: "shimmer 1.5s infinite" }} />
                 </motion.div>
               </div>
-              <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>
+              <p className="text-[10px]" style={{ color: "var(--text-disabled)" }}>
                 ~{Math.round((progress.total - progress.done) / REGEN_BATCH * 0.8)} secondes restantes
               </p>
             </motion.div>
@@ -287,11 +287,11 @@ function RegenSection() {
           {phase === "done" && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
+              style={{ background: "var(--success-subtle)", border: "1px solid var(--success-border)" }}>
+              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--success)" }} />
               <div>
-                <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Régénération terminée</p>
-                <p className="text-xs" style={{ color: "rgba(34,197,94,0.6)" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--success)" }}>Régénération terminée</p>
+                <p className="text-xs" style={{ color: "var(--success)" }}>
                   {progress.done.toLocaleString()} explications générées · {progress.errors} erreurs
                 </p>
               </div>
@@ -304,9 +304,9 @@ function RegenSection() {
           {phase === "error" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
-              <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#ef4444" }} />
-              <p className="text-sm" style={{ color: "#ef4444" }}>Erreur pendant la régénération</p>
+              style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)" }}>
+              <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--error)" }} />
+              <p className="text-sm" style={{ color: "var(--error)" }}>Erreur pendant la régénération</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -316,13 +316,13 @@ function RegenSection() {
           <button
             onClick={stopRegen}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
-            <div className="w-3 h-3 rounded-sm" style={{ background: "#f87171" }} />
+            style={{ background: "var(--error-subtle)", color: "var(--error)", border: "1px solid var(--error-border)" }}>
+            <div className="w-3 h-3 rounded-sm" style={{ background: "var(--error)" }} />
             Arrêter
           </button>
         )}
 
-        <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>
+        <p className="text-[10px]" style={{ color: "var(--text-disabled)" }}>
           Traitement par lots de {REGEN_BATCH} questions · GitHub Models · Mise en cache automatique en base
         </p>
       </div>
@@ -342,12 +342,12 @@ function SeedSection() {
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   const YEARS = [
-    { year: 1, label: "Année 1", sems: "S1 + S2", color: "#60a5fa" },
-    { year: 2, label: "Année 2", sems: "S1–S4",   color: "#34d399" },
-    { year: 3, label: "Année 3", sems: "S1–S6",   color: "#a78bfa" },
-    { year: 4, label: "Année 4", sems: "S1–S8",   color: "#f472b6" },
-    { year: 5, label: "Année 5", sems: "S1–S9",   color: "#fbbf24" },
-    { year: 6, label: "Année 6", sems: "S1–S10",  color: "#fb923c" },
+    { year: 1, label: "Année 1", sems: "S1 + S2", color: "var(--accent)" },
+    { year: 2, label: "Année 2", sems: "S1–S4",   color: "var(--accent)" },
+    { year: 3, label: "Année 3", sems: "S1–S6",   color: "var(--accent)" },
+    { year: 4, label: "Année 4", sems: "S1–S8",   color: "var(--accent)" },
+    { year: 5, label: "Année 5", sems: "S1–S9",   color: "var(--warning)" },
+    { year: 6, label: "Année 6", sems: "S1–S10",  color: "var(--accent)" },
   ];
 
   async function seed(year: number) {
@@ -380,21 +380,21 @@ function SeedSection() {
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
       className="rounded-2xl border overflow-hidden mb-8"
-      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
 
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between"
-        style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+        style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
-            <Database className="w-4 h-4" style={{ color: "#60a5fa" }} />
+            style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
+            <Database className="w-4 h-4" style={{ color: "var(--accent)" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
               Seed DariQCM
             </p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Importer les semestres accessibles par année d&apos;étude
             </p>
           </div>
@@ -402,7 +402,7 @@ function SeedSection() {
         {(phase === "done" || phase === "error") && (
           <button onClick={() => { setPhase("idle"); setActiveYear(null); }}
             className="p-2 rounded-lg transition-opacity hover:opacity-70"
-            style={{ color: "rgba(255,255,255,0.3)" }}>
+            style={{ color: "var(--text-muted)" }}>
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         )}
@@ -432,7 +432,7 @@ function SeedSection() {
                   <p className="text-base font-bold" style={{ color }}>{year}</p>
                 )}
                 <p className="text-[9px] font-semibold uppercase tracking-wide mt-0.5" style={{ color }}>{label}</p>
-                <p className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>{sems}</p>
+                <p className="text-[8px] mt-0.5" style={{ color: "var(--text-disabled)" }}>{sems}</p>
               </button>
             );
           })}
@@ -443,10 +443,10 @@ function SeedSection() {
           {phase === "running" && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)" }}>
+              style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
               <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
-                style={{ borderColor: "#60a5fa", borderTopColor: "transparent" }} />
-              <p className="text-sm" style={{ color: "#60a5fa" }}>
+                style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+              <p className="text-sm" style={{ color: "var(--accent)" }}>
                 Scraping Année {activeYear} — ceci peut prendre 2–5 minutes…
               </p>
             </motion.div>
@@ -458,10 +458,10 @@ function SeedSection() {
           {phase === "done" && result && (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="rounded-xl p-4 space-y-3"
-              style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+              style={{ background: "var(--success-subtle)", border: "1px solid var(--success-border)" }}>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
-                <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>Import terminé — Année {activeYear}</p>
+                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--success)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--success)" }}>Import terminé — Année {activeYear}</p>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -473,16 +473,16 @@ function SeedSection() {
                   { label: "Erreurs",   val: result.errors },
                 ].map(({ label, val }) => (
                   <div key={label} className="rounded-lg p-2 text-center"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <p className="text-sm font-bold tabular-nums" style={{ color: "rgba(255,255,255,0.8)" }}>
+                    style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+                    <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>
                       {val.toLocaleString()}
                     </p>
-                    <p className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                    <p className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
                   </div>
                 ))}
               </div>
               {result.errors > 0 && (
-                <p className="text-[10px]" style={{ color: "rgba(251,191,36,0.6)" }}>
+                <p className="text-[10px]" style={{ color: "var(--warning)" }}>
                   {result.errors} activité(s) échouées — données partielles possibles
                 </p>
               )}
@@ -495,17 +495,17 @@ function SeedSection() {
           {phase === "error" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
-              <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#ef4444" }} />
+              style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)" }}>
+              <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--error)" }} />
               <div>
-                <p className="text-sm font-semibold" style={{ color: "#ef4444" }}>Erreur de seed</p>
-                <p className="text-xs" style={{ color: "rgba(239,68,68,0.6)" }}>{errorMsg}</p>
+                <p className="text-sm font-semibold" style={{ color: "var(--error)" }}>Erreur de seed</p>
+                <p className="text-xs" style={{ color: "var(--error)" }}>{errorMsg}</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>
+        <p className="text-[10px]" style={{ color: "var(--text-disabled)" }}>
           DariQCM gate les semestres par année d&apos;étude · Correction automatique des réponses manquantes incluse
         </p>
       </div>
@@ -520,12 +520,12 @@ interface AiToken  { id: string; label: string; status: "alive"|"dead"|"rate_lim
 interface AiModel  { id: string; label: string; provider: string; tier: string; is_enabled: boolean; is_default: boolean; sort_order: number; premium_multiplier?: number; supports_vision?: boolean; supports_tools?: boolean; max_context?: number; billing_plan?: string; }
 
 const STATUS_COLOR: Record<string, string> = {
-  alive: "#22c55e", dead: "#ef4444", rate_limited: "#f59e0b", unknown: "rgba(255,255,255,0.25)"
+  alive: "var(--success)", dead: "var(--error)", rate_limited: "var(--warning)", unknown: "var(--text-disabled)"
 };
 const STATUS_LABEL: Record<string, string> = {
   alive: "Alive", dead: "Dead", rate_limited: "Rate limited", unknown: "Not tested"
 };
-const TIER_COLOR: Record<string, string> = { standard: "#60a5fa", premium: "#a78bfa" };
+const TIER_COLOR: Record<string, string> = { standard: "var(--accent)", premium: "var(--accent)" };
 const PROVIDER_COLORS: Record<string, string> = {
   OpenAI: "#74aa9c", Anthropic: "#d4a27f", Meta: "#4267B2", Mistral: "#ff7000"
 };
@@ -682,17 +682,17 @@ function AiSection() {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
       className="rounded-2xl border overflow-hidden"
-      style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.2)" }}>
-            <Brain className="w-4 h-4" style={{ color: "#818cf8" }} />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}>
+            <Brain className="w-4 h-4" style={{ color: "var(--accent)" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>AI Models & Tokens</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>AI Models & Tokens</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {aliveCount}/{tokens.length} tokens alive · {models.filter(m=>m.is_enabled).length}/{models.length} models active · live
             </p>
           </div>
@@ -700,7 +700,7 @@ function AiSection() {
         <div className="flex gap-2">
           <button onClick={() => testToken()} disabled={testingAll || tokens.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40"
-            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
+            style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
             <RefreshCw className={"w-3 h-3 " + (testingAll ? "animate-spin" : "")} />
             {testingAll ? "Testing…" : "Test all"}
           </button>
@@ -708,11 +708,11 @@ function AiSection() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
         {(["tokens", "models", "limits"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className="flex-1 py-3 text-xs font-semibold uppercase tracking-widest transition-all"
-            style={{ color: tab === t ? "#818cf8" : "rgba(255,255,255,0.3)", borderBottom: tab === t ? "2px solid #818cf8" : "2px solid transparent" }}>
+            style={{ color: tab === t ? "var(--accent)" : "var(--text-muted)", borderBottom: tab === t ? "2px solid var(--accent)" : "2px solid transparent" }}>
             {t === "tokens" ? `🔑 Tokens (${tokens.length})` : t === "models" ? `🤖 Models (${models.length})` : `⚡ Limits`}
           </button>
         ))}
@@ -724,20 +724,20 @@ function AiSection() {
         {tab === "tokens" && (
           <>
             {tokens.length === 0 && !addOpen && (
-              <div className="rounded-xl border py-8 text-center" style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)" }}>
-                <Key className="w-6 h-6 mx-auto mb-2" style={{ color: "rgba(255,255,255,0.2)" }} />
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No tokens yet. Add your GitHub OAuth token below.</p>
+              <div className="rounded-xl border py-8 text-center" style={{ background: "var(--surface-alt)", borderColor: "var(--border)" }}>
+                <Key className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-disabled)" }} />
+                <p className="text-xs" style={{ color: "var(--text-disabled)" }}>No tokens yet. Add your GitHub OAuth token below.</p>
               </div>
             )}
 
             {tokens.map((tok) => (
               <div key={tok.id} className="rounded-xl border px-4 py-3 flex items-center gap-3"
-                style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)" }}>
+                style={{ background: "var(--surface-alt)", borderColor: "var(--border)" }}>
                 {/* Status dot */}
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLOR[tok.status], boxShadow: tok.status === "alive" ? `0 0 6px ${STATUS_COLOR.alive}` : "none" }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>{tok.label}</p>
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{tok.label}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     {STATUS_LABEL[tok.status]} · Used {tok.use_count}x
                     {tok.last_tested_at ? ` · Tested ${new Date(tok.last_tested_at).toLocaleString("fr-FR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}` : ""}
                   </p>
@@ -745,12 +745,12 @@ function AiSection() {
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => testToken(tok.id)} disabled={testingId === tok.id}
                     className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40"
-                    style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.2)", color: "#818cf8" }}>
+                    style={{ background: "var(--accent-subtle)", borderColor: "var(--accent-border)", color: "var(--accent)" }}>
                     {testingId === tok.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Test"}
                   </button>
                   <button onClick={() => deleteToken(tok.id)}
                     className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all"
-                    style={{ background: "rgba(239,68,68,0.06)", borderColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
+                    style={{ background: "var(--error-subtle)", borderColor: "var(--error-border)", color: "var(--error)" }}>
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -762,29 +762,29 @@ function AiSection() {
               {addOpen && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                   className="rounded-xl border p-4 space-y-4"
-                  style={{ background: "rgba(34,197,94,0.03)", borderColor: "rgba(34,197,94,0.15)" }}>
+                  style={{ background: "var(--surface-alt)", borderColor: "var(--success-border)" }}>
 
                   {/* Idle / start state */}
                   {(flowState === "idle" || flowState === "starting") && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
+                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--success)" }}>
                         <span>🔗</span> Connect GitHub Account
                       </p>
                       <input value={flowLabel} onChange={e => setFlowLabel(e.target.value)}
                         placeholder="Nickname (e.g. KNIGHTABDO)"
                         className="w-full px-3 py-2 rounded-lg text-xs border outline-none"
-                        style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)" }} />
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text)" }} />
+                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                         GitHub will show you a one-time code to enter at github.com/activate
                       </p>
                       <div className="flex gap-2">
                         <button onClick={startDeviceFlow} disabled={!flowLabel.trim() || flowState === "starting"}
                           className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2"
-                          style={{ background: flowLabel.trim() && flowState !== "starting" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.04)", color: flowLabel.trim() && flowState !== "starting" ? "#4ade80" : "rgba(255,255,255,0.3)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                          style={{ background: flowLabel.trim() && flowState !== "starting" ? "var(--success-subtle)" : "var(--surface-alt)", color: flowLabel.trim() && flowState !== "starting" ? "var(--success)" : "var(--text-muted)", border: "1px solid var(--success-border)" }}>
                           {flowState === "starting" ? <><span className="animate-spin">⟳</span> Starting…</> : <>🐙 Authorize with GitHub</>}
                         </button>
                         <button onClick={cancelFlow} className="px-3 py-2 rounded-lg text-xs"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>Cancel</button>
+                          style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Cancel</button>
                       </div>
                     </div>
                   )}
@@ -792,34 +792,34 @@ function AiSection() {
                   {/* Code shown + polling */}
                   {(flowState === "code_shown" || flowState === "polling") && flowData && (
                     <div className="space-y-4">
-                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
+                      <p className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--success)" }}>
                         <span>📋</span> Enter this code at GitHub
                       </p>
 
                       {/* Big code display */}
-                      <div className="rounded-2xl p-5 text-center space-y-2" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(34,197,94,0.2)" }}>
-                        <div className="text-3xl font-mono font-bold tracking-[0.25em] select-all" style={{ color: "#4ade80", letterSpacing: "0.3em" }}>
+                      <div className="rounded-2xl p-5 text-center space-y-2" style={{ background: "var(--surface)", border: "1px solid var(--success-border)" }}>
+                        <div className="text-3xl font-mono font-bold tracking-[0.25em] select-all" style={{ color: "var(--success)", letterSpacing: "0.3em" }}>
                           {flowData.user_code}
                         </div>
-                        <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                           Copy this code, then click the link below
                         </p>
                       </div>
 
                       <a href={flowData.verification_uri} target="_blank" rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all"
-                        style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textDecoration: "none" }}>
+                        style={{ background: "var(--success-subtle)", border: "1px solid var(--success-border)", color: "var(--success)", textDecoration: "none" }}>
                         🌐 Open {flowData.verification_uri}
                       </a>
 
-                      <div className="flex items-center gap-2 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
                         <span className="inline-block w-3 h-3 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
-                          style={{ borderColor: "rgba(34,197,94,0.4)", borderTopColor: "transparent" }} />
+                          style={{ borderColor: "var(--success)", borderTopColor: "transparent" }} />
                         Waiting for you to authorize… auto-detecting
                       </div>
 
                       <button onClick={cancelFlow} className="w-full py-1.5 rounded-lg text-xs"
-                        style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)" }}>Cancel</button>
+                        style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Cancel</button>
                     </div>
                   )}
 
@@ -827,22 +827,22 @@ function AiSection() {
                   {flowState === "success" && (
                     <div className="text-center py-4 space-y-2">
                       <div className="text-4xl">✅</div>
-                      <p className="text-sm font-semibold" style={{ color: "#4ade80" }}>GitHub account connected!</p>
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Token saved — closing in a moment</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--success)" }}>GitHub account connected!</p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Token saved — closing in a moment</p>
                     </div>
                   )}
 
                   {/* Error */}
                   {flowState === "error" && (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171" }}>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)", color: "var(--error)" }}>
                         ⚠️ {flowError}
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => { setFlowState("idle"); setFlowError(""); }} className="flex-1 py-2 rounded-lg text-xs font-semibold"
-                          style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.15)" }}>Try again</button>
+                          style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>Try again</button>
                         <button onClick={cancelFlow} className="px-3 py-2 rounded-lg text-xs"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>Cancel</button>
+                          style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Cancel</button>
                       </div>
                     </div>
                   )}
@@ -853,7 +853,7 @@ function AiSection() {
             {!addOpen && (
               <button onClick={() => { setAddOpen(true); setFlowState("idle"); setFlowLabel(""); setFlowError(""); setFlowData(null); }}
                 className="w-full py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-80"
-                style={{ background: "rgba(99,102,241,0.06)", borderColor: "rgba(99,102,241,0.15)", color: "#818cf8" }}>
+                style={{ background: "var(--accent-subtle)", borderColor: "var(--accent-border)", color: "var(--accent)" }}>
                 <Plus className="w-3.5 h-3.5" />
                 Add Token
               </button>
@@ -866,38 +866,38 @@ function AiSection() {
           <>
             {models.map((m) => (
               <div key={m.id} className="rounded-xl border px-4 py-3 flex items-center gap-3"
-                style={{ background: "rgba(255,255,255,0.02)", borderColor: m.is_default ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.06)", opacity: m.is_enabled ? 1 : 0.45 }}>
+                style={{ background: "var(--surface-alt)", borderColor: m.is_default ? "var(--accent-border)" : "var(--border)", opacity: m.is_enabled ? 1 : 0.45 }}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>{m.label}</p>
+                    <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{m.label}</p>
                     {m.is_default && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>DEFAULT</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "var(--accent-border)", color: "var(--accent)" }}>DEFAULT</span>
                     )}
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: `${TIER_COLOR[m.tier]}14`, color: TIER_COLOR[m.tier] }}>
                       {m.tier.toUpperCase()}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-xs" style={{ color: PROVIDER_COLORS[m.provider] ?? "rgba(255,255,255,0.35)" }}>{m.provider}</span>
-                    {(m as any).supports_vision && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc" }}>👁 vision</span>}
-                    {(m as any).supports_tools && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(99,179,237,0.1)", color: "#93c5fd" }}>🔧 tools</span>}
-                    {(m as any).max_context && <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>{Math.round((m as any).max_context / 1000)}k ctx</span>}
+                    <span className="text-xs" style={{ color: PROVIDER_COLORS[m.provider] ?? "var(--text-muted)" }}>{m.provider}</span>
+                    {(m as any).supports_vision && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "var(--accent-subtle)", color: "var(--accent)" }}>👁 vision</span>}
+                    {(m as any).supports_tools && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "var(--accent-subtle)", color: "var(--accent)" }}>🔧 tools</span>}
+                    {(m as any).max_context && <span className="text-[9px] font-mono" style={{ color: "var(--text-disabled)" }}>{Math.round((m as any).max_context / 1000)}k ctx</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!m.is_default && m.is_enabled && (
                     <button onClick={() => setDefault(m)}
                       className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all"
-                      style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.2)", color: "#818cf8" }}>
+                      style={{ background: "var(--accent-subtle)", borderColor: "var(--accent-border)", color: "var(--accent)" }}>
                       Set default
                     </button>
                   )}
                   <button onClick={() => toggleModel(m)}
                     className="w-8 h-8 rounded-xl flex items-center justify-center transition-all border"
-                    style={{ background: m.is_enabled ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)", borderColor: m.is_enabled ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.08)" }}>
+                    style={{ background: m.is_enabled ? "var(--success-subtle)" : "var(--surface-alt)", borderColor: m.is_enabled ? "var(--success-border)" : "var(--border)" }}>
                     {m.is_enabled
-                      ? <ToggleRight className="w-4 h-4" style={{ color: "#22c55e" }} />
-                      : <ToggleLeft  className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />}
+                      ? <ToggleRight className="w-4 h-4" style={{ color: "var(--success)" }} />
+                      : <ToggleLeft  className="w-4 h-4" style={{ color: "var(--text-muted)" }} />}
                   </button>
                 </div>
               </div>
@@ -911,14 +911,14 @@ function AiSection() {
 
             {/* ─ Category Quotas ─ */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-disabled)" }}>
                 Category daily limits (shared across all models in tier)
               </p>
               <div className="space-y-2">
                 {[
-                  { mult: 0, label: "🟢 Free / Standard", color: "#22c55e", desc: "0 = unlimited" },
-                  { mult: 1, label: "🟡 1× Premium",       color: "#fbbf24", desc: "shared across all 1× models" },
-                  { mult: 3, label: "🔴 3× Heavy",          color: "#f87171", desc: "shared across all 3× models" },
+                  { mult: 0, label: "🟢 Free / Standard", color: "var(--success)", desc: "0 = unlimited" },
+                  { mult: 1, label: "🟡 1× Premium",       color: "var(--warning)", desc: "shared across all 1× models" },
+                  { mult: 3, label: "🔴 3× Heavy",          color: "var(--error)", desc: "shared across all 3× models" },
                 ].map(({ mult, label, color, desc }) => {
                   const row = limits.find(l => l.multiplier === mult);
                   const usage = usageToday.find(u => u.multiplier === mult);
@@ -930,11 +930,11 @@ function AiSection() {
                   const isEditing = mult in editLimit;
                   return (
                     <div key={mult} className="rounded-xl border px-4 py-3 space-y-2"
-                      style={{ background: "rgba(255,255,255,0.02)", borderColor: `${color}20` }}>
+                      style={{ background: "var(--surface-alt)", borderColor: `${color}20` }}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>{label}</p>
-                          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>{desc}</p>
+                          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{label}</p>
+                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{desc}</p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {isEditing ? (
@@ -944,7 +944,7 @@ function AiSection() {
                                 value={editLimit[mult]}
                                 onChange={e => setEditLimit(prev => ({ ...prev, [mult]: e.target.value }))}
                                 className="w-16 px-2 py-1 rounded-lg text-xs text-center border outline-none font-mono"
-                                style={{ background: "rgba(255,255,255,0.06)", borderColor: `${color}40`, color: "rgba(255,255,255,0.9)" }}
+                                style={{ background: "var(--border)", borderColor: `${color}40`, color: "var(--text)" }}
                                 onKeyDown={e => e.key === "Enter" && saveCategoryLimit(mult)}
                               />
                               <button onClick={() => saveCategoryLimit(mult)} disabled={savingLimit === mult}
@@ -954,7 +954,7 @@ function AiSection() {
                               </button>
                               <button onClick={() => setEditLimit(prev => { const n = {...prev}; delete n[mult]; return n; })}
                                 className="px-2 py-1 rounded-lg text-[10px]"
-                                style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)" }}>✕</button>
+                                style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>✕</button>
                             </>
                           ) : (
                             <>
@@ -963,7 +963,7 @@ function AiSection() {
                               </span>
                               <button onClick={() => setEditLimit(prev => ({ ...prev, [mult]: String(currentLimit) }))}
                                 className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all"
-                                style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
+                                style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
                                 Edit
                               </button>
                             </>
@@ -973,15 +973,15 @@ function AiSection() {
                       {/* Usage bar */}
                       {mult !== 0 && currentLimit > 0 && (
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-                            <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                          <div className="flex justify-between text-[10px]" style={{ color: "var(--text-disabled)" }}>
+                            <span style={{ color: "var(--text-muted)" }}>
                               {userCount > 0
                                 ? <>{userCount} user{userCount > 1 ? "s" : ""} · {totalReqs} req{totalReqs !== 1 ? "s" : ""} total today</>
                                 : "No usage today"}
                             </span>
-                            <span style={{ color: "rgba(255,255,255,0.25)" }}>per-user limit</span>
+                            <span style={{ color: "var(--text-disabled)" }}>per-user limit</span>
                           </div>
-                          <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
                           </div>
                         </div>
@@ -993,9 +993,9 @@ function AiSection() {
             </div>
 
             {/* ─ Per-user clarification ─ */}
-            <div className="rounded-xl border px-4 py-3" style={{ background: "rgba(59,130,246,0.04)", borderColor: "rgba(59,130,246,0.18)" }}>
-              <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                <span style={{ color: "#60a5fa", fontWeight: 600 }}>ℹ️ Limits are per-user, not global.</span>
+            <div className="rounded-xl border px-4 py-3" style={{ background: "var(--accent-subtle)", borderColor: "var(--accent-border)" }}>
+              <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                <span style={{ color: "var(--accent)", fontWeight: 600 }}>ℹ️ Limits are per-user, not global.</span>
                 {" "}A 1× quota of 10/day means each individual user gets 10 requests — not 10 shared across everyone.
                 The usage counter above shows how many distinct users sent requests today, not a shared pool.
               </p>
@@ -1003,21 +1003,21 @@ function AiSection() {
 
             {/* ─ Per-model multiplier assignment ─ */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-disabled)" }}>
                 Per-model tier assignment
               </p>
               <div className="space-y-1.5">
                 {models.map((m: any) => {
                   const mult = m.premium_multiplier ?? 0;
-                  const multColors: Record<number,string> = { 0: "#22c55e", 1: "#fbbf24", 3: "#f87171" };
+                  const multColors: Record<number,string> = { 0: "var(--success)", 1: "var(--warning)", 3: "var(--error)" };
                   const multLabels: Record<number,string> = { 0: "Free", 1: "1×", 3: "3×" };
                   const isEditing = m.id in editMult;
                   return (
                     <div key={m.id} className="rounded-lg border px-3 py-2 flex items-center gap-3"
-                      style={{ background: "rgba(255,255,255,0.015)", borderColor: "rgba(255,255,255,0.05)" }}>
+                      style={{ background: "var(--surface-alt)", borderColor: "var(--surface-alt)" }}>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.75)" }}>{m.label}</p>
-                        <p className="text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>{m.id}</p>
+                        <p className="text-xs font-medium truncate" style={{ color: "var(--text-secondary)" }}>{m.label}</p>
+                        <p className="text-[10px] font-mono" style={{ color: "var(--text-disabled)" }}>{m.id}</p>
                       </div>
                       {isEditing ? (
                         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1026,31 +1026,31 @@ function AiSection() {
                               onClick={() => setEditMult(prev => ({ ...prev, [m.id]: String(v) }))}
                               className="px-2 py-1 rounded-md text-[10px] font-bold transition-all"
                               style={{
-                                background: editMult[m.id] === String(v) ? `${multColors[v]}20` : "rgba(255,255,255,0.04)",
-                                color: editMult[m.id] === String(v) ? multColors[v] : "rgba(255,255,255,0.3)",
-                                border: `1px solid ${editMult[m.id] === String(v) ? multColors[v]+"40" : "rgba(255,255,255,0.08)"}`,
+                                background: editMult[m.id] === String(v) ? `${multColors[v]}20` : "var(--surface-alt)",
+                                color: editMult[m.id] === String(v) ? multColors[v] : "var(--text-muted)",
+                                border: `1px solid ${editMult[m.id] === String(v) ? multColors[v]+"40" : "var(--border)"}`,
                               }}>
                               {multLabels[v]}
                             </button>
                           ))}
                           <button onClick={() => saveModelMult(m.id)} disabled={savingMult === m.id || !(m.id in editMult)}
                             className="px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ml-1"
-                            style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.25)" }}>
+                            style={{ background: "var(--accent-border)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
                             {savingMult === m.id ? "…" : "✓"}
                           </button>
                           <button onClick={() => setEditMult(prev => { const n = {...prev}; delete n[m.id]; return n; })}
                             className="px-1.5 py-1 rounded-md text-[10px]"
-                            style={{ color: "rgba(255,255,255,0.3)" }}>✕</button>
+                            style={{ color: "var(--text-muted)" }}>✕</button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                            style={{ background: `${multColors[mult] ?? "#fff"}14`, color: multColors[mult] ?? "rgba(255,255,255,0.4)" }}>
+                            style={{ background: mult === 0 ? "var(--success-subtle)" : mult === 1 ? "var(--warning-subtle)" : mult === 3 ? "var(--error-subtle)" : "var(--surface-alt)", color: multColors[mult] ?? "var(--text-muted)" }}>
                             {multLabels[mult] ?? `${mult}×`}
                           </span>
                           <button onClick={() => setEditMult(prev => ({ ...prev, [m.id]: String(mult) }))}
                             className="px-2 py-1 rounded-md text-[10px] border transition-all"
-                            style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }}>
+                            style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
                             Edit
                           </button>
                         </div>
@@ -1063,7 +1063,7 @@ function AiSection() {
 
             <button onClick={loadLimits}
               className="w-full py-2 rounded-xl border text-xs flex items-center justify-center gap-2 transition-all hover:opacity-70"
-              style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}>
+              style={{ background: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
               <RefreshCw className="w-3 h-3" /> Refresh usage stats
             </button>
           </div>
@@ -1097,7 +1097,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: "#080808" }}>
+      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
         <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
       </div>
     );
@@ -1106,26 +1106,26 @@ export default function AdminPage() {
   const s = stats;
 
   return (
-    <div className="min-h-screen px-5 py-8 lg:px-8" style={{ background: "#080808" }}>
+    <div className="min-h-screen px-5 py-8 lg:px-8" style={{ background: "var(--bg)" }}>
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest mb-1"
-          style={{ color: "rgba(255,255,255,0.3)" }}>Vue d&apos;ensemble</p>
-        <h1 className="text-2xl font-bold" style={{ color: "rgba(255,255,255,0.95)" }}>
+          style={{ color: "var(--text-muted)" }}>Vue d&apos;ensemble</p>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
           Tableau de bord
         </h1>
       </motion.div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
-        <StatCard label="En attente"    value={s?.users.pending  ?? 0} icon={Clock}         color="#fbbf24" sub="demandes actives" />
-        <StatCard label="Approuvés"     value={s?.users.approved ?? 0} icon={CheckCircle}   color="#22c55e" sub="comptes actifs" />
-        <StatCard label="Refusés"       value={s?.users.denied   ?? 0} icon={XCircle}       color="#ef4444" sub="demandes" />
-        <StatCard label="Utilisateurs"  value={s?.users.total    ?? 0} icon={Users}         color="#60a5fa" sub="inscrits" />
-        <StatCard label="Questions"     value={s?.platform.questions ?? 0} icon={BookOpen}  color="#a78bfa" sub="dans la base" />
-        <StatCard label="Réponses"      value={s?.platform.answers   ?? 0} icon={Activity}  color="#34d399" sub="soumises" />
+        <StatCard label="En attente"    value={s?.users.pending  ?? 0} icon={Clock}         color="var(--warning)" sub="demandes actives" />
+        <StatCard label="Approuvés"     value={s?.users.approved ?? 0} icon={CheckCircle}   color="var(--success)" sub="comptes actifs" />
+        <StatCard label="Refusés"       value={s?.users.denied   ?? 0} icon={XCircle}       color="var(--error)" sub="demandes" />
+        <StatCard label="Utilisateurs"  value={s?.users.total    ?? 0} icon={Users}         color="var(--accent)" sub="inscrits" />
+        <StatCard label="Questions"     value={s?.platform.questions ?? 0} icon={BookOpen}  color="var(--accent)" sub="dans la base" />
+        <StatCard label="Réponses"      value={s?.platform.answers   ?? 0} icon={Activity}  color="var(--accent)" sub="soumises" />
       </div>
 
       {/* AI Regen section */}
@@ -1139,25 +1139,25 @@ export default function AdminPage() {
       {/* Recent pending activations */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
             Demandes en attente
           </h2>
           <Link href="/admin/activations"
             className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-80"
-            style={{ color: "rgba(255,255,255,0.35)" }}>
+            style={{ color: "var(--text-muted)" }}>
             Voir tout <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
 
         {!s?.recent.length ? (
           <div className="rounded-2xl border py-12 text-center"
-            style={{ background: "#111", borderColor: "rgba(255,255,255,0.06)" }}>
-            <CheckCircle className="w-8 h-8 mx-auto mb-3" style={{ color: "rgba(34,197,94,0.4)" }} />
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>Aucune demande en attente</p>
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <CheckCircle className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--success)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Aucune demande en attente</p>
           </div>
         ) : (
           <div className="rounded-2xl border overflow-hidden"
-            style={{ background: "#111", borderColor: "rgba(255,255,255,0.08)" }}>
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             {s.recent.map((req, i) => {
               const name    = req.profile?.full_name || req.profile?.username || req.user_id.slice(0,8);
               const faculty = req.profile?.faculty ?? "—";
@@ -1170,26 +1170,26 @@ export default function AdminPage() {
               return (
                 <div key={req.user_id}
                   className={`flex items-center gap-3 px-5 py-4 ${i < s.recent.length - 1 ? "border-b" : ""}`}
-                  style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                  style={{ borderColor: "var(--surface-alt)" }}>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
+                    style={{ background: "var(--border)", color: "var(--text-secondary)" }}>
                     {name[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>{name}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>{name}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {faculty} · {sem} · {date}
                     </p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => handleAction(req.user_id, "approve")} disabled={!!actionLoading}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                      style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>
+                      style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
                       {loadingApprove ? "…" : "Approuver"}
                     </button>
                     <button onClick={() => handleAction(req.user_id, "deny")} disabled={!!actionLoading}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                      style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)" }}>
+                      style={{ background: "var(--error-subtle)", color: "var(--error)", border: "1px solid var(--error-border)" }}>
                       {loadingDeny ? "…" : "Refuser"}
                     </button>
                   </div>
