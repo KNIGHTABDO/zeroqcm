@@ -2,8 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Flame, BookOpen, ChevronRight, LogIn, BarChart2, Target, Loader2, ArrowRight } from "lucide-react";
+import { Flame, BookOpen, ChevronRight, LogIn, BarChart2, Target, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -33,7 +32,7 @@ function StatCard({ value, label, icon: Icon, delay = 0 }: {
       transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col gap-3 p-4 rounded-2xl border"
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-      <Icon className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+      <Icon className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
       <div>
         <p className="text-2xl font-bold tabular-nums" style={{ color: "var(--text)" }}>{value}</p>
         <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
@@ -44,7 +43,6 @@ function StatCard({ value, label, icon: Icon, delay = 0 }: {
 
 export default function RevisionPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [modules, setModules] = useState<WeakModule[]>([]);
   const [stats, setStats] = useState<OverallStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +51,6 @@ export default function RevisionPage() {
     if (!user) { setLoading(false); return; }
 
     async function load() {
-      // 1. Fetch all wrong answers
       const { data: wrongAnswers } = await supabase
         .from("user_answers")
         .select("question_id, is_correct")
@@ -65,13 +62,11 @@ export default function RevisionPage() {
         .select("question_id, is_correct")
         .eq("user_id", user!.id);
 
-      // Count wrong attempts per question
       const wrongCount: Record<string, number> = {};
       for (const a of wrongAnswers ?? []) {
         wrongCount[a.question_id] = (wrongCount[a.question_id] ?? 0) + 1;
       }
 
-      // Weak = wrong >= 2 times
       const weakIds = Object.entries(wrongCount)
         .filter(([, c]) => c >= 2)
         .map(([id]) => id);
@@ -82,13 +77,11 @@ export default function RevisionPage() {
         return;
       }
 
-      // Fetch module info for weak questions
       const { data: questions } = await supabase
         .from("questions")
         .select("id, module_id")
         .in("id", weakIds.slice(0, 200));
 
-      // Count weak questions per module
       const modWrong: Record<number, number> = {};
       for (const q of questions ?? []) {
         if (q.module_id) modWrong[q.module_id] = (modWrong[q.module_id] ?? 0) + wrongCount[q.id];
@@ -101,7 +94,6 @@ export default function RevisionPage() {
         return;
       }
 
-      // Fetch module + semester names
       const { data: modRows } = await supabase
         .from("modules")
         .select("id, nom, semester_id")
@@ -116,11 +108,6 @@ export default function RevisionPage() {
       const semMap: Record<string, string> = {};
       for (const s of semRows ?? []) semMap[s.semestre_id] = s.nom;
 
-      // Count total answered per module
-      const allAnswerMap: Record<string, number> = {};
-      for (const a of allAnswers ?? []) allAnswerMap[a.question_id] = (allAnswerMap[a.question_id] ?? 0) + 1;
-
-      // Build module list
       const result: WeakModule[] = (modRows ?? [])
         .filter(m => modWrong[m.id])
         .map(m => ({
@@ -133,21 +120,15 @@ export default function RevisionPage() {
         }))
         .sort((a, b) => b.wrong_count - a.wrong_count);
 
-      const worst = result[0]?.module_name ?? null;
-
       setModules(result);
-      setStats({
-        total_wrong: weakIds.length,
-        weak_modules: result.length,
-        worst_module: worst,
-      });
+      setStats({ total_wrong: weakIds.length, weak_modules: result.length, worst_module: result[0]?.module_name ?? null });
       setLoading(false);
     }
 
     load();
   }, [user]);
 
-  // ── Not logged in ──────────────────────────────────────────────────────────
+  // ─── Not logged in ────────────────────────────────────────────────────────
   if (!user && !loading) {
     return (
       <main className="min-h-screen pb-28 flex flex-col items-center justify-center px-4"
@@ -156,7 +137,7 @@ export default function RevisionPage() {
           className="w-full max-w-sm text-center space-y-5">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto"
             style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
-            <Flame className="w-5 h-5" style={{ color: "var(--text-secondary)" }} />
+            <Flame className="w-5 h-5" style={{ color: "var(--text-muted)" }} />
           </div>
           <div>
             <h1 className="text-xl font-bold mb-2" style={{ color: "var(--text)" }}>Révision ciblée</h1>
@@ -177,7 +158,7 @@ export default function RevisionPage() {
 
   return (
     <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6 md:pt-10">
+      <div className="max-w-2xl mx-auto px-4 pt-8 space-y-6 md:pt-10">
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -210,14 +191,15 @@ export default function RevisionPage() {
               </div>
             )}
 
-            {/* "All modules" shortcut */}
+            {/* "All modules" CTA shortcut */}
             {modules.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Link href="/revision/all">
-                  <div className="group flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all cursor-pointer"
-                    style={{ background: "var(--surface-alt)", borderColor: "var(--border-strong)" }}
-                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "var(--surface-hover)"}
-                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "var(--surface-alt)"}>
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-colors"
+                    style={{ background: "var(--surface-alt)", borderColor: "var(--border-strong)" }}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: "var(--surface-active)", border: "1px solid var(--border-strong)" }}>
                       <Flame className="w-4 h-4" style={{ color: "var(--accent)" }} />
@@ -229,7 +211,7 @@ export default function RevisionPage() {
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
-                  </div>
+                  </motion.div>
                 </Link>
               </motion.div>
             )}
@@ -245,16 +227,11 @@ export default function RevisionPage() {
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.18 + i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
                     <Link href={`/revision/${m.module_id}`}>
-                      <div className="group flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all cursor-pointer"
-                        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLDivElement).style.background = "var(--surface-hover)";
-                          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLDivElement).style.background = "var(--surface)";
-                          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
-                        }}>
+                      <motion.div
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className="flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer"
+                        style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                           style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
                           <BookOpen className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
@@ -265,7 +242,7 @@ export default function RevisionPage() {
                             {m.semester_name} · {m.wrong_count} erreurs
                           </p>
                         </div>
-                        {/* Error count badge */}
+                        {/* Severity badge — intentional semantic color: error ≥10, warning otherwise */}
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full tabular-nums flex-shrink-0"
                           style={{
                             background: m.wrong_count >= 10 ? "var(--error-subtle)" : "var(--warning-subtle)",
@@ -275,7 +252,7 @@ export default function RevisionPage() {
                           {m.wrong_count}
                         </span>
                         <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
-                      </div>
+                      </motion.div>
                     </Link>
                   </motion.div>
                 ))}
