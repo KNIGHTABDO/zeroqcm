@@ -254,7 +254,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           setAiParsed(parsed);
           // Only save to DB if we got real explanations (not an empty [] from the model)
           supabase.from("ai_explanations").upsert(
-            { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: model },
+            { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: "gemini-3-flash-preview" },
             { onConflict: "question_id" }
           ).then(() => setAiCached(full));
         } else {
