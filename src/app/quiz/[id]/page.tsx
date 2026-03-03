@@ -33,6 +33,8 @@ type ParsedAI = OptionExplanation[] | null;
 function parseAI(raw: string): ParsedAI {
   try {
     let cleaned = raw.trim();
+    // Strip <think>...</think> blocks (thinking models emit these inline)
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     // Strip markdown code block wrapper if present
     if (cleaned.startsWith("```")) {
       const firstNewline = cleaned.indexOf("\n");
@@ -42,9 +44,13 @@ function parseAI(raw: string): ParsedAI {
       cleaned = cleaned.slice(0, cleaned.lastIndexOf("```"));
     }
     cleaned = cleaned.trim();
-    // If model added preamble text before the JSON array, find the actual array
-    const arrayStart = cleaned.indexOf("[");
-    if (arrayStart > 0) cleaned = cleaned.slice(arrayStart);
+    // Find JSON array: look for [{ pattern to skip brackets in preamble text
+    const arrayMatch = cleaned.match(/\[\s*\{/);
+    if (arrayMatch && arrayMatch.index !== undefined && arrayMatch.index > 0) {
+      cleaned = cleaned.slice(arrayMatch.index);
+    } else if (cleaned.indexOf("[") > 0) {
+      cleaned = cleaned.slice(cleaned.indexOf("["));
+    }
     const p = JSON.parse(cleaned) as OptionExplanation[];
     if (Array.isArray(p) && p.length > 0 && p[0]?.letter) return p;
   } catch {
@@ -249,19 +255,26 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         // Empty stream — show a visible error so user knows what happened
         setAiText("Erreur: réponse vide (rate limit GitHub Models ou modèle indisponible). Réessayez dans quelques secondes.");
       } else if (!full.startsWith("Erreur")) {
-        const parsed = parseAI(full);
-        if (parsed) {
-          setAiParsed(parsed);
-          // Only save to DB if we got real explanations (not an empty [] from the model)
-          supabase.from("ai_explanations").upsert(
-            { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: "gemini-3-flash-preview" },
-            { onConflict: "question_id" }
-          ).then(() => setAiCached(full));
+        // Handle known API error tokens before trying to parse as JSON
+        if (full === "TOKEN_ERROR" || full.startsWith("HTTP_") || full === "JSON_ERROR_BODY" || full === "NETWORK_ERROR" || full === "NO_READER") {
+          setAiText("⚠️ Service IA temporairement indisponible. Réessaie dans quelques secondes.");
+        } else if (full === "EMPTY_STREAM") {
+          setAiText("⚠️ Réponse vide du modèle. Réessaie dans quelques secondes.");
         } else {
-          // Model returned [] or unparseable text — show error instead of saving garbage
-          setAiText("Erreur: le modèle n'a pas pu générer d'explication pour cette question. Réessayez.");
+          const parsed = parseAI(full);
+          if (parsed) {
+            setAiParsed(parsed);
+            // Only save to DB if we got real explanations
+            supabase.from("ai_explanations").upsert(
+              { question_id: savedQ.id, explanation: full, generated_by: user?.id ?? "anonymous", model_used: "gemini-3-flash-preview" },
+              { onConflict: "question_id" }
+            ).then(() => setAiCached(full));
+          } else {
+            console.warn("[doFetchAI] parseAI failed, raw:", full.slice(0, 200));
+            setAiText("⚠️ Le modèle n\'a pas retourné de JSON valide. Réessaie.");
+          }
         }
-      }
+      }      }
     }
   }
 
