@@ -70,7 +70,7 @@ async function streamCopilotExplain(prompt: string): Promise<ReadableStream> {
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ],
-    max_tokens: 1200,
+    max_tokens: 3000,
     temperature: 0.15,
     top_p: 0.95,
   };
