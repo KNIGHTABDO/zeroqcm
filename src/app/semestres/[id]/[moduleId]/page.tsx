@@ -24,7 +24,7 @@ function ModuleActivitiesPageInner({ params }: { params: Promise<{ id: string; m
   const router = useRouter();
   const { user } = useAuth();
   const modId = parseInt(moduleId);
-  const [activities, setActivities] = useState<Activity strokeWidth={1.5}[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [moduleName, setModuleName] = useState("");
   const [progress, setProgress] = useState<Record<number, Progress>>({});
   const searchParams = useSearchParams();
