@@ -241,7 +241,7 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: "var(--bg)" }}>
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--text-muted)" }} />
+        <Loader2 strokeWidth={1.5} className="w-6 h-6 animate-spin" style={{ color: "var(--text-muted)" }} />
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>Analyse de vos erreurs…</p>
       </div>
     );
@@ -330,7 +330,7 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
             style={{ color: "var(--text-muted)" }}
             onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-hover)"}
             onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "transparent"}>
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft strokeWidth={1.5} className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>
@@ -429,8 +429,8 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
                   </div>
                   {rev && (
                     choice.est_correct
-                      ? <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--success)" }} />
-                      : isSel ? <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--error)" }} /> : null
+                      ? <CheckCircle strokeWidth={1.5} className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--success)" }} />
+                      : isSel ? <XCircle strokeWidth={1.5} className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--error)" }} /> : null
                   )}
                 </div>
               </motion.button>
@@ -444,11 +444,11 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Brain className="w-4 h-4" style={{ color: "var(--accent)" }} />
+                <Brain strokeWidth={1.5} className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
                 <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>
                   {aiLoading ? "Explication IA en cours…" : "Explication IA"}
                 </span>
-                {aiLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--text-muted)" }} />}
+                {aiLoading && <Loader2 strokeWidth={1.5} className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--text-muted)" }} />}
               </div>
               {!aiLoading && (
                 <button onClick={() => doFetchAI(true)}
@@ -457,7 +457,7 @@ export default function RevisionModulePage({ params }: { params: Promise<{ modul
                   style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                   onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"}
                   onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"}>
-                  <RefreshCw className="w-3 h-3" /> Régénérer
+                  <RefreshCw strokeWidth={1.5} className="w-3 h-3" /> Régénérer
                 </button>
               )}
             </div>
