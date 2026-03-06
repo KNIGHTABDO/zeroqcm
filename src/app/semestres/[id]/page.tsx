@@ -222,7 +222,7 @@ export default function SemestreModulesPage({ params }: { params: Promise<{ id: 
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Link strokeWidth={1.5}
+                  <Link
                     href={`/semestres/${id}/${mod.id}`}
                     className="block rounded-xl p-4 transition-all duration-150 group"
                     style={{
