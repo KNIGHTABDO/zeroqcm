@@ -1,18 +1,18 @@
 "use client";
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Save, Loader2, Check, Target, BookOpen, Flame } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { supabase, getUserStats } from "@/lib/supabase";
+import { useState, useEffect } from"react";
+import { motion } from"framer-motion";
+import { Save, Loader2, Check, Target, BookOpen, Flame } from"lucide-react";
+import { useAuth } from"@/components/auth/AuthProvider";
+import { supabase, getUserStats } from"@/lib/supabase";
 
 const YEARS = [1,2,3,4,5,6,7,8,9];
 const FACULTIES = ["FMPC","FMPR","FMPM","UM6SS","FMPPDF"];
 const FACULTY_NAMES: Record<string, string> = {
-  FMPC: "FMPC – Casablanca",
-  FMPR: "FMPR – Rabat",
-  FMPM: "FMPM – Marrakech",
-  UM6SS: "UM6SS – UM6",
-  FMPPDF: "FMPPDF – Fès",
+  FMPC:"FMPC – Casablanca",
+  FMPR:"FMPR – Rabat",
+  FMPM:"FMPM – Marrakech",
+  UM6SS:"UM6SS – UM6",
+  FMPPDF:"FMPPDF – Fès",
 };
 
 interface Stats { total: number; correct: number; rate: number; streak: number; }
@@ -28,9 +28,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (profile) {
-      setUsername(profile.username ?? "");
+      setUsername(profile.username ??"");
       setYear(profile.annee_etude ?? 1);
-      setFaculty(profile.faculty ?? "FMPC");
+      setFaculty(profile.faculty ??"FMPC");
     }
   }, [profile]);
 
@@ -56,24 +56,24 @@ export default function ProfilePage() {
 
   const initials = username
     ? username.slice(0, 2).toUpperCase()
-    : user?.email?.slice(0, 2).toUpperCase() ?? "??";
+    : user?.email?.slice(0, 2).toUpperCase() ??"??";
 
   const rate = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
 
   const statCards = [
-    { label: "Questions", value: stats.total.toLocaleString("fr-FR"), icon: BookOpen },
-    { label: "Précision",  value: `${rate}%`,              icon: Target  },
-    { label: "Série",      value: `${stats.streak}j`,      icon: Flame   },
+    { label:"Questions", value: stats.total.toLocaleString("fr-FR"), icon: BookOpen },
+    { label:"Précision",  value: `${rate}%`,              icon: Target  },
+    { label:"Série",      value: `${stats.streak}j`,      icon: Flame   },
   ];
 
   return (
-    <main className="min-h-screen pb-28" style={{ background: "var(--bg)", color: "var(--text)" }}>
+    <main className="min-h-screen pb-28" style={{ background:"var(--bg)", color:"var(--text)" }}>
       <div className="max-w-lg mx-auto px-4 pt-8 pb-10 space-y-5">
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text)" }}>Mon profil</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color:"var(--text)" }}>Mon profil</h1>
+          <p className="text-sm mt-0.5" style={{ color:"var(--text-muted)" }}>
             Personnalise ton espace d'étude
           </p>
         </div>
@@ -84,34 +84,34 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           className="flex items-center gap-4 p-5 rounded-2xl"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          style={{ background:"var(--surface)", border:"1px solid var(--border)" }}
         >
           {/* Avatar initials */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 select-none"
             style={{
-              background: "var(--surface-alt)",
-              color: "var(--text)",
-              border: "2px solid var(--border-strong)",
+              background:"var(--surface-alt)",
+              color:"var(--text)",
+              border:"2px solid var(--border-strong)",
             }}
           >
             {initials}
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-bold truncate" style={{ color: "var(--text)" }}>
-              {profile?.username ?? user?.email?.split("@")[0] ?? "Utilisateur"}
+            <p className="text-[15px] font-bold truncate" style={{ color:"var(--text)" }}>
+              {profile?.username ?? user?.email?.split("@")[0] ??"Utilisateur"}
             </p>
-            <p className="text-[12px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[12px] mt-0.5 truncate" style={{ color:"var(--text-muted)" }}>
               {user?.email}
             </p>
             {profile?.annee_etude && (
               <span
                 className="inline-block mt-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                style={{ background: "var(--surface-active)", color: "var(--text-secondary)" }}
+                style={{ background:"var(--surface-active)", color:"var(--text-secondary)" }}
               >
                 S{profile.annee_etude}
-                {profile.faculty ? ` · ${profile.faculty}` : ""}
+                {profile.faculty ? ` · ${profile.faculty}` :""}
               </span>
             )}
           </div>
@@ -129,13 +129,13 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.07, duration: 0.3 }}
                   className="flex flex-col items-center gap-1.5 py-4 rounded-2xl"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                  style={{ background:"var(--surface)", border:"1px solid var(--border)" }}
                 >
-                  <Icon className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                  <p className="text-[17px] font-bold tabular-nums" style={{ color: "var(--text)" }}>
+                  <Icon className="w-4 h-4" style={{ color:"var(--text-muted)" }} />
+                  <p className="text-[17px] font-bold tabular-nums" style={{ color:"var(--text)" }}>
                     {s.value}
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.label}</p>
+                  <p className="text-[10px]" style={{ color:"var(--text-muted)" }}>{s.label}</p>
                 </motion.div>
               );
             })}
@@ -143,7 +143,7 @@ export default function ProfilePage() {
         )}
 
         {/* Separator */}
-        <div className="h-px" style={{ background: "var(--border)" }} />
+        <div className="h-px" style={{ background:"var(--border)" }} />
 
         {/* Edit form */}
         <motion.form
@@ -152,15 +152,15 @@ export default function ProfilePage() {
           transition={{ delay: 0.15, duration: 0.3 }}
           onSubmit={handleSave}
           className="rounded-2xl p-5 space-y-4"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          style={{ background:"var(--surface)", border:"1px solid var(--border)" }}
         >
-          <h2 className="text-[14px] font-semibold" style={{ color: "var(--text)" }}>
+          <h2 className="text-[14px] font-semibold" style={{ color:"var(--text)" }}>
             Informations
           </h2>
 
           {/* Username */}
           <div className="space-y-1.5">
-            <label className="text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>
+            <label className="text-[12px] font-medium" style={{ color:"var(--text-muted)" }}>
               Prénom / Pseudo
             </label>
             <input
@@ -170,17 +170,17 @@ export default function ProfilePage() {
               placeholder="Ton prénom"
               className="w-full px-4 py-3 rounded-xl text-[14px] outline-none transition-all"
               style={{
-                background: "var(--surface-alt)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                caretColor: "var(--accent)",
+                background:"var(--surface-alt)",
+                border:"1px solid var(--border)",
+                color:"var(--text)",
+                caretColor:"var(--accent)",
               }}
             />
           </div>
 
           {/* Year */}
           <div className="space-y-1.5">
-            <label className="text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>
+            <label className="text-[12px] font-medium" style={{ color:"var(--text-muted)" }}>
               Année d'étude
             </label>
             <select
@@ -188,9 +188,9 @@ export default function ProfilePage() {
               onChange={e => setYear(Number(e.target.value))}
               className="w-full px-4 py-3 rounded-xl text-[14px] outline-none appearance-none"
               style={{
-                background: "var(--surface-alt)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
+                background:"var(--surface-alt)",
+                border:"1px solid var(--border)",
+                color:"var(--text)",
               }}
             >
               {YEARS.map(y => (
@@ -201,7 +201,7 @@ export default function ProfilePage() {
 
           {/* Faculty */}
           <div className="space-y-1.5">
-            <label className="text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>
+            <label className="text-[12px] font-medium" style={{ color:"var(--text-muted)" }}>
               Faculté
             </label>
             <select
@@ -209,9 +209,9 @@ export default function ProfilePage() {
               onChange={e => setFaculty(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-[14px] outline-none appearance-none"
               style={{
-                background: "var(--surface-alt)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
+                background:"var(--surface-alt)",
+                border:"1px solid var(--border)",
+                color:"var(--text)",
               }}
             >
               {FACULTIES.map(f => (
@@ -227,15 +227,15 @@ export default function ProfilePage() {
             whileTap={{ scale: 0.98 }}
             className="w-full py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 transition-all"
             style={{
-              background: saved ? "var(--success-subtle)" : "var(--text)",
-              color: saved ? "var(--success)" : "var(--bg)",
-              border: saved ? "1px solid var(--success-border)" : "none",
+              background: saved ?"var(--success-subtle)" :"var(--text)",
+              color: saved ?"var(--success)" :"var(--bg)",
+              border: saved ?"1px solid var(--success-border)" :"none",
             }}
           >
             {saving ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 strokeWidth={1.5} size={16} className="animate-spin" />
             ) : saved ? (
-              <><Check size={16} /> Sauvegardé</>
+              <><Check strokeWidth={1.5} size={16} /> Sauvegardé</>
             ) : (
               <><Save size={16} /> Sauvegarder</>
             )}
