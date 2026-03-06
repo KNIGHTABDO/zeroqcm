@@ -530,7 +530,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
                       {oq.source_question && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md text-[10px] px-2 py-0.5 rounded-md border" style={{ background: "var(--surface-alt)", color: "var(--text-muted)", borderColor: "var(--border)">{oq.source_question}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md text-[10px] px-2 py-0.5 rounded-md border" style={{ background: "var(--surface-alt)", color: "var(--text-muted)", borderColor: "var(--border)" }}>{oq.source_question}</span>
                       )}
                     </div>
                     <button
@@ -749,7 +749,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <MessageCircle size={13} strokeWidth={1.5} />
               {commentsOpen ? "Masquer les commentaires" : "Commentaires"}
               {comments.length > 0 && !commentsOpen && (
-                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full rounded-full" style={{ background: "var(--surface-active)", color: "var(--text-muted)">{comments.length}</span>
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full rounded-full" style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}>{comments.length}</span>
               )}
             </button>
             <AnimatePresence>
