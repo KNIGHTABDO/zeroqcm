@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Loader2, BookOpen, ChevronRight, Search, Trash2, X, LogIn } from "lucide-react";
-import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useState, useEffect } from"react";
+import { motion, AnimatePresence } from"framer-motion";
+import { Bookmark, Loader2, BookOpen, ChevronRight, Search, Trash2, X, LogIn } from"lucide-react";
+import Link from"next/link";
+import { supabase } from"@/lib/supabase";
+import { useAuth } from"@/components/auth/AuthProvider";
 
 type BookmarkedQ = {
   id: string;
@@ -72,23 +72,23 @@ export default function BookmarksPage() {
   );
 
   return (
-    <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
+    <main className="min-h-screen" style={{ background:"var(--bg)", color:"var(--text)" }}>
       <div className="max-w-2xl mx-auto px-4">
 
         {/* ── Sticky header ── */}
-        <div className="sticky top-0 z-20 pt-6 pb-3" style={{ background: "var(--bg)" }}>
+        <div className="sticky top-0 z-20 pt-6 pb-3" style={{ background:"var(--bg)" }}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Favoris</h1>
-              <p className="text-[13px] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                {loading ? "Chargement…" : `${bookmarks.length} question${bookmarks.length !== 1 ? "s" : ""} sauvegardée${bookmarks.length !== 1 ? "s" : ""}`}
+              <h1 className="text-xl font-bold" style={{ color:"var(--text)" }}>Favoris</h1>
+              <p className="text-[13px] mt-0.5" style={{ color:"var(--text-muted)" }}>
+                {loading ?"Chargement…" : `${bookmarks.length} question${bookmarks.length !== 1 ?"s" :""} sauvegardée${bookmarks.length !== 1 ?"s" :""}`}
               </p>
             </div>
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
+              style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
             >
-              <Bookmark className="w-5 h-5" style={{ color: "var(--text-secondary)" }} />
+              <Bookmark strokeWidth={1.5} className="w-5 h-5" style={{ color:"var(--text-secondary)" }} />
             </div>
           </div>
 
@@ -96,13 +96,13 @@ export default function BookmarksPage() {
           {bookmarks.length > 3 && (
             <motion.div
               animate={{
-                borderColor: searchFocused ? "var(--border-strong)" : "var(--border)",
+                borderColor: searchFocused ?"var(--border-strong)" :"var(--border)",
               }}
               transition={{ duration: 0.15 }}
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
+              style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
             >
-              <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
+              <Search strokeWidth={1.5} className="w-3.5 h-3.5 flex-shrink-0" style={{ color:"var(--text-muted)" }} />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -110,7 +110,7 @@ export default function BookmarksPage() {
                 onBlur={() => setSearchFocused(false)}
                 placeholder="Rechercher dans les favoris…"
                 className="flex-1 bg-transparent text-[13px] outline-none"
-                style={{ color: "var(--text)", caretColor: "var(--accent)" }}
+                style={{ color:"var(--text)", caretColor:"var(--accent)" }}
               />
               <AnimatePresence>
                 {search && (
@@ -119,9 +119,9 @@ export default function BookmarksPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     onClick={() => setSearch("")}
-                    style={{ color: "var(--text-muted)" }}
+                    style={{ color:"var(--text-muted)" }}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X strokeWidth={1.5} className="w-3.5 h-3.5" />
                   </motion.button>
                 )}
               </AnimatePresence>
@@ -135,7 +135,7 @@ export default function BookmarksPage() {
           {/* Loading */}
           {(loading || authLoading) && (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--text-muted)" }} />
+              <Loader2 strokeWidth={1.5} className="w-5 h-5 animate-spin" style={{ color:"var(--text-muted)" }} />
             </div>
           )}
 
@@ -148,22 +148,22 @@ export default function BookmarksPage() {
             >
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto"
-                style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
+                style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
               >
-                <LogIn className="w-6 h-6" style={{ color: "var(--text-muted)" }} />
+                <LogIn className="w-6 h-6" style={{ color:"var(--text-muted)" }} />
               </div>
               <div className="space-y-1">
-                <p className="text-[15px] font-semibold" style={{ color: "var(--text)" }}>
+                <p className="text-[15px] font-semibold" style={{ color:"var(--text)" }}>
                   Connecte-toi pour voir tes favoris
                 </p>
-                <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[13px]" style={{ color:"var(--text-muted)" }}>
                   Sauvegarde les questions difficiles pour les revoir plus tard.
                 </p>
               </div>
               <Link
                 href="/auth"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold"
-                style={{ background: "var(--accent)", color: "var(--bg)" }}
+                style={{ background:"var(--accent)", color:"var(--bg)" }}
               >
                 Se connecter
               </Link>
@@ -179,24 +179,24 @@ export default function BookmarksPage() {
             >
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto"
-                style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
+                style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
               >
-                <Bookmark className="w-6 h-6" style={{ color: "var(--text-muted)" }} />
+                <Bookmark strokeWidth={1.5} className="w-6 h-6" style={{ color:"var(--text-muted)" }} />
               </div>
               <div className="space-y-1">
-                <p className="text-[15px] font-semibold" style={{ color: "var(--text)" }}>
+                <p className="text-[15px] font-semibold" style={{ color:"var(--text)" }}>
                   Pas encore de favoris
                 </p>
-                <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[13px]" style={{ color:"var(--text-muted)" }}>
                   Appuie sur l&apos;icône marque-page pendant un quiz pour sauvegarder une question.
                 </p>
               </div>
               <Link
                 href="/semestres"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold"
-                style={{ background: "var(--surface-alt)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                style={{ background:"var(--surface-alt)", color:"var(--text-secondary)", border:"1px solid var(--border)" }}
               >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen strokeWidth={1.5} className="w-4 h-4" />
                 Commencer un quiz
               </Link>
             </motion.div>
@@ -205,7 +205,7 @@ export default function BookmarksPage() {
           {/* Search no results */}
           {!loading && user && bookmarks.length > 0 && filtered.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-[14px]" style={{ color: "var(--text-muted)" }}>Aucun résultat pour &quot;{search}&quot;</p>
+              <p className="text-[14px]" style={{ color:"var(--text-muted)" }}>Aucun résultat pour &quot;{search}&quot;</p>
             </div>
           )}
 
@@ -227,7 +227,7 @@ export default function BookmarksPage() {
                 >
                   <div
                     className="rounded-xl p-4 group relative"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                    style={{ background:"var(--surface)", border:"1px solid var(--border)" }}
                   >
                     {/* Module breadcrumb */}
                     {(module_ || activity) && (
@@ -235,17 +235,17 @@ export default function BookmarksPage() {
                         {module_ && (
                           <span
                             className="text-[10px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-[120px]"
-                            style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}
+                            style={{ background:"var(--surface-active)", color:"var(--text-muted)" }}
                           >
                             {module_.nom}
                           </span>
                         )}
                         {activity && (
                           <>
-                            <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: "var(--text-disabled)" }} />
+                            <ChevronRight strokeWidth={1.5} className="w-3 h-3 flex-shrink-0" style={{ color:"var(--text-disabled)" }} />
                             <span
                               className="text-[10px] font-medium truncate max-w-[140px]"
-                              style={{ color: "var(--text-muted)" }}
+                              style={{ color:"var(--text-muted)" }}
                             >
                               {activity.nom}
                             </span>
@@ -257,15 +257,15 @@ export default function BookmarksPage() {
                     {/* Question text */}
                     <p
                       className="text-[13px] leading-relaxed line-clamp-3"
-                      style={{ color: "var(--text-secondary)" }}
+                      style={{ color:"var(--text-secondary)" }}
                     >
-                      {q?.texte ?? "Question non disponible"}
+                      {q?.texte ??"Question non disponible"}
                     </p>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                      <span className="text-[11px]" style={{ color: "var(--text-disabled)" }}>
-                        {new Date(bm.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop:"1px solid var(--border)" }}>
+                      <span className="text-[11px]" style={{ color:"var(--text-disabled)" }}>
+                        {new Date(bm.created_at).toLocaleDateString("fr-FR", { day:"numeric", month:"short" })}
                       </span>
                       <div className="flex items-center gap-2">
                         {activity?.id && (
@@ -273,12 +273,12 @@ export default function BookmarksPage() {
                             href={`/quiz/${activity.id}`}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all"
                             style={{
-                              background: "var(--accent-subtle)",
-                              color: "var(--accent)",
-                              border: "1px solid var(--accent-border)",
+                              background:"var(--surface-alt)",
+                              color:"var(--text-muted)",
+                              border:"1px solid var(--border)",
                             }}
                           >
-                            <BookOpen className="w-3 h-3" />
+                            <BookOpen strokeWidth={1.5} className="w-3 h-3" />
                             Réviser
                           </Link>
                         )}
@@ -286,11 +286,11 @@ export default function BookmarksPage() {
                           onClick={() => removeBookmark(bm.id, bm.question_id)}
                           disabled={removing === bm.id}
                           className="p-1.5 rounded-lg transition-all"
-                          style={{ color: "var(--text-muted)" }}
+                          style={{ color:"var(--text-muted)" }}
                           title="Retirer des favoris"
                         >
                           {removing === bm.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ? <Loader2 strokeWidth={1.5} className="w-3.5 h-3.5 animate-spin" />
                             : <Trash2 className="w-3.5 h-3.5" />}
                         </button>
                       </div>
