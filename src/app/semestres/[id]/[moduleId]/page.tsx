@@ -180,8 +180,8 @@ function ModuleActivitiesPageInner({ params }: { params: Promise<{ id: string; m
                       style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
                       <div className="flex items-center gap-3">
                         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
-                          act.type_activite === "exam" ? "" : "bg-emerald-500/10 border border-emerald-500/20")
-                    style={{ background: act.type_activite === "exam" ? "var(--surface-alt)" : undefined, border: act.type_activite === "exam" ? "1px solid var(--border)" : undefined }}>
+                          act.type_activite === "exam" ? "" : "bg-emerald-500/10 border border-emerald-500/20")}
+                        style={{ background: act.type_activite === "exam" ? "var(--surface-alt)" : undefined, border: act.type_activite === "exam" ? "1px solid var(--border)" : undefined }}>
                           {act.type_activite === "exam"
                             ? <ClipboardList className="w-4 h-4" strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
                             : <Dumbbell className="w-4 h-4 text-emerald-400" />}
