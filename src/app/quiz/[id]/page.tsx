@@ -474,7 +474,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg)" }}>
-      <Loader2 className="animate-spin" size={24} style={{ color: "var(--text-muted)" }} />
+      <Loader2 className="animate-spin" size={24} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
     </div>
   );
 
@@ -489,7 +489,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
           <button onClick={() => { setCurrent(0); setSelected(new Set()); setPhase("quiz"); setScore({ correct: 0, total: 0 }); setAnsweredCount(0); setElapsed(0); setAiText(""); setHistory(new Map()); setAiCached(null); if (user) supabase.from("quiz_sessions").delete().eq("user_id", user.id).eq("activity_id", activityId).then(() => {}); }}
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold border transition-all hover:bg-[var(--surface)]"
             style={{ borderColor: "var(--border)", color: "var(--text)" }}>Recommencer</button>
-          <button onClick={() => router.back()} className="flex-1 py-3.5 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">Terminer</button>
+          <button onClick={() => router.back()} className="btn-primary flex-1 justify-center" style={{ borderRadius: "14px" }}>Terminer</button>
         </div>
       </div>
     );
@@ -503,7 +503,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
           <div className="flex items-center gap-3 mb-1">
             <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-[var(--surface-alt)] transition-colors" style={{ color: "var(--text-muted)" }}>
-              <ArrowLeft size={18} />
+              <ArrowLeft size={18} strokeWidth={1.5} />
             </button>
             <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{activityName}</p>
           </div>
@@ -530,7 +530,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: "var(--surface-active)", color: "var(--text-muted)" }}>Q{idx + 1}</span>
                       {oq.source_question && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{oq.source_question}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md text-[10px] px-2 py-0.5 rounded-md border" style={{ background: "var(--surface-alt)", color: "var(--text-muted)", borderColor: "var(--border)">{oq.source_question}</span>
                       )}
                     </div>
                     <button
@@ -564,7 +564,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
 
         {/* Back button */}
         <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t" style={{ background: "var(--bg)", borderColor: "var(--surface-active)" }}>
-          <button onClick={() => router.back()} className="w-full max-w-lg mx-auto flex items-center justify-center py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
+          <button onClick={() => router.back()} className="btn-primary w-full max-w-lg mx-auto flex items-center justify-center" style={{ borderRadius: "14px" }}>
             Retour
           </button>
         </div>
@@ -581,7 +581,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       <div className="sticky top-0 z-20 px-4 pt-3 pb-2" style={{ background: "var(--bg)" }}>
         <div className="flex items-center justify-between mb-2">
           <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-[var(--surface-alt)] transition-colors" style={{ color: "var(--text-muted)" }}>
-            <ArrowLeft size={18} />
+            <ArrowLeft size={18} strokeWidth={1.5} />
           </button>
           {score.total > 0 && (
             <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full border",
@@ -606,7 +606,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
         <div className="rounded-2xl border p-4 space-y-2" style={{ background: "var(--surface)", borderColor: "var(--surface-active)" }}>
           {q.source_question && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">{q.source_question}</span>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md" style={{ background: "var(--surface-alt)", color: "var(--text-muted)", border: "1px solid var(--border)">{q.source_question}</span>
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{q.source_type}</span>
             </div>
           )}
@@ -622,8 +622,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                 title={bookmarked ? "Retirer des favoris" : "Ajouter aux favoris"}
               >
                 {bookmarked
-                  ? <BookmarkCheck size={16} style={{ color: "var(--accent)" }} />
-                  : <Bookmark size={16} style={{ color: "var(--text-muted)" }} />
+                  ? <BookmarkCheck size={16} strokeWidth={1.5} style={{ color: "var(--text)" }} />
+                  : <Bookmark size={16} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
                 }
               </button>
             )}
@@ -663,7 +663,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                           <p className="text-[10px]" style={{ color: "rgba(239,68,68,0.8)" }}>⚠ {aiText.slice(0, 80)}</p>
                         ) : optWhy ? (
                           <div className="flex items-start gap-1.5">
-                            <Brain size={10} className="flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
+                            <Brain size={10} className="flex-shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
                             <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{optWhy}</p>
                           </div>
                         ) : choice.explication ? (
@@ -680,7 +680,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                       </div>
                     )}
                   </div>
-                  {rev && (choice.est_correct ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" /> : isSel ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" /> : null)}
+                  {rev && (choice.est_correct ? <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" strokeWidth={1.5} /> : isSel ? <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" strokeWidth={1.5} /> : null)}
                 </div>
               </motion.button>
             );
@@ -705,17 +705,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <button
                 onClick={() => doFetchAI(false)}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all w-full justify-center"
-                style={{ background: "var(--accent-subtle)", border: "1px solid rgba(99,179,237,0.2)", color: "var(--accent)" }}
+                style={{ background: "var(--surface-alt)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-subtle)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-subtle)"; }}>
-                <Brain size={13} />
+                <Brain size={13} strokeWidth={1.5} />
                 Expliquer avec l&apos;IA
               </button>
             )}
             {/* Loading state */}
             {aiLoading && (
               <div className="flex items-center gap-1.5">
-                <Loader2 size={11} className="animate-spin" style={{ color: "var(--accent)" }} />
+                <Loader2 size={11} className="animate-spin" strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
                 <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Explication IA en cours…</span>
               </div>
             )}
@@ -723,10 +723,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             {!aiLoading && aiText && (
               <>
                 <div className="flex items-center gap-1.5">
-                  <Brain size={12} style={{ color: "var(--accent)" }} />
+                  <Brain size={12} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
                   <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>Explication IA</span>
                   {aiCached && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">Sauvegardée</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md rounded-md" style={{ background: "var(--surface-alt)", color: "var(--text-muted)", border: "1px solid var(--border)">Sauvegardée</span>
                   )}
                 </div>
                 <button
@@ -734,7 +734,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   title="Régénérer et écraser l'explication sauvegardée"
                   className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all hover:text-zinc-200"
                   style={{ color: "var(--text-muted)", background: "var(--surface-alt)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <RefreshCw size={9} /> Régénérer
+                  <RefreshCw size={9} strokeWidth={1.5} /> Régénérer
                 </button>
               </>
             )}
@@ -746,10 +746,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
             <button onClick={() => { setCommentsOpen(!commentsOpen); if (!commentsOpen) loadComments(); }}
               className="flex items-center gap-2 w-full px-4 py-3 text-sm transition-all hover:bg-[var(--surface)]"
               style={{ color: "var(--text-muted)" }}>
-              <MessageCircle size={13} />
+              <MessageCircle size={13} strokeWidth={1.5} />
               {commentsOpen ? "Masquer les commentaires" : "Commentaires"}
               {comments.length > 0 && !commentsOpen && (
-                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400">{comments.length}</span>
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full rounded-full" style={{ background: "var(--surface-active)", color: "var(--text-muted)">{comments.length}</span>
               )}
             </button>
             <AnimatePresence>
@@ -765,8 +765,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                           <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
                             <input type="checkbox" checked={commentAnon} onChange={(e) => setCommentAnon(e.target.checked)} className="w-3 h-3" /> Anonyme
                           </label>
-                          <button onClick={postComment} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors">
-                            <Send size={11} /> Envoyer
+                          <button onClick={postComment} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={{ background: "var(--surface-active)", color: "var(--text-muted)", border: "1px solid var(--border) transition-colors">
+                            <Send size={11} strokeWidth={1.5} /> Envoyer
                           </button>
                         </div>
                       </div>
@@ -826,10 +826,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleRetry}
                 className="px-4 py-3 rounded-2xl text-sm font-semibold border transition-all flex items-center gap-1.5"
                 style={{ borderColor: "rgba(251,191,36,0.25)", color: "var(--warning)", background: "rgba(251,191,36,0.08)" }}>
-                <RotateCcw size={13} /> Réessayer
+                <RotateCcw size={13} strokeWidth={1.5} /> Réessayer
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNext}
-                className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-white text-black hover:bg-zinc-100 transition-all">
+                className="flex-1 py-3 rounded-2xl text-sm font-semibold transition-all" style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
                 {isLast ? "Voir les résultats" : "Suivant →"}
               </motion.button>
             </>
