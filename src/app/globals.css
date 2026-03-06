@@ -3,117 +3,122 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════
-   ZeroQCM Design System v2 — Obsidian
-   Content-first, single accent, iOS-native feel.
+   ZeroQCM Design System v3 — Staromłyński
+   Luxury minimalist. No accent color. White = accent in dark mode.
+   Exact tokens extracted from staromlynski.com source code.
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Backgrounds ── */
-  --bg:              #0a0a0a;
-  --bg-secondary:    #111111;
-  --bg-tertiary:     #161616;
+  /* ── Backgrounds (Staromłyński: #080808 near-black) ── */
+  --bg:              #080808;
+  --bg-secondary:    #080808;
+  --bg-tertiary:     #121212;
 
   /* ── Surfaces ── */
   --surface:         rgba(255, 255, 255, 0.03);
   --surface-alt:     rgba(255, 255, 255, 0.05);
-  --surface-hover:   rgba(255, 255, 255, 0.06);
-  --surface-active:  rgba(255, 255, 255, 0.09);
+  --surface-hover:   rgba(255, 255, 255, 0.08);
+  --surface-active:  rgba(255, 255, 255, 0.10);
 
-  /* ── Borders ── */
-  --border:          rgba(255, 255, 255, 0.08);
-  --border-strong:   rgba(255, 255, 255, 0.15);
-  --border-subtle:   rgba(255, 255, 255, 0.04);
+  /* ── Borders (Staromłyński: white/10 default, white/5 subtle) ── */
+  --border:          rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.16);
+  --border-subtle:   rgba(255, 255, 255, 0.05);
 
-  /* ── Text ── */
-  --text:            rgba(255, 255, 255, 0.93);
-  --text-secondary:  rgba(255, 255, 255, 0.60);
-  --text-muted:      rgba(255, 255, 255, 0.35);
-  --text-disabled:   rgba(255, 255, 255, 0.18);
+  /* ── Text (Staromłyński: #ededed primary — warm near-white, NOT pure white) ── */
+  --text:            #ededed;
+  --text-secondary:  #a1a1aa;
+  --text-muted:      #71717a;
+  --text-disabled:   #52525b;
 
-  /* ── Single accent: blue-400 ── */
-  --accent:          #60a5fa;
-  --accent-hover:    #3b82f6;
-  --accent-subtle:   rgba(96, 165, 250, 0.10);
-  --accent-border:   rgba(96, 165, 250, 0.22);
+  /* ── NO color accent. White IS the accent in dark mode. ── */
+  /* Primary buttons: white bg + black text (inverted) */
+  --accent:          #ffffff;
+  --accent-hover:    #e4e4e7;
+  --accent-subtle:   rgba(255, 255, 255, 0.06);
+  --accent-border:   rgba(255, 255, 255, 0.12);
 
-  /* ── Semantic ── */
-  --success:         #34d399;
-  --success-subtle:  rgba(52, 211, 153, 0.10);
-  --success-border:  rgba(52, 211, 153, 0.22);
-  --error:           #f87171;
-  --error-subtle:    rgba(248, 113, 113, 0.10);
-  --error-border:    rgba(248, 113, 113, 0.22);
-  --warning:         #fbbf24;
-  --warning-subtle:  rgba(251, 191, 36, 0.10);
-  --warning-border:  rgba(251, 191, 36, 0.22);
+  /* ── Semantic (minimal — only for meaning, not decoration) ── */
+  --success:         #10b981;
+  --success-subtle:  rgba(16, 185, 129, 0.08);
+  --success-border:  rgba(16, 185, 129, 0.20);
+  --error:           #ef4444;
+  --error-subtle:    rgba(239, 68, 68, 0.08);
+  --error-border:    rgba(239, 68, 68, 0.20);
+  --warning:         #f59e0b;
+  --warning-subtle:  rgba(245, 158, 11, 0.08);
+  --warning-border:  rgba(245, 158, 11, 0.20);
 
-  /* ── Buttons ── */
+  /* ── Buttons (Staromłyński pill buttons: inverted white/black) ── */
   --btn-primary-bg:      #ffffff;
-  --btn-primary-text:    #0a0a0a;
-  --btn-primary-hover:   #e5e5e5;
-  --btn-secondary-bg:    rgba(255, 255, 255, 0.06);
-  --btn-secondary-text:  rgba(255, 255, 255, 0.80);
+  --btn-primary-text:    #080808;
+  --btn-primary-hover:   #e4e4e7;
+  --btn-secondary-bg:    rgba(255, 255, 255, 0.05);
+  --btn-secondary-text:  #a1a1aa;
   --btn-secondary-hover: rgba(255, 255, 255, 0.10);
 
   /* ── Inputs ── */
   --input-bg:          rgba(255, 255, 255, 0.04);
   --input-border:      rgba(255, 255, 255, 0.10);
-  --input-focus:       rgba(96, 165, 250, 0.30);
-  --input-text:        rgba(255, 255, 255, 0.92);
-  --input-placeholder: rgba(255, 255, 255, 0.28);
+  --input-focus:       rgba(255, 255, 255, 0.20);
+  --input-text:        #ededed;
+  --input-placeholder: #52525b;
 
-  /* ── Navigation ── */
-  --nav-bg:           #0d0d0d;
-  --nav-border:       rgba(255, 255, 255, 0.07);
+  /* ── Navigation (Staromłyński: #080808 bg, white/5 borders) ── */
+  --nav-bg:           #080808;
+  --nav-border:       rgba(255, 255, 255, 0.05);
   --nav-item-active:  rgba(255, 255, 255, 0.08);
   --nav-item-hover:   rgba(255, 255, 255, 0.04);
-  --nav-text-active:  rgba(255, 255, 255, 0.93);
-  --nav-text:         rgba(255, 255, 255, 0.44);
+  --nav-text-active:  #ffffff;
+  --nav-text:         #52525b;
 
   /* ── Misc ── */
-  --divider:         rgba(255, 255, 255, 0.06);
+  --divider:         rgba(255, 255, 255, 0.05);
   --overlay:         rgba(0, 0, 0, 0.75);
   --shadow:          0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-sm:       0 2px 8px  rgba(0, 0, 0, 0.32);
-  --shadow-card:     0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  --shadow-sm:       0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  /* Staromłyński hover glow for primary button */
+  --shadow-btn-hover: 0 0 40px -10px rgba(255, 255, 255, 0.7);
   --radius:          10px;
   --radius-lg:       14px;
   --radius-xl:       20px;
 
   /* ── Scrollbar ── */
-  --scrollbar-thumb: rgba(255, 255, 255, 0.10);
+  --scrollbar-thumb:       rgba(255, 255, 255, 0.10);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.18);
-  /* ── Extra tokens for responsive UI ── */
+
+  /* ── Safe area ── */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
   --chat-sidebar-width: 260px;
-
 
   /* ── Skeleton ── */
   --skeleton-from: rgba(255, 255, 255, 0.04);
   --skeleton-to:   rgba(255, 255, 255, 0.09);
 }
 
-/* ── Light mode ── */
+/* ── Light mode (Staromłyński: #f2f2f2 warm off-white) ── */
 .light, [data-theme="light"] {
-  --bg:              #fafafa;
+  --bg:              #f2f2f2;
   --bg-secondary:    #f2f2f2;
-  --bg-tertiary:     #e8e8e8;
+  --bg-tertiary:     #e5e5e5;
   --surface:         rgba(0, 0, 0, 0.025);
   --surface-alt:     rgba(0, 0, 0, 0.045);
   --surface-hover:   rgba(0, 0, 0, 0.065);
   --surface-active:  rgba(0, 0, 0, 0.09);
-  --border:          rgba(0, 0, 0, 0.09);
-  --border-strong:   rgba(0, 0, 0, 0.16);
-  --border-subtle:   rgba(0, 0, 0, 0.05);
-  --text:            rgba(0, 0, 0, 0.92);
-  --text-secondary:  rgba(0, 0, 0, 0.62);
-  --text-muted:      rgba(0, 0, 0, 0.38);
-  --text-disabled:   rgba(0, 0, 0, 0.20);
-  --accent:          #2563eb;
-  --accent-hover:    #1d4ed8;
-  --accent-subtle:   rgba(37, 99, 235, 0.08);
-  --accent-border:   rgba(37, 99, 235, 0.22);
+  --border:          rgba(0, 0, 0, 0.05);
+  --border-strong:   rgba(0, 0, 0, 0.10);
+  --border-subtle:   rgba(0, 0, 0, 0.03);
+  --text:            #18181b;
+  --text-secondary:  #3f3f46;
+  --text-muted:      #71717a;
+  --text-disabled:   #a1a1aa;
+  /* Inverted in light: black bg + white text */
+  --accent:          #18181b;
+  --accent-hover:    #27272a;
+  --accent-subtle:   rgba(0, 0, 0, 0.05);
+  --accent-border:   rgba(0, 0, 0, 0.10);
   --success:         #16a34a;
   --success-subtle:  rgba(22, 163, 74, 0.08);
   --success-border:  rgba(22, 163, 74, 0.20);
@@ -123,29 +128,30 @@
   --warning:         #d97706;
   --warning-subtle:  rgba(217, 119, 6, 0.08);
   --warning-border:  rgba(217, 119, 6, 0.20);
-  --btn-primary-bg:      #0a0a0a;
+  --btn-primary-bg:      #18181b;
   --btn-primary-text:    #ffffff;
-  --btn-primary-hover:   #1a1a1a;
-  --btn-secondary-bg:    rgba(0, 0, 0, 0.06);
-  --btn-secondary-text:  rgba(0, 0, 0, 0.75);
-  --btn-secondary-hover: rgba(0, 0, 0, 0.10);
+  --btn-primary-hover:   #27272a;
+  --btn-secondary-bg:    rgba(0, 0, 0, 0.05);
+  --btn-secondary-text:  #71717a;
+  --btn-secondary-hover: rgba(0, 0, 0, 0.09);
   --input-bg:          rgba(0, 0, 0, 0.03);
-  --input-border:      rgba(0, 0, 0, 0.11);
-  --input-focus:       rgba(37, 99, 235, 0.25);
-  --input-text:        rgba(0, 0, 0, 0.90);
-  --input-placeholder: rgba(0, 0, 0, 0.30);
+  --input-border:      rgba(0, 0, 0, 0.08);
+  --input-focus:       rgba(0, 0, 0, 0.15);
+  --input-text:        #18181b;
+  --input-placeholder: #a1a1aa;
   --nav-bg:           #ffffff;
-  --nav-border:       rgba(0, 0, 0, 0.08);
+  --nav-border:       rgba(0, 0, 0, 0.05);
   --nav-item-active:  rgba(0, 0, 0, 0.06);
   --nav-item-hover:   rgba(0, 0, 0, 0.035);
-  --nav-text-active:  rgba(0, 0, 0, 0.90);
-  --nav-text:         rgba(0, 0, 0, 0.44);
-  --divider:          rgba(0, 0, 0, 0.07);
+  --nav-text-active:  #18181b;
+  --nav-text:         #a1a1aa;
+  --divider:          rgba(0, 0, 0, 0.05);
   --overlay:          rgba(0, 0, 0, 0.50);
   --shadow:           0 8px 32px rgba(0, 0, 0, 0.10);
-  --shadow-sm:        0 2px 8px  rgba(0, 0, 0, 0.06);
-  --shadow-card:      0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.07);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card:      0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-btn-hover: 0 0 40px -10px rgba(0, 0, 0, 0.6);
+  --scrollbar-thumb:       rgba(0, 0, 0, 0.12);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.22);
   --skeleton-from: rgba(0, 0, 0, 0.04);
   --skeleton-to:   rgba(0, 0, 0, 0.09);
@@ -234,6 +240,158 @@ input:focus, textarea:focus, select:focus {
 }
 .card:hover { border-color: var(--border-strong); }
 
+/* ── Staromłyński Glow Card — mouse-tracking border highlight ── */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+.glow-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.15),
+    transparent 40%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+.glow-card:hover::before { opacity: 1; }
+.glow-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.03),
+    transparent 40%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+.glow-card:hover::after { opacity: 1; }
+
+/* ── Staromłyński Primary Button ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: 9999px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 500ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.btn-primary:hover {
+  background: var(--btn-primary-hover);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-btn-hover);
+}
+.btn-primary:active { transform: scale(0.95); }
+
+/* ── Staromłyński Secondary Button (ghost pill) ── */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 300ms ease;
+}
+.btn-secondary:hover {
+  background: var(--btn-secondary-hover);
+  color: var(--text);
+  transform: scale(1.02);
+}
+.btn-secondary:active { transform: scale(0.98); }
+
+/* ── Icon Button (36×36 circle) ── */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 300ms ease;
+  flex-shrink: 0;
+}
+.btn-icon:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  transform: scale(1.05);
+}
+
+/* ── Tab / Filter Pills (Staromłyński active/inactive) ── */
+.tab-pill-active {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 300ms ease;
+}
+.tab-pill-inactive {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 300ms ease;
+}
+.tab-pill-inactive:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* ── Status Pill (online / available indicator) ── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 6px 12px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Skeleton shimmer
    ═══════════════════════════════════════════════════════════════════ */
@@ -255,11 +413,11 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Animations
+   Animations (Staromłyński cubic-bezier(0.16, 1, 0.3, 1) — spring-like)
    ═══════════════════════════════════════════════════════════════════ */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(30px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -268,6 +426,10 @@ input:focus, textarea:focus, select:focus {
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
+}
+@keyframes revealFromTop {
+  0%   { clip-path: inset(0 0 100% 0); opacity: 0; }
+  100% { clip-path: inset(0 0 0% 0);   opacity: 1; }
 }
 @keyframes pulse-ring {
   0%   { transform: scale(0.9); opacity: 1; }
@@ -279,9 +441,22 @@ input:focus, textarea:focus, select:focus {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.fade-up   { animation: fadeUp  0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.fade-in   { animation: fadeIn  0.25s ease both; }
-.scale-in  { animation: scaleIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.fade-up   { animation: fadeUp   0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.fade-in   { animation: fadeIn   0.25s ease both; }
+.scale-in  { animation: scaleIn  0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.reveal    { animation: revealFromTop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Scroll reveal (like Staromłyński's .scroll-reveal) */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px) translateZ(0);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  will-change: opacity, transform;
+}
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0) translateZ(0);
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    AI / Prose text rendering
@@ -366,10 +541,12 @@ input:focus, textarea:focus, select:focus {
 }
 
 .prose-ai a {
-  color: var(--accent);
+  color: var(--text);
   text-decoration: underline;
   text-underline-offset: 3px;
+  text-decoration-color: var(--border-strong);
 }
+.prose-ai a:hover { text-decoration-color: var(--text); }
 
 /* Light mode prose adjustments */
 .light .prose-ai code, [data-theme="light"] .prose-ai code {
@@ -403,3 +580,15 @@ input:focus, textarea:focus, select:focus {
   border-radius: var(--radius-lg);
   background: var(--surface-alt);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Glow card mouse tracking — JS helper
+   Add this script once to any page using glow-card:
+   document.querySelectorAll('.glow-card').forEach(card => {
+     card.addEventListener('mousemove', e => {
+       const rect = card.getBoundingClientRect();
+       card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
+       card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
+     });
+   });
+   ═══════════════════════════════════════════════════════════════════ */
