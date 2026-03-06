@@ -1,27 +1,28 @@
-// @ts-nocheck"use client";
+// @ts-nocheck
+"use client";
 
-import { useChat } from"ai/react";
-import { useRef, useEffect, useState, useCallback, useMemo } from"react";
-import { motion, AnimatePresence } from"framer-motion";
+import { useChat } from "ai/react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, Square, SquarePen, Trash2, ChevronDown,
   AlertCircle, Search, Copy, Check, X, Sparkles, Zap, MessageSquare, SidebarOpen, SidebarClose
-} from"lucide-react";
-import { cn } from"@/lib/utils";
-import { useAuth } from"@/components/auth/AuthProvider";
-import { supabase } from"@/lib/supabase";
-import Image from"next/image";
-import Link from"next/link";
-import katex from"katex";
-import"katex/dist/katex.min.css";
-import type { Message } from"ai/react";
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/lib/supabase";
+import Image from "next/image";
+import Link from "next/link";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import type { Message } from "ai/react";
 
 // ── Thinking model detection ────────────────────────────────────────
 function isThinkingCapable(modelId: string): boolean {
   return (
     modelId.startsWith("claude-") ||
-    modelId ==="gpt-5.1" ||
-    modelId ==="gpt-5-mini" ||
+    modelId === "gpt-5.1" ||
+    modelId === "gpt-5-mini" ||
     modelId.startsWith("gpt-5.1-codex")
   );
 }
@@ -34,7 +35,7 @@ interface FetchedModel {
 
 // ── Markdown renderer ───────────────────────────────────────────────
 function stripToolCallJson(text: string): string {
-  return text.replace(/^\s*\{[^}]*"query"[^}]*\}\s*\n?/,"").trimStart();
+  return text.replace(/^\s*\{[^}]*"query"[^}]*\}\s*\n?/, "").trimStart();
 }
 
 // ── KaTeX inline math renderer ─────────────────────────────────────
@@ -43,7 +44,7 @@ function MathInline({ src }: { src: string }) {
     const html = katex.renderToString(src, { throwOnError: false, displayMode: false });
     return <span dangerouslySetInnerHTML={{ __html: html }} />;
   } catch {
-    return <code className="text-xs font-mono" style={{ color:"var(--text-secondary)" }}>{src}</code>;
+    return <code className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>{src}</code>;
   }
 }
 
@@ -54,7 +55,7 @@ function MathBlock({ src }: { src: string }) {
       <div className="my-3 overflow-x-auto text-center py-2" dangerouslySetInnerHTML={{ __html: html }} />
     );
   } catch {
-    return <pre className="text-xs font-mono my-2 overflow-x-auto" style={{ color:"var(--text-secondary)" }}>{src}</pre>;
+    return <pre className="text-xs font-mono my-2 overflow-x-auto" style={{ color: "var(--text-secondary)" }}>{src}</pre>;
   }
 }
 
@@ -65,7 +66,7 @@ function inlineFormat(text: string): React.ReactNode {
     <>
       {parts.map((part, j) => {
         if (part.startsWith("**") && part.endsWith("**"))
-          return <strong key={j} className="font-semibold" style={{ color:"var(--text)" }}>{inlineFormat(part.slice(2, -2))}</strong>;
+          return <strong key={j} className="font-semibold" style={{ color: "var(--text)" }}>{inlineFormat(part.slice(2, -2))}</strong>;
         if (part.startsWith("*") && part.endsWith("*"))
           return <em key={j}>{inlineFormat(part.slice(1, -1))}</em>;
         if (part.startsWith("~~") && part.endsWith("~~"))
@@ -73,21 +74,21 @@ function inlineFormat(text: string): React.ReactNode {
         if (part.startsWith("`") && part.endsWith("`"))
           return (
             <code key={j} className="px-1.5 py-0.5 rounded text-xs font-mono"
-              style={{ background:"var(--surface-alt)", color:"var(--text-muted)", border:"1px solid var(--border)" }}>
+              style={{ background: "var(--surface-alt)", color: "var(--accent)", border: "1px solid var(--border)" }}>
               {part.slice(1, -1)}
             </code>
           );
         const lm = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (lm)
           return (
-            <a key={j} href={lm[2]} target={lm[2].startsWith("/") ?"_self" :"_blank"}
+            <a key={j} href={lm[2]} target={lm[2].startsWith("/") ? "_self" : "_blank"}
               rel="noopener noreferrer" className="underline underline-offset-2"
-              style={{ color:"var(--text-muted)" }}>{lm[1]}</a>
+              style={{ color: "var(--accent)" }}>{lm[1]}</a>
           );
         // Inline math: $...$
         if (part.startsWith("$") && part.endsWith("$") && part.length > 2)
           return <MathInline key={j} src={part.slice(1, -1)} />;
-        return <span key={j}>{part.replace(/ -> /g," →").replace(/ --> /g," ⟶")}</span>;
+        return <span key={j}>{part.replace(/ -> /g, " → ").replace(/ --> /g, " ⟶ ")}</span>;
       })}
     </>
   );
@@ -102,7 +103,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
     // Display math: $$ ... $$ (block-level)
     if (line.trimStart().startsWith("$$")) {
       const mathLines: string[] = [];
-      // single-line $$...$$ e.g."$$E=mc^2$$"
+      // single-line $$...$$ e.g. "$$E=mc^2$$"
       const singleMatch = line.match(/^\$\$(.+)\$\$\s*$/);
       if (singleMatch) {
         result.push(<MathBlock key={"mb"+i} src={singleMatch[1]} />);
@@ -126,17 +127,17 @@ function renderMarkdown(text: string): React.ReactNode[] {
       if (rows.length) {
         const [header, ...body] = rows;
         result.push(
-          <div key={"t"+i} className="my-3 overflow-x-auto rounded-xl" style={{ border:"1px solid var(--border)" }}>
+          <div key={"t"+i} className="my-3 overflow-x-auto rounded-xl" style={{ border: "1px solid var(--border)" }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ background:"var(--surface-alt)", borderBottom:"1px solid var(--border)" }}>
-                  {header.map((h, hi) => <th key={hi} className="px-3 py-2 text-left text-[12px] font-semibold" style={{ color:"var(--text)" }}>{h}</th>)}
+                <tr style={{ background: "var(--surface-alt)", borderBottom: "1px solid var(--border)" }}>
+                  {header.map((h, hi) => <th key={hi} className="px-3 py-2 text-left text-[12px] font-semibold" style={{ color: "var(--text)" }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {body.map((row, ri) => (
-                  <tr key={ri} style={{ borderTop:"1px solid var(--border)" }}>
-                    {row.map((cell, ci) => <td key={ci} className="px-3 py-2 text-[12px]" style={{ color:"var(--text-secondary)" }}>{inlineFormat(cell)}</td>)}
+                  <tr key={ri} style={{ borderTop: "1px solid var(--border)" }}>
+                    {row.map((cell, ci) => <td key={ci} className="px-3 py-2 text-[12px]" style={{ color: "var(--text-secondary)" }}>{inlineFormat(cell)}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -152,13 +153,13 @@ function renderMarkdown(text: string): React.ReactNode[] {
       while (i < lines.length && !lines[i].startsWith("```")) { codeLines.push(lines[i]); i++; }
       i++;
       result.push(
-        <div key={"c"+i} className="my-3 rounded-xl overflow-hidden" style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}>
+        <div key={"c"+i} className="my-3 rounded-xl overflow-hidden" style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
           {lang && (
-            <div className="px-3 py-1.5 text-[10px] font-mono font-medium" style={{ color:"var(--text-muted)", borderBottom:"1px solid var(--border)" }}>
+            <div className="px-3 py-1.5 text-[10px] font-mono font-medium" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
               {lang}
             </div>
           )}
-          <pre className="overflow-x-auto p-3 text-[12px] leading-relaxed" style={{ color:"var(--text-secondary)", fontFamily:"ui-monospace, SF Mono, Menlo, monospace" }}>
+          <pre className="overflow-x-auto p-3 text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace" }}>
             <code>{codeLines.join("\n")}</code>
           </pre>
         </div>
@@ -170,22 +171,22 @@ function renderMarkdown(text: string): React.ReactNode[] {
       const text = line.slice(level + 1);
       const sizes = ["text-xl","text-lg","text-base","text-sm","text-sm","text-sm"];
       result.push(
-        <p key={i} className={cn(sizes[level-1],"font-bold mt-4 mb-2")} style={{ color:"var(--text)" }}>
+        <p key={i} className={cn(sizes[level-1], "font-bold mt-4 mb-2")} style={{ color: "var(--text)" }}>
           {inlineFormat(text)}
         </p>
       );
       i++; continue;
     }
-    if (line.startsWith("-") || line.startsWith("*")) {
+    if (line.startsWith("- ") || line.startsWith("* ")) {
       const items: string[] = [];
-      while (i < lines.length && (lines[i].startsWith("-") || lines[i].startsWith("*"))) {
+      while (i < lines.length && (lines[i].startsWith("- ") || lines[i].startsWith("* "))) {
         items.push(lines[i].slice(2)); i++;
       }
       result.push(
         <ul key={"ul"+i} className="list-none space-y-1.5 my-2 pl-1">
           {items.map((it, ii) => (
-            <li key={ii} className="flex items-start gap-2 text-[14px]" style={{ color:"var(--text-secondary)" }}>
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background:"var(--text-muted)" }} />
+            <li key={ii} className="flex items-start gap-2 text-[14px]" style={{ color: "var(--text-secondary)" }}>
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--text-muted)" }} />
               <span>{inlineFormat(it)}</span>
             </li>
           ))}
@@ -197,8 +198,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
       const items: string[] = [];
       while (i < lines.length) {
         if (/^\d+\.\s/.test(lines[i])) {
-          items.push(lines[i].replace(/^\d+\.\s/,"")); i++;
-        } else if (lines[i].trim() ==="" && i + 1 < lines.length && /^\d+\.\s/.test(lines[i + 1])) {
+          items.push(lines[i].replace(/^\d+\.\s/, "")); i++;
+        } else if (lines[i].trim() === "" && i + 1 < lines.length && /^\d+\.\s/.test(lines[i + 1])) {
           // blank line between numbered items — skip it, keep collecting
           i++;
         } else {
@@ -208,8 +209,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
       result.push(
         <ol key={"ol"+i} className="space-y-1.5 my-2 pl-1">
           {items.map((it, ii) => (
-            <li key={ii} className="flex items-start gap-2.5 text-[14px]" style={{ color:"var(--text-secondary)" }}>
-              <span className="text-[11px] font-bold mt-0.5 tabular-nums flex-shrink-0" style={{ color:"var(--text-muted)" }}>{ii+1}.</span>
+            <li key={ii} className="flex items-start gap-2.5 text-[14px]" style={{ color: "var(--text-secondary)" }}>
+              <span className="text-[11px] font-bold mt-0.5 tabular-nums flex-shrink-0" style={{ color: "var(--text-muted)" }}>{ii+1}.</span>
               <span>{inlineFormat(it)}</span>
             </li>
           ))}
@@ -217,17 +218,17 @@ function renderMarkdown(text: string): React.ReactNode[] {
       );
       continue;
     }
-    if (line.startsWith(">")) {
+    if (line.startsWith("> ")) {
       result.push(
-        <div key={i} className="pl-3 my-2 text-[13px] italic" style={{ borderLeft:"2px solid var(--border-strong)", color:"var(--text-secondary)" }}>
+        <div key={i} className="pl-3 my-2 text-[13px] italic" style={{ borderLeft: "2px solid var(--border-strong)", color: "var(--text-secondary)" }}>
           {inlineFormat(line.slice(2))}
         </div>
       );
       i++; continue;
     }
-    if (line.trim() ==="" || line ==="---" || line ==="***") { result.push(<div key={i} className="h-3" />); i++; continue; }
+    if (line.trim() === "" || line === "---" || line === "***") { result.push(<div key={i} className="h-3" />); i++; continue; }
     result.push(
-      <p key={i} className="text-[14px] leading-relaxed my-1" style={{ color:"var(--text-secondary)" }}>
+      <p key={i} className="text-[14px] leading-relaxed my-1" style={{ color: "var(--text-secondary)" }}>
         {inlineFormat(line)}
       </p>
     );
@@ -241,8 +242,8 @@ function ModelBadge({ publisher, name }: { publisher: string; name: string }) {
   const initials = publisher.slice(0, 2).toUpperCase();
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium"
-      style={{ background:"var(--surface-alt)", color:"var(--text-muted)", border:"1px solid var(--border)" }}>
-      <span className="font-bold text-[10px]" style={{ color:"var(--text-secondary)" }}>{initials}</span>
+      style={{ background: "var(--surface-alt)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+      <span className="font-bold text-[10px]" style={{ color: "var(--text-secondary)" }}>{initials}</span>
       <span className="truncate max-w-[80px]">{name}</span>
     </span>
   );
@@ -269,7 +270,7 @@ function ModelPicker({
   }, []);
   useEffect(() => { if (open) setTimeout(() => searchRef.current?.focus(), 50); }, [open]);
 
-  const current = models.find(m => m.id === selected) ?? { id: selected, name: selected, publisher:"AI", tier:"standard" };
+  const current = models.find(m => m.id === selected) ?? { id: selected, name: selected, publisher: "AI", tier: "standard" };
 
   const grouped = useMemo(() => {
     const q = search.toLowerCase();
@@ -293,56 +294,56 @@ function ModelPicker({
         disabled={loading}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all active:scale-95 select-none"
         style={{
-          background: open ?"var(--surface-alt)" :"var(--surface-alt)",
-          border: `1px solid ${open ?"var(--border-strong)" :"var(--border)"}`,
-          color:"var(--text-secondary)",
+          background: open ? "var(--surface-alt)" : "var(--surface-alt)",
+          border: `1px solid ${open ? "var(--border-strong)" : "var(--border)"}`,
+          color: "var(--text-secondary)",
         }}
       >
-        <span className="max-w-[90px] sm:max-w-[140px] truncate">{loading ?"…" : current.name}</span>
-        <ChevronDown strokeWidth={1.5}
-          className={cn("w-3 h-3 flex-shrink-0 transition-transform duration-200", open &&"rotate-180")}
-          style={{ color:"var(--text-muted)" }}
+        <span className="max-w-[90px] sm:max-w-[140px] truncate">{loading ? "…" : current.name}</span>
+        <ChevronDown
+          className={cn("w-3 h-3 flex-shrink-0 transition-transform duration-200", open && "rotate-180")}
+          style={{ color: "var(--text-muted)" }}
         />
         {quotaRemaining && quotaRemaining.multiplier > 0 && (
-          <span className="hidden sm:inline text-[10px] tabular-nums" style={{ color:"var(--text-muted)" }}>
+          <span className="hidden sm:inline text-[10px] tabular-nums" style={{ color: "var(--text-muted)" }}>
             {quotaRemaining.remaining}/{quotaRemaining.limit}
           </span>
         )}
       </button>
 
       <AnimatePresence>
-        {open && typeof window !=="undefined" && (() => {
+        {open && typeof window !== "undefined" && (() => {
           const rect = ref.current?.querySelector("button")?.getBoundingClientRect();
           return (
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 6 }}
-              transition={{ duration: 0.12, ease:"easeOut" }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
               className="fixed w-72 rounded-xl z-[70] overflow-hidden"
               style={{
                 bottom: rect ? window.innerHeight - rect.top + 8 : 80,
                 left: Math.min(rect?.left ?? 16, window.innerWidth - 296),
-                background:"var(--surface)",
-                border:"1px solid var(--border-strong)",
-                boxShadow:"var(--shadow)",
+                background: "var(--surface)",
+                border: "1px solid var(--border-strong)",
+                boxShadow: "var(--shadow)",
               }}
             >
               {/* Search */}
-              <div className="p-2" style={{ borderBottom:"1px solid var(--border)" }}>
-                <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background:"var(--surface-alt)" }}>
-                  <Search strokeWidth={1.5} className="w-3 h-3 flex-shrink-0" style={{ color:"var(--text-muted)" }} />
+              <div className="p-2" style={{ borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background: "var(--surface-alt)" }}>
+                  <Search className="w-3 h-3 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
                   <input
                     ref={searchRef}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Rechercher un modèle…"
                     className="flex-1 bg-transparent text-[12px] outline-none border-none shadow-none"
-                    style={{ color:"var(--text)", caretColor:"var(--accent)" }}
+                    style={{ color: "var(--text)", caretColor: "var(--accent)" }}
                   />
                   {search && (
                     <button type="button" onClick={() => setSearch("")}>
-                      <X strokeWidth={1.5} className="w-3 h-3" style={{ color:"var(--text-muted)" }} />
+                      <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
                     </button>
                   )}
                 </div>
@@ -352,7 +353,7 @@ function ModelPicker({
               <div className="overflow-y-auto max-h-72 p-1.5 space-y-3">
                 {[...grouped.entries()].map(([publisher, mods]) => (
                   <div key={publisher}>
-                    <p className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color:"var(--text-muted)" }}>
+                    <p className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
                       {publisher}
                     </p>
                     {mods.map(m => {
@@ -364,14 +365,14 @@ function ModelPicker({
                           onClick={() => { onSelect(m.id); setOpen(false); setSearch(""); }}
                           className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-all duration-100"
                           style={{
-                            background: isSelected ?"var(--surface-alt)" :"transparent",
-                            color:"var(--text)",
+                            background: isSelected ? "var(--surface-alt)" : "transparent",
+                            color: "var(--text)",
                           }}
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-medium truncate">{m.name}</p>
-                            {m.tier && m.tier !=="standard" && (
-                              <p className="text-[10px]" style={{ color:"var(--text-muted)" }}>{m.tier}</p>
+                            {m.tier && m.tier !== "standard" && (
+                              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{m.tier}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
@@ -379,21 +380,21 @@ function ModelPicker({
                               const mult = (m as any).premium_multiplier ?? 0;
                               if (mult === 0) return (
                                 <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
-                                  style={{ background:"var(--success-subtle)", color:"var(--success)", border:"1px solid var(--success-border)" }}>
+                                  style={{ background: "var(--success-subtle)", color: "var(--success)", border: "1px solid var(--success-border)" }}>
                                   FREE
                                 </span>
                               );
                               return (
                                 <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums"
-                                  style={{ background:"var(--surface-alt)", color:"var(--text-muted)", border:"1px solid var(--border)" }}>
+                                  style={{ background: "var(--accent-subtle)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
                                   ×{mult}
                                 </span>
                               );
                             })()}
                             {isSelected && (
                               <div className="w-4 h-4 rounded-full flex items-center justify-center"
-                                style={{ background:"var(--accent)" }}>
-                                <Check strokeWidth={1.5} className="w-2.5 h-2.5" style={{ color:"var(--bg)" }} />
+                                style={{ background: "var(--accent)" }}>
+                                <Check className="w-2.5 h-2.5" style={{ color: "var(--bg)" }} />
                               </div>
                             )}
                           </div>
@@ -403,7 +404,7 @@ function ModelPicker({
                   </div>
                 ))}
                 {grouped.size === 0 && (
-                  <p className="text-center py-4 text-[12px]" style={{ color:"var(--text-muted)" }}>Aucun résultat</p>
+                  <p className="text-center py-4 text-[12px]" style={{ color: "var(--text-muted)" }}>Aucun résultat</p>
                 )}
               </div>
             </motion.div>
@@ -426,10 +427,10 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button onClick={copy}
       className="p-1.5 rounded-md transition-all active:scale-90"
-      style={{ color:"var(--text-muted)" }}>
+      style={{ color: "var(--text-muted)" }}>
       {copied
-        ? <Check strokeWidth={1.5} className="w-3.5 h-3.5" style={{ color:"var(--success)" }} />
-        : <Copy strokeWidth={1.5} className="w-3.5 h-3.5" />}
+        ? <Check className="w-3.5 h-3.5" style={{ color: "var(--success)" }} />
+        : <Copy className="w-3.5 h-3.5" />}
     </button>
   );
 }
@@ -457,8 +458,8 @@ export default function ChatWithAIPage() {
       .then((data: FetchedModel[]) => { setFetchedModels(data); setLoadingModels(false); })
       .catch(() => {
         setFetchedModels([
-          { id:"gpt-4.1-mini", name:"GPT-4.1 Mini", publisher:"OpenAI", tier:"standard", is_default: true },
-          { id:"gpt-4o", name:"GPT-4o", publisher:"OpenAI", tier:"premium" },
+          { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", publisher: "OpenAI", tier: "standard", is_default: true },
+          { id: "gpt-4o", name: "GPT-4o", publisher: "OpenAI", tier: "premium" },
         ]);
         setLoadingModels(false);
       });
@@ -504,13 +505,13 @@ export default function ChatWithAIPage() {
   };
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, setMessages, setInput, stop, reload } = useChat({
-    api:"/api/chat",
+    api: "/api/chat",
     body: { model: selectedModel, thinking: thinkingMode },
     onError: (err) => {
       try {
         const parsed = JSON.parse(err.message);
-        if (parsed?.error ==="rate_limited") setRateLimitMsg(parsed.message ??"Limite journalière atteinte.");
-        else if (parsed?.error ==="unauthorized") setRateLimitMsg("Connecte-toi pour utiliser les modèles premium.");
+        if (parsed?.error === "rate_limited") setRateLimitMsg(parsed.message ?? "Limite journalière atteinte.");
+        else if (parsed?.error === "unauthorized") setRateLimitMsg("Connecte-toi pour utiliser les modèles premium.");
       } catch { /* noop */ }
     },
     onFinish: (message, options) => {
@@ -523,11 +524,11 @@ export default function ChatWithAIPage() {
           setQuotaRemaining({ remaining: parseInt(remaining), limit: parseInt(limit), multiplier: parseInt(mult) });
         } else { setQuotaRemaining(null); }
       } catch { /* noop */ }
-      if (!user || message.role !=="assistant") return;
+      if (!user || message.role !== "assistant") return;
       fetch("/api/chat/history", {
-        method:"POST",
-        headers: {"Content-Type":"application/json" },
-        body: JSON.stringify({ role:"assistant", content: message.content }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "assistant", content: message.content }),
       });
     },
   });
@@ -552,19 +553,19 @@ export default function ChatWithAIPage() {
     const el = containerRef.current;
     if (!el) return;
     const endEl = messagesEndRef.current;
-    if (endEl) endEl.scrollIntoView({ behavior:"smooth", block:"end" });
+    if (endEl) endEl.scrollIntoView({ behavior: "smooth", block: "end" });
     else el.scrollTop = el.scrollHeight;
   }, [messages, isLoading]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange(e);
     const el = e.target;
-    el.style.height ="auto";
+    el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key ==="Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (input.trim() && !isLoading) handleSubmitWithSave(e as any);
     }
@@ -574,12 +575,12 @@ export default function ChatWithAIPage() {
     if (!input.trim() || isLoading) return;
     const userContent = input.trim();
     handleSubmit(e);
-    setTimeout(() => { if (inputRef.current) inputRef.current.style.height ="auto"; }, 0);
+    setTimeout(() => { if (inputRef.current) inputRef.current.style.height = "auto"; }, 0);
     if (!user) return;
     fetch("/api/chat/history", {
-      method:"POST",
-      headers: {"Content-Type":"application/json" },
-      body: JSON.stringify({ role:"user", content: userContent }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "user", content: userContent }),
     });
   }, [input, isLoading, handleSubmit, user]);
 
@@ -596,7 +597,7 @@ export default function ChatWithAIPage() {
     savedMsgIds.current.clear();
     loadedMsgCountRef.current = 0;
     setDbHistory([]);
-    if (user) await fetch("/api/chat/history", { method:"DELETE" });
+    if (user) await fetch("/api/chat/history", { method: "DELETE" });
   }, [user, setMessages]);
 
   const canSend = input.trim().length > 0;
@@ -605,7 +606,7 @@ export default function ChatWithAIPage() {
   return (
     <div
       className="fixed inset-0 flex overflow-hidden"
-      style={{ background:"var(--bg)", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
+      style={{ background: "var(--bg)", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
     >
       {/* ── Left: desktop sidebar is the app sidebar (lg:ml-60) ── */}
       {/* ── Mobile history drawer ── */}
@@ -617,52 +618,52 @@ export default function ChatWithAIPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               className="fixed inset-0 z-[60]"
-              style={{ background:"rgba(0,0,0,0.5)" }}
+              style={{ background: "rgba(0,0,0,0.5)" }}
               onClick={() => setSidebarOpen(false)}
             />
             <motion.div
               key="hbpanel"
               initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
-              transition={{ type:"spring", stiffness: 380, damping: 38, mass: 0.8 }}
+              transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
               className="fixed left-0 top-0 bottom-0 w-72 z-[70] flex flex-col"
               style={{
-                background:"var(--surface)",
-                borderRight:"1px solid var(--border)",
-                paddingTop:"max(16px, env(safe-area-inset-top))",
+                background: "var(--surface)",
+                borderRight: "1px solid var(--border)",
+                paddingTop: "max(16px, env(safe-area-inset-top))",
               }}
             >
-              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:"1px solid var(--border)" }}>
-                <p className="text-[13px] font-semibold" style={{ color:"var(--text)" }}>Historique</p>
-                <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg" style={{ color:"var(--text-muted)" }}>
-                  <X strokeWidth={1.5} className="w-4 h-4" />
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
+                <p className="text-[13px] font-semibold" style={{ color: "var(--text)" }}>Historique</p>
+                <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg" style={{ color: "var(--text-muted)" }}>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-2 py-2">
                 {historyLoading && (
-                  <p className="text-center py-8 text-[12px]" style={{ color:"var(--text-muted)" }}>Chargement…</p>
+                  <p className="text-center py-8 text-[12px]" style={{ color: "var(--text-muted)" }}>Chargement…</p>
                 )}
-                {!historyLoading && dbHistory.filter(m => m.role ==="user").length === 0 && (
-                  <p className="text-center py-8 text-[12px]" style={{ color:"var(--text-muted)" }}>Aucun historique</p>
+                {!historyLoading && dbHistory.filter(m => m.role === "user").length === 0 && (
+                  <p className="text-center py-8 text-[12px]" style={{ color: "var(--text-muted)" }}>Aucun historique</p>
                 )}
                 {!historyLoading && (() => {
-                  const userMsgs = dbHistory.filter(m => m.role ==="user").reverse();
+                  const userMsgs = dbHistory.filter(m => m.role === "user").reverse();
                   const groups: Record<string, typeof userMsgs> = {};
                   userMsgs.forEach(m => {
-                    const d = new Date(m.created_at).toLocaleDateString("fr-MA", { day:"numeric", month:"short" });
+                    const d = new Date(m.created_at).toLocaleDateString("fr-MA", { day: "numeric", month: "short" });
                     if (!groups[d]) groups[d] = [];
                     groups[d].push(m);
                   });
                   return Object.entries(groups).map(([date, msgs]) => (
                     <div key={date}>
-                      <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color:"var(--text-disabled)" }}>{date}</p>
+                      <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--text-disabled)" }}>{date}</p>
                       {msgs.map((m, i) => (
                         <div key={m.id ?? i} className="px-3 py-2 rounded-lg mb-0.5 transition-all"
-                          style={{ background:"transparent", color:"var(--text-secondary)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background ="var(--surface-alt)")}
-                          onMouseLeave={e => (e.currentTarget.style.background ="transparent")}>
+                          style={{ background: "transparent", color: "var(--text-secondary)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-alt)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                           <p className="text-[12px] truncate leading-snug">{m.content.slice(0, 70)}</p>
-                          <p className="text-[10px] mt-0.5" style={{ color:"var(--text-disabled)" }}>
-                            {new Date(m.created_at).toLocaleTimeString("fr-MA", { hour:"2-digit", minute:"2-digit" })}
+                          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-disabled)" }}>
+                            {new Date(m.created_at).toLocaleTimeString("fr-MA", { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       ))}
@@ -671,11 +672,11 @@ export default function ChatWithAIPage() {
                 })()}
               </div>
               {dbHistory.length > 0 && (
-                <div className="px-3 py-3" style={{ borderTop:"1px solid var(--border)" }}>
+                <div className="px-3 py-3" style={{ borderTop: "1px solid var(--border)" }}>
                   <button
                     onClick={() => { handleClearHistory(); setSidebarOpen(false); }}
                     className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[12px] transition-all"
-                    style={{ color:"var(--error)" }}>
+                    style={{ color: "var(--error)" }}>
                     <Trash2 className="w-3.5 h-3.5" />
                     Effacer l'historique
                   </button>
@@ -694,32 +695,32 @@ export default function ChatWithAIPage() {
           className="flex items-center justify-between px-3 sm:px-4 flex-shrink-0"
           style={{
             height: 52,
-            background:"var(--bg)",
-            borderBottom:"1px solid var(--border)",
-            paddingTop:"env(safe-area-inset-top)",
+            background: "var(--bg)",
+            borderBottom: "1px solid var(--border)",
+            paddingTop: "env(safe-area-inset-top)",
           }}
         >
           <div className="flex items-center gap-2.5">
             {/* Back to app */}
             <Link href="/semestres"
               className="flex items-center gap-1.5 p-1.5 rounded-lg transition-all"
-              style={{ color:"var(--text-muted)" }}
+              style={{ color: "var(--text-muted)" }}
               title="Retour à l'application"
             >
-              <ArrowLeft strokeWidth={1.5} className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
             </Link>
             {/* History toggle — all screen sizes */}
             <button
               onClick={() => { setSidebarOpen(true); fetchDbHistory(); }}
               className="p-1.5 rounded-lg transition-all"
-              style={{ color:"var(--text-muted)" }}
+              style={{ color: "var(--text-muted)" }}
               title="Historique"
             >
               <SidebarOpen className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-2">
-              <Sparkles strokeWidth={1.5} className="w-4 h-4" style={{ color:"var(--text-muted)" }} />
-              <span className="text-[14px] font-semibold" style={{ color:"var(--text)" }}>Chat IA</span>
+              <Sparkles className="w-4 h-4" style={{ color: "var(--accent)" }} />
+              <span className="text-[14px] font-semibold" style={{ color: "var(--text)" }}>Chat IA</span>
             </div>
             {current && (
               <ModelBadge publisher={current.publisher} name={current.name} />
@@ -731,7 +732,7 @@ export default function ChatWithAIPage() {
               <button
                 onClick={handleClearHistory}
                 className="p-2 rounded-lg transition-all hidden sm:flex"
-                style={{ color:"var(--text-muted)" }}
+                style={{ color: "var(--text-muted)" }}
                 title="Effacer l'historique"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -740,7 +741,7 @@ export default function ChatWithAIPage() {
             <button
               onClick={() => { setMessages([]); savedMsgIds.current.clear(); loadedMsgCountRef.current = 0; }}
               className="p-2 rounded-lg transition-all"
-              style={{ color:"var(--text-muted)" }}
+              style={{ color: "var(--text-muted)" }}
               title="Nouveau chat"
             >
               <SquarePen className="w-4 h-4" />
@@ -754,12 +755,12 @@ export default function ChatWithAIPage() {
             <motion.div
               initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               className="mx-3 mt-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px]"
-              style={{ background:"var(--error-subtle)", border:"1px solid var(--error-border)", color:"var(--error)" }}
+              style={{ background: "var(--error-subtle)", border: "1px solid var(--error-border)", color: "var(--error)" }}
             >
-              <AlertCircle strokeWidth={1.5} className="w-3.5 h-3.5 flex-shrink-0" />
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="flex-1">{rateLimitMsg}</span>
               <button onClick={() => setRateLimitMsg(null)}>
-                <X strokeWidth={1.5} className="w-3.5 h-3.5" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>
           )}
@@ -771,26 +772,26 @@ export default function ChatWithAIPage() {
             {quotaCategories.map(cat => {
               const pct = cat.unlimited ? 0 : cat.limit > 0 ? Math.round((cat.used / cat.limit) * 100) : 0;
               const isAtLimit = !cat.unlimited && cat.remaining === 0;
-              const barColor = isAtLimit ?"var(--error)" : pct >= 70 ?"var(--warning)" :"var(--accent)";
+              const barColor = isAtLimit ? "var(--error)" : pct >= 70 ? "var(--warning)" : "var(--accent)";
               if (cat.unlimited && (cat.usedAlltime ?? 0) === 0) return null;
               return (
                 <div key={cat.multiplier} className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-medium" style={{ color:"var(--text-muted)" }}>{cat.label}</span>
+                    <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>{cat.label}</span>
                     <span className="text-[10px] font-semibold tabular-nums"
-                      style={{ color: isAtLimit ?"var(--error)" :"var(--text-muted)" }}>
+                      style={{ color: isAtLimit ? "var(--error)" : "var(--text-muted)" }}>
                       {cat.unlimited ? `${cat.used} auj.` : `${cat.used}/${cat.limit}`}
                     </span>
                   </div>
                   {!cat.unlimited && (
-                    <div className="h-[2px] rounded-full overflow-hidden" style={{ background:"var(--border)" }}>
+                    <div className="h-[2px] rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                       <div className="h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, pct)}%`, background: barColor }}
                       />
                     </div>
                   )}
                   {(cat.usedAlltime ?? 0) > 0 && (
-                    <p className="text-[9px] mt-0.5 tabular-nums" style={{ color:"var(--text-disabled)" }}>
+                    <p className="text-[9px] mt-0.5 tabular-nums" style={{ color: "var(--text-disabled)" }}>
                       {cat.usedAlltime} total
                     </p>
                   )}
@@ -804,7 +805,7 @@ export default function ChatWithAIPage() {
         <div
           ref={containerRef}
           className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-6"
-          style={{ WebkitOverflowScrolling:"touch" }}
+          style={{ WebkitOverflowScrolling: "touch" }}
         >
           {/* Empty state */}
           {messages.length === 0 && !isLoading && (
@@ -816,30 +817,33 @@ export default function ChatWithAIPage() {
             >
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
+                style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
               >
-                <Sparkles strokeWidth={1.5} className="w-6 h-6" style={{ color:"var(--text-muted)" }} />
+                <Sparkles className="w-6 h-6" style={{ color: "var(--accent)" }} />
               </div>
               <div className="space-y-1.5">
-                <h2 className="text-lg font-bold" style={{ color:"var(--text)" }}>
+                <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>
                   Assistant médical IA
                 </h2>
-                <p className="text-[14px] max-w-xs leading-relaxed" style={{ color:"var(--text-secondary)" }}>
+                <p className="text-[14px] max-w-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   Pose ta question sur l'anatomie, la pharmacologie, la physiologie ou n'importe quel sujet médical.
                 </p>
               </div>
               {/* Suggested prompts */}
               <div className="flex flex-col gap-2 w-full max-w-xs">
-                {["Explique le cycle de Krebs","Quelles sont les urgences en cardiologie ?","Résume les antibiotiques β-lactamines",
+                {[
+                  "Explique le cycle de Krebs",
+                  "Quelles sont les urgences en cardiologie ?",
+                  "Résume les antibiotiques β-lactamines",
                 ].map(prompt => (
                   <button
                     key={prompt}
                     onClick={() => { setInput(prompt); setTimeout(() => inputRef.current?.focus(), 50); }}
                     className="text-left px-3 py-2.5 rounded-xl text-[13px] transition-all duration-150"
                     style={{
-                      background:"var(--surface-alt)",
-                      border:"1px solid var(--border)",
-                      color:"var(--text-secondary)",
+                      background: "var(--surface-alt)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     {prompt}
@@ -851,8 +855,8 @@ export default function ChatWithAIPage() {
 
           {/* Message list */}
           {messages.map((msg, i) => {
-            const isUser = msg.role ==="user";
-            const rawText = typeof msg.content ==="string" ? msg.content :"";
+            const isUser = msg.role === "user";
+            const rawText = typeof msg.content === "string" ? msg.content : "";
             const cleanText = isUser ? rawText : stripToolCallJson(rawText);
             return (
               <motion.div
@@ -860,26 +864,26 @@ export default function ChatWithAIPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={cn("flex gap-3", isUser ?"justify-end" :"justify-start")}
+                className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
               >
                 {/* AI avatar */}
                 {!isUser && (
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
+                    style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
                   >
-                    <Sparkles strokeWidth={1.5} className="w-3.5 h-3.5" style={{ color:"var(--text-muted)" }} />
+                    <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
                   </div>
                 )}
 
-                <div className={cn("max-w-[85%] sm:max-w-[78%]", isUser &&"items-end")}>
+                <div className={cn("max-w-[85%] sm:max-w-[78%]", isUser && "items-end")}>
                   {isUser ? (
                     <div
                       className="px-3.5 py-2.5 rounded-2xl rounded-tr-sm text-[14px] leading-relaxed"
                       style={{
-                        background:"var(--surface-alt)",
-                        color:"var(--text)",
-                        border:"1px solid var(--border)",
+                        background: "var(--surface-alt)",
+                        color: "var(--text)",
+                        border: "1px solid var(--border)",
                       }}
                     >
                       {cleanText}
@@ -895,7 +899,7 @@ export default function ChatWithAIPage() {
                           <button
                             onClick={() => reload()}
                             className="p-1.5 rounded-md transition-all active:scale-90"
-                            style={{ color:"var(--text-muted)" }}
+                            style={{ color: "var(--text-muted)" }}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -918,16 +922,16 @@ export default function ChatWithAIPage() {
             >
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
+                style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)" }}
               >
-                <Sparkles strokeWidth={1.5} className="w-3.5 h-3.5" style={{ color:"var(--text-muted)" }} />
+                <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
               </div>
               <div className="flex items-center gap-1">
                 {[0, 1, 2].map(i => (
                   <motion.div
                     key={i}
                     className="w-1.5 h-1.5 rounded-full"
-                    style={{ background:"var(--text-muted)" }}
+                    style={{ background: "var(--text-muted)" }}
                     animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
                     transition={{ duration: 0.9, delay: i * 0.15, repeat: Infinity }}
                   />
@@ -943,20 +947,20 @@ export default function ChatWithAIPage() {
         <div
           className="flex-shrink-0 px-3 sm:px-4 py-3"
           style={{
-            background:"var(--bg)",
-            borderTop:"1px solid var(--border)",
-            paddingBottom:"max(12px, env(safe-area-inset-bottom))",
+            background: "var(--bg)",
+            borderTop: "1px solid var(--border)",
+            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
           }}
         >
           <form onSubmit={handleSubmitWithSave}>
             <motion.div
               animate={{
-                borderColor: inputFocused ?"var(--border-strong)" :"var(--border)",
-                borderColor: inputFocused ?"var(--border-strong)" :"var(--border)",
+                borderColor: inputFocused ? "var(--border-strong)" : "var(--border)",
+                borderColor: inputFocused ? "var(--border-strong)" : "var(--border)",
               }}
               transition={{ duration: 0.15 }}
               className="rounded-2xl overflow-hidden"
-              style={{ background:"var(--surface-alt)", border:"1px solid var(--border)" }}
+              style={{ background: "var(--surface-alt)", border: "1px solid var(--border)" }}
             >
               <textarea
                 ref={inputRef}
@@ -970,13 +974,13 @@ export default function ChatWithAIPage() {
                 disabled={isLoading}
                 className="w-full bg-transparent resize-none outline-none border-none px-4 pt-3.5 pb-2"
                 style={{
-                  color:"var(--text)",
-                  caretColor:"var(--accent)",
-                  minHeight:"52px",
-                  maxHeight:"200px",
-                  lineHeight:"1.6",
-                  fontSize:"16px",
-                  fontFamily:"inherit",
+                  color: "var(--text)",
+                  caretColor: "var(--accent)",
+                  minHeight: "52px",
+                  maxHeight: "200px",
+                  lineHeight: "1.6",
+                  fontSize: "16px",
+                  fontFamily: "inherit",
                 }}
               />
 
@@ -998,12 +1002,12 @@ export default function ChatWithAIPage() {
                       onClick={() => setThinkingMode(v => !v)}
                       className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95"
                       style={{
-                        background: thinkingMode ?"var(--accent-subtle)" :"transparent",
-                        border: `1px solid ${thinkingMode ?"var(--accent-border)" :"var(--border)"}`,
-                        color: thinkingMode ?"var(--accent)" :"var(--text-muted)",
+                        background: thinkingMode ? "var(--accent-subtle)" : "transparent",
+                        border: `1px solid ${thinkingMode ? "var(--accent-border)" : "var(--border)"}`,
+                        color: thinkingMode ? "var(--accent)" : "var(--text-muted)",
                       }}
                     >
-                      <Zap strokeWidth={1.5} className="w-3 h-3" style={{ fill: thinkingMode ?"var(--accent)" :"none" }} />
+                      <Zap className="w-3 h-3" style={{ fill: thinkingMode ? "var(--accent)" : "none" }} />
                       <span className="hidden xs:inline">Réfl.</span>
                     </button>
                   )}
@@ -1011,22 +1015,22 @@ export default function ChatWithAIPage() {
 
                 {/* Send / stop button */}
                 <motion.button
-                  type={isLoading ?"button" :"submit"}
+                  type={isLoading ? "button" : "submit"}
                   onClick={isLoading ? () => stop() : undefined}
                   disabled={!isLoading && !canSend}
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
                   animate={{
-                    background: isLoading ?"var(--error-subtle)"
-                              : canSend ?"var(--accent)"
-                              :"var(--surface-alt)",
+                    background: isLoading ? "var(--error-subtle)"
+                              : canSend ? "var(--accent)"
+                              : "var(--surface-alt)",
                     scale: canSend || isLoading ? 1 : 0.88,
                   }}
                   transition={{ duration: 0.12 }}
-                  style={{ border: isLoading ?"1px solid var(--error-border)" :"none" }}
+                  style={{ border: isLoading ? "1px solid var(--error-border)" : "none" }}
                 >
                   {isLoading
-                    ? <Square className="w-3.5 h-3.5" style={{ color:"var(--error)" }} />
-                    : <ArrowUp className="w-4 h-4" style={{ color: canSend ?"#fff" :"var(--text-disabled)" }} />
+                    ? <Square className="w-3.5 h-3.5" style={{ color: "var(--error)" }} />
+                    : <ArrowUp className="w-4 h-4" style={{ color: canSend ? "#fff" : "var(--text-disabled)" }} />
                   }
                 </motion.button>
               </div>
