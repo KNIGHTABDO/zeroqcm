@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const PRIMARY_TABS = [
   { href: "/semestres", icon: Home,     label: "Accueil" },
-  { href: "/chatwithai",icon: Sparkles, label: "Chat IA", accent: true },
+  { href: "/chatwithai",icon: Sparkles, label: "Chat IA" },
   { href: "/leaderboard",icon: Trophy,  label: "Classement" },
   { href: "/bookmarks", icon: Bookmark, label: "Favoris" },
   { href: "/more",      icon: Grid3x3,  label: "Plus",    isMore: true },
@@ -34,10 +34,8 @@ export function BottomNav() {
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  // Close more sheet on navigation
   useEffect(() => { setMoreOpen(false); }, [path]);
 
-  // Close on back button / escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMoreOpen(false); };
     document.addEventListener("keydown", onKey);
@@ -64,7 +62,7 @@ export function BottomNav() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="fixed inset-0 z-40 lg:hidden"
-              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+              style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
               onClick={() => setMoreOpen(false)}
             />
             <motion.div
@@ -76,30 +74,33 @@ export function BottomNav() {
               className="fixed left-0 right-0 z-50 lg:hidden rounded-t-2xl overflow-hidden"
               style={{
                 bottom: 0,
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border-strong)",
-                borderBottom: "none",
+                background: "var(--nav-bg)",
+                borderTop: "1px solid var(--border)",
                 paddingBottom: "max(24px, env(safe-area-inset-bottom))",
               }}
             >
-              {/* Handle */}
+              {/* Handle — Staromłyński style */}
               <div className="flex justify-center pt-3 pb-2">
                 <div className="w-10 h-1 rounded-full" style={{ background: "var(--border-strong)" }} />
               </div>
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 pb-4">
-                <p className="text-[15px] font-bold" style={{ color: "var(--text)" }}>Tout</p>
+                <p className="text-[15px] font-medium" style={{ color: "var(--text)" }}>Tout</p>
                 <button
                   onClick={() => setMoreOpen(false)}
-                  className="p-2 rounded-xl"
-                  style={{ background: "var(--surface-alt)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                  className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 active:scale-95"
+                  style={{
+                    background: "var(--surface-alt)",
+                    color: "var(--text-muted)",
+                    border: "1px solid var(--border)",
+                  }}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" strokeWidth={1.5} />
                 </button>
               </div>
 
-              {/* Grid */}
+              {/* Grid — neutral, no color accents */}
               <div className="px-4 grid grid-cols-4 gap-2">
                 {MORE_ITEMS.map(item => {
                   const active = isActive(item.href);
@@ -117,11 +118,12 @@ export function BottomNav() {
                     >
                       <Icon
                         className="w-5 h-5"
-                        style={{ color: active ? "var(--accent)" : "var(--text-secondary)" }}
+                        strokeWidth={1.5}
+                        style={{ color: active ? "var(--text)" : "var(--text-muted)" }}
                       />
                       <span
                         className="text-[10px] font-medium text-center leading-tight"
-                        style={{ color: active ? "var(--text)" : "var(--text-muted)" }}
+                        style={{ color: active ? "var(--text)" : "var(--text-disabled)" }}
                       >
                         {item.label}
                       </span>
@@ -134,7 +136,7 @@ export function BottomNav() {
         )}
       </AnimatePresence>
 
-      {/* ── Bottom tab bar ── */}
+      {/* ── Bottom tab bar — Staromłyński: clean, neutral, no color ── */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 lg:hidden"
         style={{
@@ -154,9 +156,9 @@ export function BottomNav() {
                   key="more"
                   onClick={() => setMoreOpen(v => !v)}
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95"
-                  style={{ color: active ? "var(--accent)" : "var(--nav-text)" }}
+                  style={{ color: active ? "var(--text)" : "var(--nav-text)" }}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-5 h-5" strokeWidth={1.5} />
                   <span className="text-[9px] font-medium">{tab.label}</span>
                 </button>
               );
@@ -168,18 +170,22 @@ export function BottomNav() {
                 key={tab.href}
                 href={tab.href}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95 relative"
-                style={{ color: active ? (tab.accent ? "var(--accent)" : "var(--accent)") : "var(--nav-text)" }}
+                style={{ color: active ? "var(--text)" : "var(--nav-text)" }}
               >
-                {/* Active dot */}
+                {/* Active indicator — thin top line, neutral white (Staromłyński style) */}
                 {active && (
                   <motion.div
                     layoutId="bottom-nav-dot"
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: "var(--accent)" }}
+                    style={{ background: "var(--text)" }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
-                <Icon className={cn("w-5 h-5", active && "scale-110")} style={{ transition: "transform 0.15s" }} />
+                <Icon
+                  className={cn("w-5 h-5", active && "scale-110")}
+                  strokeWidth={1.5}
+                  style={{ transition: "transform 0.15s" }}
+                />
                 <span className="text-[9px] font-medium">{tab.label}</span>
               </Link>
             );
