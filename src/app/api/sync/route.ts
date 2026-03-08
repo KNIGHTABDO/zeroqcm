@@ -10,7 +10,23 @@ const DARI_API = "https://dari-qcm-back-production-c027.up.railway.app/api";
 const DARI_ORIGIN = "https://dariqcm.vip";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-async function getDariToken(anneeEtude: number): Promise<string> {
+async function getDariToken(
+  anneeEtude: number,
+  supabase?: ReturnType<typeof createClient<any>>
+): Promise<string> {
+  // ── Check cached token in DB (avoids hitting DariQCM rate limiter) ──
+  if (supabase) {
+    const { data: cached } = await supabase
+      .from("dari_tokens")
+      .select("token, expires_at")
+      .eq("year_id", anneeEtude)
+      .maybeSingle() as { data: { token: string; expires_at: string } | null };
+    if (cached && new Date(cached.expires_at) > new Date(Date.now() + 60_000)) {
+      return cached.token;
+    }
+  }
+
+  // ── Register fresh token ──
   const ts = Date.now();
   const res = await fetch(`${DARI_API}/auth/register`, {
     method: "POST",
@@ -24,6 +40,16 @@ async function getDariToken(anneeEtude: number): Promise<string> {
   });
   const d = (await res.json()) as { token?: string };
   if (!d.token) throw new Error(`DariQCM auth failed yr${anneeEtude}`);
+
+  // ── Cache token in DB for 20 hours ──
+  if (supabase) {
+    const expiresAt = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+    await supabase.from("dari_tokens").upsert(
+      { year_id: anneeEtude, token: d.token, expires_at: expiresAt },
+      { onConflict: "year_id" }
+    );
+  }
+
   return d.token;
 }
 
@@ -360,7 +386,7 @@ async function runSync(
       }
 
       let token: string;
-      try { token = await getDariToken(yr); }
+      try { token = await getDariToken(yr, supabase); }
       catch (e) { stats.errors.push(`Auth yr${yr}: ${String(e)}`); continue; }
 
       const dariSems = await dariGet<DariSemester[]>("/qcm/semesters", token);
@@ -426,7 +452,7 @@ async function runSync(
     if (!targetYear) {
       // Get one generic token for direct module fetching
       let genericToken: string;
-      try { genericToken = await getDariToken(1); }
+      try { genericToken = await getDariToken(1, supabase); }
       catch (e) { stats.errors.push(`Direct-sem auth: ${String(e)}`); genericToken = ""; }
 
       if (genericToken) {
