@@ -13,6 +13,12 @@ Usage on Vast.ai:
 
 import os
 import argparse
+
+# ── Force standard Hugging Face direct download (prevents Vast.ai proxy/mirror drops) ──
+os.environ["UNSLOTH_ENABLE_FAST_DOWNLOAD"] = "0"
+os.environ["HF_HUB_DISABLE_XET"] = "1"
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+
 import torch
 from unsloth import FastLanguageModel, is_bfloat16_supported
 from trl import SFTTrainer
