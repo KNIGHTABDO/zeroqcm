@@ -6,3 +6,9 @@ node_modules/
 out/
 *.tsbuildinfo
 .DS_Store
+
+# Large datasets & exports
+export/
+dataset/
+*.jsonl
+
